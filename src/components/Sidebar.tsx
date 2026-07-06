@@ -489,12 +489,12 @@ export default function Sidebar({
           {/* actions live in the text column, left-aligned like everything else:
               follow (solid, same language as Favorite) · socials · ⋯ (block/report) */}
           {(canFollow || (profile.socials?.length ?? 0) > 0) && (
-          <div className="mt-1 flex items-center gap-3">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
             {canFollow && !blocked && (
               <button
                 onClick={onToggleFollow}
                 disabled={followBusy}
-                className={`flex h-7 cursor-pointer items-center px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
                   isFollowing
                     ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
                     : "bg-zinc-900 text-white hover:bg-zinc-700"

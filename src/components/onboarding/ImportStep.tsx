@@ -99,9 +99,8 @@ export default function ImportStep({
       </h1>
       <Rise delay={0.35}>
         <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-          Point at your public Goodreads or Letterboxd profile and your books and films
-          pull in automatically — 4★+ pre-selected. Favorites, not logs. Letterboxd pulls
-          your ~120 most recent films; for full history, upload the export ZIP.
+          Paste your public Goodreads or Letterboxd profile — your 4★+ books and films
+          pull in as favorites.
         </p>
       </Rise>
 

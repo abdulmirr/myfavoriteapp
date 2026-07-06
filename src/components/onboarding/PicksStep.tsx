@@ -25,7 +25,7 @@ type Pending = {
   view_url: string | null;
   year: string;
   canonical_id: string | null;
-  /** wall picks get a canonical enrichment pass at commit time */
+  /** wall picks get a background canonical enrichment pass after commit */
   fromWall: boolean;
 };
 
@@ -107,7 +107,7 @@ export default function PicksStep({
       title: p.title,
       creator: p.creator,
       art: p.src,
-      view_url: null,
+      view_url: p.view_url ?? null,
       year: "",
       canonical_id: null,
       fromWall: true,
@@ -139,57 +139,71 @@ export default function PicksStep({
     setSaving(true);
     setError("");
     try {
-      let { art, view_url, year, canonical_id } = pending;
-
-      // wall picks: one canonical pass so the item carries a real id + hosted art
-      if (pending.fromWall) {
-        try {
-          const type = SEARCH_TYPE[pending.media_type] ?? "all";
-          const res = await fetch(
-            `/api/search?type=${type}&q=${encodeURIComponent(
-              `${pending.title} ${pending.creator}`.trim()
-            )}`,
-            { headers: await authHeaders() }
-          );
-          if (res.ok) {
-            const { results: hits } = (await res.json()) as { results: SearchResult[] };
-            const hit =
-              (hits ?? []).find((h) => norm(h.title) === norm(pending.title)) ?? hits?.[0];
-            if (hit) {
-              art = hit.image_url ?? art;
-              view_url = hit.view_url ?? view_url;
-              year = hit.year || year;
-              canonical_id = hit.canonical_id ?? canonical_id;
-            }
-          }
-        } catch {
-          /* local cover art is a fine fallback */
-        }
-      }
-
       if (nextSort.current === null) nextSort.current = 0;
-      const { error: insErr } = await supabase().from("items").insert({
-        profile_id: profile.id,
-        media_type: pending.media_type,
-        title: pending.title,
-        creator: pending.creator,
-        description: thoughts.trim(),
-        image_url: art,
-        view_url,
-        metadata: year ? { year } : {},
-        canonical_id,
-        sort_order: nextSort.current++,
-      });
+      const { data: row, error: insErr } = await supabase()
+        .from("items")
+        .insert({
+          profile_id: profile.id,
+          media_type: pending.media_type,
+          title: pending.title,
+          creator: pending.creator,
+          description: thoughts.trim(),
+          image_url: pending.art,
+          view_url: pending.view_url,
+          metadata: pending.year ? { year: pending.year } : {},
+          canonical_id: pending.canonical_id,
+          sort_order: nextSort.current++,
+        })
+        .select("id")
+        .single();
       if (insErr) throw new Error(insErr.message);
 
       const key = keyOf(pending.media_type, pending.title);
-      setAdded((prev) => [...prev, { key, media_type: pending.media_type, title: pending.title, art }]);
+      setAdded((prev) => [
+        ...prev,
+        { key, media_type: pending.media_type, title: pending.title, art: pending.art },
+      ]);
+      // wall picks: the canonical pass (real id + hosted art) runs in the
+      // background so the panel closes instantly; blogs have nothing to find
+      if (pending.fromWall && SEARCH_TYPE[pending.media_type] && row) {
+        void enrich(row.id, key, pending);
+      }
       setPending(null);
       setThoughts("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** post-commit canonical pass — fire-and-forget; failures keep the local art */
+  const enrich = async (itemId: string, key: string, p: Pending) => {
+    try {
+      const res = await fetch(
+        `/api/search?type=${SEARCH_TYPE[p.media_type]}&q=${encodeURIComponent(
+          `${p.title} ${p.creator}`.trim()
+        )}`,
+        { headers: await authHeaders() }
+      );
+      if (!res.ok) return;
+      const { results: hits } = (await res.json()) as { results: SearchResult[] };
+      const hit = (hits ?? []).find((h) => norm(h.title) === norm(p.title)) ?? hits?.[0];
+      if (!hit) return;
+      await supabase()
+        .from("items")
+        .update({
+          image_url: hit.image_url ?? p.art,
+          view_url: hit.view_url ?? p.view_url,
+          canonical_id: hit.canonical_id ?? null,
+          ...(hit.year ? { metadata: { year: hit.year } } : {}),
+        })
+        .eq("id", itemId);
+      if (hit.image_url) {
+        setAdded((prev) => prev.map((a) => (a.key === key ? { ...a, art: hit.image_url } : a)));
+      }
+    } catch {
+      /* local cover art is a fine fallback */
     }
   };
 
@@ -451,11 +465,6 @@ export default function PicksStep({
                         <img src="/favicon.svg" alt="" className="h-4.5 w-auto" />
                         {saving ? "Saving..." : "Favorite"}
                       </button>
-                      {!thoughts.trim() && !error && (
-                        <span className="text-[11px] text-zinc-400">
-                          A word on why — that&rsquo;s the whole point.
-                        </span>
-                      )}
                       {error && <span className="text-[11px] text-red-500">{error}</span>}
                     </div>
                   </div>

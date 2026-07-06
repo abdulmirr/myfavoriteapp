@@ -75,6 +75,89 @@ const LINK_SLOTS: {
   },
 ];
 
+const SUBTLE_BTN = "cursor-pointer text-sm transition-colors";
+const LINK_BTN = `${SUBTLE_BTN} text-zinc-500 hover:text-zinc-900`;
+const FIELD_LABEL = "text-[10px] uppercase tracking-[0.08em] text-zinc-400";
+
+/** Bordered, titled block — the shape shared by every settings group below the profile form. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-10 border-t border-zinc-100 pt-6">
+      <h2 className={FIELD_LABEL}>{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A destructive action gated behind a confirm step. "Delete all favorites" and
+ * "Delete account" are the same idle → confirm → busy(→done) shape with different copy.
+ */
+function DangerAction({
+  label,
+  message,
+  confirmLabel,
+  busyLabel,
+  successText,
+  onConfirm,
+}: {
+  label: string;
+  message: string;
+  confirmLabel: string;
+  busyLabel: string;
+  /** Shown in place of the button on success; omit to just return to idle. */
+  successText?: string;
+  /** Return an error message to stay on the confirm step, or nothing to succeed. */
+  onConfirm: () => Promise<string | void>;
+}) {
+  const [step, setStep] = useState<"idle" | "confirm" | "busy" | "done">("idle");
+  const [error, setError] = useState("");
+
+  if (step === "done") {
+    return <p className="save-appear mt-3 text-xs text-zinc-500">{successText}</p>;
+  }
+
+  if (step === "idle") {
+    return (
+      <button onClick={() => setStep("confirm")} className={`mt-3 w-fit ${SUBTLE_BTN} text-zinc-500 hover:text-red-500`}>
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <p className="text-xs leading-relaxed text-zinc-500">{message}</p>
+      {error && <p className="save-appear text-[11px] text-red-500">{error}</p>}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={async () => {
+            setStep("busy");
+            setError("");
+            const err = await onConfirm();
+            if (err) {
+              setError(err);
+              setStep("confirm");
+            } else {
+              setStep(successText ? "done" : "idle");
+            }
+          }}
+          disabled={step === "busy"}
+          className="w-fit cursor-pointer text-sm text-red-500 transition-colors hover:text-red-600 disabled:cursor-wait"
+        >
+          {step === "busy" ? busyLabel : confirmLabel}
+        </button>
+        <button
+          onClick={() => setStep("idle")}
+          className="w-fit cursor-pointer text-sm text-zinc-400 transition-colors hover:text-zinc-900"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Profile settings — a dedicated clean page (same shell as /signin).
  * Edits the signed-in user's own profile; signing out lives here too.
@@ -115,13 +198,10 @@ export default function ProfileSettingsPage() {
   const [pwStatus, setPwStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [pwError, setPwError] = useState("");
 
-  // clear library (two-step confirm)
-  const [clearStep, setClearStep] = useState<"idle" | "confirm" | "busy" | "done">("idle");
-  const [clearError, setClearError] = useState("");
-
   const [loadFailed, setLoadFailed] = useState(false);
   const [digestError, setDigestError] = useState("");
   const [exportError, setExportError] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains("dark"));
@@ -297,15 +377,6 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const clearLibrary = async () => {
-    if (!profile) return;
-    setClearStep("busy");
-    setClearError("");
-    const { error: err } = await supabase().from("items").delete().eq("profile_id", profile.id);
-    if (err) setClearError("Delete failed — nothing was removed. Try again.");
-    setClearStep(err ? "confirm" : "done");
-  };
-
   const signOut = async () => {
     await supabase().auth.signOut();
     router.replace("/");
@@ -352,23 +423,6 @@ export default function ProfileSettingsPage() {
         ["type,title,creator,year,thoughts,link,added", ...rows].join("\n")
       );
     }
-  };
-
-  // account deletion — profile row first (cascade), then the auth user (RPC)
-  const [deleteStep, setDeleteStep] = useState<"idle" | "confirm" | "busy">("idle");
-  const [deleteError, setDeleteError] = useState("");
-  const deleteAccount = async () => {
-    setDeleteStep("busy");
-    setDeleteError("");
-    const db = supabase();
-    const { error: err } = await db.rpc("delete_account");
-    if (err) {
-      setDeleteError(err.message);
-      setDeleteStep("confirm");
-      return;
-    }
-    await db.auth.signOut();
-    router.replace("/");
   };
 
   return (
@@ -430,9 +484,7 @@ export default function ProfileSettingsPage() {
                     />
                   </button>
                   <div className="flex w-full flex-col gap-1">
-                    <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                      Name
-                    </span>
+                    <span className={FIELD_LABEL}>Name</span>
                     <input
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
@@ -442,9 +494,7 @@ export default function ProfileSettingsPage() {
                 </div>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    Username
-                  </span>
+                  <span className={FIELD_LABEL}>Username</span>
                   <div className="flex items-center border border-zinc-200 bg-white focus-within:border-zinc-400">
                     <span className="shrink-0 pl-3 text-xs text-zinc-400">
                       myfavoriteapp.com/
@@ -465,7 +515,7 @@ export default function ProfileSettingsPage() {
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">Bio</span>
+                  <span className={FIELD_LABEL}>Bio</span>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
@@ -475,9 +525,7 @@ export default function ProfileSettingsPage() {
                 </label>
 
                 <div className="flex flex-col gap-2">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    Links
-                  </span>
+                  <span className={FIELD_LABEL}>Links</span>
                   {LINK_SLOTS.map((slot) => (
                     <div
                       key={slot.key}
@@ -516,26 +564,16 @@ export default function ProfileSettingsPage() {
 
               <ImportLibrary profileId={profile.id} />
 
-              {/* appearance */}
-              <div className="mt-10 border-t border-zinc-100 pt-6">
-                <h2 className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                  Appearance
-                </h2>
+              <Section title="Appearance">
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-sm text-zinc-500">Theme</span>
-                  <button
-                    onClick={toggleTheme}
-                    className="cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900"
-                  >
+                  <button onClick={toggleTheme} className={LINK_BTN}>
                     {dark ? "Light →" : "Dark →"}
                   </button>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-sm text-zinc-500">Sounds</span>
-                  <button
-                    onClick={toggleSounds}
-                    className="cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900"
-                  >
+                  <button onClick={toggleSounds} className={LINK_BTN}>
                     {sounds ? "On →" : "Off →"}
                   </button>
                 </div>
@@ -546,7 +584,7 @@ export default function ProfileSettingsPage() {
                       <button
                         key={v}
                         onClick={() => changeDefaultView(v)}
-                        className={`cursor-pointer text-sm transition-colors ${
+                        className={`${SUBTLE_BTN} ${
                           defaultView === v
                             ? "text-zinc-900"
                             : "text-zinc-400 hover:text-zinc-900"
@@ -557,11 +595,9 @@ export default function ProfileSettingsPage() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </Section>
 
-              {/* email */}
-              <div className="mt-10 border-t border-zinc-100 pt-6">
-                <h2 className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">Email</h2>
+              <Section title="Email">
                 <div className="mt-3 flex items-center justify-between">
                   <div className="min-w-0 pr-4">
                     <span className="text-sm text-zinc-500">Weekly digest</span>
@@ -572,7 +608,7 @@ export default function ProfileSettingsPage() {
                   <button
                     onClick={toggleDigest}
                     disabled={digestBusy}
-                    className="shrink-0 cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+                    className={`shrink-0 disabled:cursor-wait ${LINK_BTN}`}
                   >
                     {digest ? "On →" : "Off →"}
                   </button>
@@ -580,11 +616,9 @@ export default function ProfileSettingsPage() {
                 {digestError && (
                   <p className="save-appear mt-2 text-[11px] text-red-500">{digestError}</p>
                 )}
-              </div>
+              </Section>
 
-              {/* account */}
-              <div className="mt-10 border-t border-zinc-100 pt-6">
-                <h2 className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">Account</h2>
+              <Section title="Account">
                 <p className="mt-2 text-xs text-zinc-500">{email}</p>
 
                 {pwOpen ? (
@@ -602,13 +636,13 @@ export default function ProfileSettingsPage() {
                       <button
                         onClick={updatePassword}
                         disabled={pwStatus === "saving"}
-                        className="cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+                        className={`disabled:cursor-wait ${LINK_BTN}`}
                       >
                         {pwStatus === "saving" ? "Saving…" : "Update"}
                       </button>
                     </div>
                     {pwStatus === "error" && (
-                      <span className="text-[11px] text-red-500">{pwError}</span>
+                      <span className="save-appear text-[11px] text-red-500">{pwError}</span>
                     )}
                   </div>
                 ) : (
@@ -618,7 +652,7 @@ export default function ProfileSettingsPage() {
                         setPwOpen(true);
                         setPwStatus("idle");
                       }}
-                      className="w-fit cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900"
+                      className={`w-fit ${LINK_BTN}`}
                     >
                       Change password
                     </button>
@@ -630,103 +664,61 @@ export default function ProfileSettingsPage() {
                   </div>
                 )}
 
-                <div className="mt-3 flex items-center gap-4">
-                  <span className="text-sm text-zinc-500">Export library</span>
-                  <button
-                    onClick={() => exportLibrary("json")}
-                    className="cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900"
-                  >
-                    JSON
+                {exportOpen ? (
+                  <div className="mt-3 flex items-center gap-4">
+                    <span className="text-sm text-zinc-500">Export library</span>
+                    <button onClick={() => exportLibrary("json")} className={LINK_BTN}>
+                      JSON
+                    </button>
+                    <button onClick={() => exportLibrary("csv")} className={LINK_BTN}>
+                      CSV
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setExportOpen(true)} className={`mt-3 w-fit ${LINK_BTN}`}>
+                    Export library
                   </button>
-                  <button
-                    onClick={() => exportLibrary("csv")}
-                    className="cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900"
-                  >
-                    CSV
-                  </button>
-                </div>
+                )}
                 {exportError && (
                   <p className="save-appear mt-2 text-[11px] text-red-500">{exportError}</p>
                 )}
 
-                <button
-                  onClick={signOut}
-                  className="mt-3 w-fit cursor-pointer text-sm text-zinc-500 transition-colors hover:text-zinc-900"
-                >
+                <button onClick={signOut} className={`mt-3 w-fit ${LINK_BTN}`}>
                   Sign out
                 </button>
-              </div>
+              </Section>
 
-              {/* danger */}
-              <div className="mt-10 border-t border-zinc-100 pt-6">
-                <h2 className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">Danger</h2>
-                {clearStep === "done" ? (
-                  <p className="save-appear mt-3 text-xs text-zinc-500">Library cleared.</p>
-                ) : clearStep === "idle" ? (
-                  <button
-                    onClick={() => setClearStep("confirm")}
-                    className="mt-3 w-fit cursor-pointer text-sm text-zinc-500 transition-colors hover:text-red-500"
-                  >
-                    Delete all favorites
-                  </button>
-                ) : (
-                  <div className="mt-3 flex flex-col gap-2">
-                    <p className="text-xs leading-relaxed text-zinc-500">
-                      This permanently erases everything you&rsquo;ve saved. There is no undo.
-                    </p>
-                    {clearError && (
-                      <p className="save-appear text-[11px] text-red-500">{clearError}</p>
-                    )}
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={clearLibrary}
-                        disabled={clearStep === "busy"}
-                        className="w-fit cursor-pointer text-sm text-red-500 transition-colors hover:text-red-600 disabled:cursor-wait"
-                      >
-                        {clearStep === "busy" ? "Deleting…" : "Yes, delete everything"}
-                      </button>
-                      <button
-                        onClick={() => setClearStep("idle")}
-                        className="w-fit cursor-pointer text-sm text-zinc-400 transition-colors hover:text-zinc-900"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <Section title="Danger">
+                <DangerAction
+                  label="Delete all favorites"
+                  message="This permanently erases everything you’ve saved. There is no undo."
+                  confirmLabel="Yes, delete everything"
+                  busyLabel="Deleting…"
+                  successText="Library cleared."
+                  onConfirm={async () => {
+                    if (!profile) return "No profile loaded.";
+                    const { error: err } = await supabase()
+                      .from("items")
+                      .delete()
+                      .eq("profile_id", profile.id);
+                    if (err) return "Delete failed — nothing was removed. Try again.";
+                  }}
+                />
 
-                {deleteStep === "idle" ? (
-                  <button
-                    onClick={() => setDeleteStep("confirm")}
-                    className="mt-3 w-fit cursor-pointer text-sm text-zinc-500 transition-colors hover:text-red-500"
-                  >
-                    Delete account
-                  </button>
-                ) : (
-                  <div className="mt-3 flex flex-col gap-2">
-                    <p className="text-xs leading-relaxed text-zinc-500">
-                      This deletes your page, your library, your follows and your account —
-                      permanently. Export your library first if you want a copy.
-                    </p>
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={deleteAccount}
-                        disabled={deleteStep === "busy"}
-                        className="w-fit cursor-pointer text-sm text-red-500 transition-colors hover:text-red-600 disabled:cursor-wait"
-                      >
-                        {deleteStep === "busy" ? "Deleting…" : "Yes, delete my account"}
-                      </button>
-                      <button
-                        onClick={() => setDeleteStep("idle")}
-                        className="w-fit cursor-pointer text-sm text-zinc-400 transition-colors hover:text-zinc-900"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    {deleteError && <span className="text-[11px] text-red-500">{deleteError}</span>}
-                  </div>
-                )}
-              </div>
+                <DangerAction
+                  label="Delete account"
+                  message="This deletes your page, your library, your follows and your account — permanently. Export your library first if you want a copy."
+                  confirmLabel="Yes, delete my account"
+                  busyLabel="Deleting…"
+                  onConfirm={async () => {
+                    const db = supabase();
+                    const { error: err } = await db.rpc("delete_account");
+                    if (err) return err.message;
+                    await db.auth.signOut();
+                    router.replace("/");
+                  }}
+                />
+              </Section>
             </>
           )}
         </div>

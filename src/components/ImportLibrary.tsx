@@ -93,10 +93,8 @@ export default function ImportLibrary({ profileId }: { profileId: string }) {
     <div className="mt-10 border-t border-zinc-100 pt-6">
       <h2 className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">Import</h2>
       <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-        Point at your public Goodreads or Letterboxd profile and your books and films pull
-        in automatically. Only your 4★+ ratings are pre-selected — this is a page of
-        favorites, not logs. Letterboxd pulls your ~120 most recent films; for full
-        history, upload the export ZIP.
+        Paste your public Goodreads or Letterboxd profile — your 4★+ books and films
+        pull in as favorites.
       </p>
 
       {progress ? (

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+<rect width="600" height="600" fill="#fbfaf8"/>
+<rect x="14.5" y="14.5" width="571" height="571" fill="none" stroke="#e4e4e7" stroke-width="1"/>
+<text x="300" y="200" text-anchor="middle" fill="#71717a" font-family="Georgia, serif" font-size="17" letter-spacing="6">MENTAL MODELS</text>
+<line x1="270" y1="238" x2="330" y2="238" stroke="#d4d4d8" stroke-width="1.5"/>
+<text x="300" y="330" text-anchor="middle" fill="#18181b" font-family="Georgia, serif" font-size="64">Farnam Street</text>
+<text x="300" y="420" text-anchor="middle" fill="#71717a" font-family="Georgia, serif" font-style="italic" font-size="21">by Shane Parrish</text>
+</svg>

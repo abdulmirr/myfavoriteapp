@@ -112,7 +112,7 @@ export default function RevealStep({ profile }: { profile: Profile }) {
           </Rise>
           <Rise delay={0.45}>
             <p className="mt-6 text-xs leading-relaxed text-zinc-400">
-              Add more anytime with the Favorite button in your sidebar.
+              Add more anytime with Favorite in your sidebar.
               <br />
               Your feed and weekly picks live on Home.
             </p>

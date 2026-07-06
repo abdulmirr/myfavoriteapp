@@ -76,6 +76,9 @@ img { -webkit-touch-callout: none; }
   .item-label { opacity: 1; }
   .item-label-inner { transform: none; }
   .item-tile:hover .item-media-img { transform: none; }
+  /* except the landing film strip: its captions are wider than their covers
+     (absolute, w-max) and collide when always-on — keep that strip visual */
+  .landing-marquee .item-label { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
