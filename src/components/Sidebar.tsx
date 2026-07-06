@@ -486,42 +486,49 @@ export default function Sidebar({
             {" · "}
             <span className="whitespace-nowrap">{followingCount} Following</span>
           </button>
-          {/* actions live in the text column, left-aligned like everything else:
-              follow (solid, same language as Favorite) · socials · ⋯ (block/report) */}
+          {/* actions live in the text column, left-aligned like everything else.
+              action row: follow (solid, same language as Favorite) + ⋯
+              (block/report); socials get their own line below. */}
           {(canFollow || (profile.socials?.length ?? 0) > 0) && (
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            {canFollow && !blocked && (
-              <button
-                onClick={onToggleFollow}
-                disabled={followBusy}
-                className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
-                  isFollowing
-                    ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
-                    : "bg-zinc-900 text-white hover:bg-zinc-700"
-                }`}
-              >
-                {isFollowing ? "Following ✓" : "Follow"}
-              </button>
-            )}
-            {profile.socials?.map((s) => (
-              <a
-                key={s.url}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={s.label}
-                className="text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                <SocialIcon label={s.label} />
-              </a>
-            ))}
+          <div className="mt-1 flex flex-col gap-2">
             {canFollow && (
-              <MoreButton
-                username={profile.username}
-                blocked={blocked}
-                blockBusy={blockBusy}
-                onToggleBlock={onToggleBlock}
-              />
+              <div className="flex items-center gap-x-3">
+                {!blocked && (
+                  <button
+                    onClick={onToggleFollow}
+                    disabled={followBusy}
+                    className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                      isFollowing
+                        ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
+                        : "bg-zinc-900 text-white hover:bg-zinc-700"
+                    }`}
+                  >
+                    {isFollowing ? "Following ✓" : "Follow"}
+                  </button>
+                )}
+                <MoreButton
+                  username={profile.username}
+                  blocked={blocked}
+                  blockBusy={blockBusy}
+                  onToggleBlock={onToggleBlock}
+                />
+              </div>
+            )}
+            {(profile.socials?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                {profile.socials?.map((s) => (
+                  <a
+                    key={s.url}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    className="text-zinc-400 transition-colors hover:text-zinc-900"
+                  >
+                    <SocialIcon label={s.label} />
+                  </a>
+                ))}
+              </div>
             )}
           </div>
           )}
