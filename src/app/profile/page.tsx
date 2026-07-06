@@ -9,6 +9,7 @@ import type { Profile } from "@/lib/types";
 import type { ViewMode } from "@/components/Sidebar";
 import ImportLibrary from "@/components/ImportLibrary";
 import { playUi, setSoundsEnabled, soundsEnabled } from "@/lib/sfx";
+import { socialHref } from "@/lib/social";
 
 /** The hardwired profile links — fixed names, icon-labeled inputs. */
 const LINK_SLOTS: {
@@ -317,7 +318,9 @@ export default function ProfileSettingsPage() {
         { label: "Instagram", url: links.instagram.trim() },
         { label: musicLabel, url: music },
         { label: "Pinterest", url: links.pinterest.trim() },
-        { label: "Website", url: links.website.trim() },
+        // the website field takes a bare domain ("abdulmir.com"); store it as a
+        // real https:// URL so it links out instead of resolving relative to us
+        { label: "Website", url: socialHref(links.website.trim()) },
       ].filter((s) => s.url);
       const { error: updErr } = await db
         .from("profiles")

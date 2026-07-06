@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
 import { CATEGORIES, type Category } from "@/lib/categories";
-import { REPORT_EMAIL } from "@/lib/social";
+import { REPORT_EMAIL, socialHref } from "@/lib/social";
 
 export type SortMode = "default" | "latest" | "oldest";
 export type ViewMode = "grid" | "freeform";
@@ -519,7 +519,7 @@ export default function Sidebar({
                 {profile.socials?.map((s) => (
                   <a
                     key={s.url}
-                    href={s.url}
+                    href={socialHref(s.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={s.label}

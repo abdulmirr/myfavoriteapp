@@ -3,6 +3,22 @@ import type { Item, Profile } from "./types";
 
 export const PROFILE_COLS = "id, user_id, username, display_name, bio, avatar_url, socials";
 
+/**
+ * A safe outbound href for a social link. Users type bare domains
+ * ("abdulmir.com") into the settings inputs; a scheme-less href is treated as
+ * a path relative to the current page, so the browser would resolve it to
+ * myfavoriteapp.com/abdulmir.com instead of leaving the site. Prepend https://
+ * (leaving mailto:/existing http(s) links alone) so it points at the real
+ * destination. Applied both on save and at render, so links already stored
+ * scheme-less resolve correctly without the user re-saving.
+ */
+export function socialHref(url: string): string {
+  const v = url.trim();
+  if (!v) return v;
+  if (/^(https?:|mailto:)/i.test(v)) return v;
+  return `https://${v.replace(/^\/+/, "")}`;
+}
+
 /** Profiles this person follows. Embedded join: one round trip, not two. */
 export async function fetchFollowing(profileId: string): Promise<Profile[]> {
   const { data } = await supabase()
