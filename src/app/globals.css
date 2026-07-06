@@ -210,16 +210,16 @@ img { -webkit-touch-callout: none; }
    handle the variant classes (hover:/placeholder:/focus-within:) without
    escaping gymnastics. Polaroid frames intentionally stay white. */
 .dark { color-scheme: dark; }
-.dark body { background: #0e0e0f; color: #ededed; }
+.dark body { background: #0a0a0b; color: #ededed; }
 
 /* screen bezel lifts off the dark page */
 .dark .screenframe { background: #232327; }
 .dark .posterframe { background: #1f1f23; border-color: #2c2c31; }
 .dark .vinylframe::before { --disc: #2b2b30; }
 
-.dark .bg-white { background-color: #0e0e0f; }
-.dark [class~="bg-white/85"] { background-color: rgba(14, 14, 15, 0.85); }
-.dark [class~="bg-white/35"] { background-color: rgba(14, 14, 15, 0.35); }
+.dark .bg-white { background-color: #0a0a0b; }
+.dark [class~="bg-white/85"] { background-color: rgba(10, 10, 11, 0.85); }
+.dark [class~="bg-white/35"] { background-color: rgba(10, 10, 11, 0.35); }
 .dark [class~="bg-zinc-900/20"] { background-color: rgba(244, 244, 245, 0.15); }
 
 .dark .text-zinc-900 { color: #f4f4f5; }
@@ -233,7 +233,7 @@ img { -webkit-touch-callout: none; }
 
 /* primary buttons / slider handle invert: white on dark */
 .dark .bg-zinc-900 { background-color: #f4f4f5; }
-.dark .bg-zinc-900 { color: #0e0e0f; }
+.dark .bg-zinc-900 { color: #0a0a0b; }
 .dark [class~="hover:bg-zinc-700"]:hover { background-color: #d4d4d8; }
 .dark [class~="disabled:bg-zinc-400"]:disabled { background-color: #52525c; }
 
