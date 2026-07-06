@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Item, MediaType, SearchResult } from "@/lib/types";
 import { ADD_TYPES } from "@/lib/categories";
 import { supabase, authHeaders } from "@/lib/supabase";
+import { useLiveSearch } from "@/lib/use-live-search";
 
 type Draft = Omit<SearchResult, "source_id"> & {
   source_id?: string;
@@ -39,8 +40,7 @@ export default function AddFavorite({
 }) {
   const [type, setType] = useState<MediaType>("book");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [urlSearching, setUrlSearching] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [thoughts, setThoughts] = useState("");
   const [saving, setSaving] = useState(false);
@@ -52,69 +52,50 @@ export default function AddFavorite({
   const [manualPreview, setManualPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // per-session result cache — backspacing or retyping replays instantly
-  const searchCache = useRef(new Map<string, SearchResult[]>());
-  const abortRef = useRef<AbortController | null>(null);
 
   const mode = ADD_TYPES.find((t) => t.type === type)!.mode;
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    setResults([]);
+  // reset happens in pickType (same batch as the type change) rather than an
+  // effect: an effect commits a frame later, and a keystroke landing in that
+  // gap would resubmit the stale input value through onChange
+  const pickType = (t: MediaType) => {
+    setType(t);
     setQuery("");
     setDraft(null);
     setThoughts(""); // a note written for the discarded draft must not ride along
     setError("");
+  };
+
+  useEffect(() => {
+    inputRef.current?.focus();
   }, [type]);
 
-  // debounced search for database-backed types; stale responses are aborted
-  // so a slow early query can never overwrite a newer one
-  useEffect(() => {
-    if (mode !== "search") return;
-    if (debounce.current) clearTimeout(debounce.current);
-    const q = query.trim();
-    if (!q) {
-      abortRef.current?.abort(); // a late response must not refill the cleared list
-      setResults([]);
-      return;
-    }
-    const key = `${type}:${q.toLowerCase()}`;
-    const cached = searchCache.current.get(key);
-    if (cached) {
-      abortRef.current?.abort(); // an older in-flight query must not overwrite the cache hit
-      setResults(cached);
-      return;
-    }
-    debounce.current = setTimeout(async () => {
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      setSearching(true);
-      try {
-        const r = await fetch(`/api/search?type=${type}&q=${encodeURIComponent(q)}`, {
-          headers: await authHeaders(),
-          signal: ctrl.signal,
-        });
-        const d = await r.json();
-        const list: SearchResult[] = d.results ?? [];
-        if (r.ok) searchCache.current.set(key, list);
-        if (!ctrl.signal.aborted) {
-          setResults(list);
-          // an expired session (401) otherwise reads as "no matches for anything"
-          setError(r.ok ? "" : "Search failed — try again, or sign in again.");
-        }
-      } catch {
-        /* aborted by a newer keystroke, or network hiccup */
-      } finally {
-        if (abortRef.current === ctrl) setSearching(false);
+  // live search for database-backed types; the hook debounces, caches per
+  // session, and aborts stale requests so results always track the keystroke
+  const { results: liveResults, searching: liveSearching } = useLiveSearch<SearchResult[]>(
+    mode === "search" ? query : "",
+    async (q, signal) => {
+      const r = await fetch(`/api/search?type=${type}&q=${encodeURIComponent(q)}`, {
+        headers: await authHeaders(),
+        signal,
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        // an expired session (401) otherwise reads as "no matches for anything"
+        setError("Search failed — try again, or sign in again.");
+        throw new Error("search failed"); // keep the failure out of the cache
       }
-    }, 150);
-  }, [query, type, mode]);
+      setError("");
+      return (d.results ?? []) as SearchResult[];
+    },
+    { scope: type }
+  );
+  const results = liveResults ?? [];
+  const searching = liveSearching || urlSearching;
 
   const resolveUrl = async () => {
     if (!query.trim()) return;
-    setSearching(true);
+    setUrlSearching(true);
     setError("");
     try {
       const r = await fetch(`/api/og?url=${encodeURIComponent(query.trim())}`, {
@@ -134,7 +115,7 @@ export default function AddFavorite({
     } catch {
       setError("Couldn't read that link — check the URL.");
     } finally {
-      setSearching(false);
+      setUrlSearching(false);
     }
   };
 
@@ -202,7 +183,7 @@ export default function AddFavorite({
         {ADD_TYPES.map((t) => (
           <button
             key={t.type}
-            onClick={() => setType(t.type)}
+            onClick={() => pickType(t.type)}
             className={`cursor-pointer text-[10px] uppercase tracking-[0.08em] transition-colors ${
               type === t.type
                 ? "font-medium text-zinc-900"

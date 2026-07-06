@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import type { MediaType, Profile, SearchResult } from "@/lib/types";
 import { supabase, authHeaders } from "@/lib/supabase";
+import { useLiveSearch } from "@/lib/use-live-search";
 import { STARTER_SECTIONS, type StarterPick } from "@/lib/starter-picks";
 import { EASE_SNAP, FramedCover, RevealWords, Rise } from "./bits";
 
@@ -52,8 +53,6 @@ export default function PicksStep({
   onNext: (addedCount: number) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [thoughts, setThoughts] = useState("");
@@ -62,7 +61,6 @@ export default function PicksStep({
   const [added, setAdded] = useState<Added[]>([]);
   // items already in the library — returning mid-onboarding must not duplicate
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
-  const seq = useRef(0);
   const nextSort = useRef<number | null>(null);
 
   const addedKeys = useMemo(() => new Set(added.map((a) => a.key)), [added]);
@@ -85,31 +83,21 @@ export default function PicksStep({
       });
   }, [profile.id]);
 
-  // debounced everything-search (people excluded — this beat is about media)
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) {
-      seq.current++; // a response still in flight for the longer query is now stale
-      setResults([]);
-      setSearching(false); // the invalidated request's finally no longer clears this
-      return;
-    }
-    const id = ++seq.current;
-    const t = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=all`, {
-          headers: await authHeaders(),
-        });
-        const json = res.ok ? await res.json() : { results: [] };
-        if (id !== seq.current) return;
-        setResults((json.results ?? []) as SearchResult[]);
-      } finally {
-        if (id === seq.current) setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query]);
+  // live everything-search (people excluded — this beat is about media); the
+  // hook debounces, caches per session, and drops stale responses
+  const { results: liveResults, searching } = useLiveSearch<SearchResult[]>(
+    query,
+    async (q, signal) => {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=all`, {
+        headers: await authHeaders(),
+        signal,
+      });
+      const json = res.ok ? await res.json() : { results: [] };
+      return (json.results ?? []) as SearchResult[];
+    },
+    { minLength: 2, scope: "picks" }
+  );
+  const results = liveResults ?? [];
 
   const openWallPick = (p: StarterPick) => {
     setThoughts("");
@@ -129,10 +117,7 @@ export default function PicksStep({
   const openSearchPick = (r: SearchResult) => {
     setThoughts("");
     setError("");
-    setQuery("");
-    seq.current++; // an in-flight search must not reopen the dropdown under the commit dialog
-    setResults([]);
-    setSearching(false); // the invalidated request's finally no longer clears this
+    setQuery(""); // clearing the query aborts any in-flight search and empties the dropdown
     setPending({
       media_type: r.media_type,
       title: r.title,

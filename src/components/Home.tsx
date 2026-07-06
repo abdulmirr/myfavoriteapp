@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Item, Profile, Recommendation, SearchResult } from "@/lib/types";
 import { supabase, authHeaders } from "@/lib/supabase";
 import { escapeLike, fetchFollowing, fetchSuggestions, itemKeys } from "@/lib/social";
+import { useLiveSearch } from "@/lib/use-live-search";
 import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
 import dynamic from "next/dynamic";
@@ -302,27 +303,19 @@ export default function Home() {
 
 /* ── search: people and media across the whole database ───────────────────── */
 
+type HomeSearchHits = { people: Profile[]; media: FeedItem[]; discover: SearchResult[] };
+
 function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: DOMRect) => void }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [people, setPeople] = useState<Profile[]>([]);
-  const [media, setMedia] = useState<FeedItem[]>([]);
-  const [discover, setDiscover] = useState<SearchResult[]>([]);
-  const seq = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const query = q.trim();
-    if (query.length < 2) {
-      seq.current++; // a response still in flight for the longer query is now stale
-      setPeople([]);
-      setMedia([]);
-      setDiscover([]);
-      return;
-    }
-    const id = ++seq.current;
-    const t = setTimeout(async () => {
+  // people + saved items + external catalogs in one debounced shot; the hook
+  // caches per session and drops stale responses, so results track keystrokes
+  const { results, searching } = useLiveSearch<HomeSearchHits>(
+    q,
+    async (query, signal) => {
       const db = supabase();
       // commas and parens are .or() tree syntax (a title like "Her (2013)"
       // would 400 the request); escapeLike then neutralizes %/_ wildcards
@@ -332,27 +325,33 @@ function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: DOMRect) => voi
           .from("profiles")
           .select("id, user_id, username, display_name, bio, avatar_url, socials")
           .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
-          .limit(3),
+          .limit(3)
+          .abortSignal(signal),
         db
           .from("items")
           // owner profile rides along as an embed — no second round trip
           .select("*, profile:profiles!profile_id(id, user_id, username, display_name, bio, avatar_url, socials)")
           .or(`title.ilike.%${safe}%,creator.ilike.%${safe}%`)
           .order("created_at", { ascending: false })
-          .limit(4),
+          .limit(4)
+          .abortSignal(signal),
         authHeaders()
-          .then((h) => fetch(`/api/search?q=${encodeURIComponent(query)}&type=all`, { headers: h }))
+          .then((h) => fetch(`/api/search?q=${encodeURIComponent(query)}&type=all`, { headers: h, signal }))
           .then((r) => (r.ok ? r.json() : { results: [] }))
           .then((j) => (j.results ?? []) as SearchResult[])
           .catch(() => [] as SearchResult[]),
       ]);
-      if (id !== seq.current) return; // stale response
-      setPeople((profiles ?? []) as Profile[]);
-      setMedia(((items ?? []) as FeedItem[]).filter((i) => i.profile));
-      setDiscover(external);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [q]);
+      return {
+        people: (profiles ?? []) as Profile[],
+        media: ((items ?? []) as FeedItem[]).filter((i) => i.profile),
+        discover: external,
+      };
+    },
+    { minLength: 2, scope: "home" }
+  );
+  const people = results?.people ?? [];
+  const media = results?.media ?? [];
+  const discover = results?.discover ?? [];
 
   const hasResults = people.length > 0 || media.length > 0 || discover.length > 0;
 
@@ -402,7 +401,13 @@ function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: DOMRect) => voi
 
       {open && q.trim().length >= 2 && (
         <div className="absolute left-0 top-full z-40 mt-2 max-h-[70vh] w-72 overflow-y-auto border border-zinc-200 bg-white shadow-2xl save-appear">
-          {!hasResults ? (
+          {results === null || (searching && !hasResults) ? (
+            // first response for this query still in flight — "No matches."
+            // here would flash a false negative on every keystroke
+            <p className="px-4 py-3 text-xs text-zinc-400 [animation:smart-search-wave_1.6s_ease-in-out_infinite]">
+              Searching…
+            </p>
+          ) : !hasResults ? (
             <p className="px-4 py-3 text-xs text-zinc-400">No matches.</p>
           ) : (
             <>

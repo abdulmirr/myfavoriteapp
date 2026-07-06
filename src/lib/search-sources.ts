@@ -7,7 +7,11 @@ import type { SearchResult } from "@/lib/types";
 // (not just error), and the callers' `.catch(() => [])` only catches
 // rejections — an abort rejects, so a hung source fails soft instead of
 // holding the whole serverless request open to the platform limit.
-const FETCH_TIMEOUT_MS = 8000;
+// 3s (was 8s): these APIs normally answer in well under a second, and the
+// main consumer is type-ahead search — one stalled source must not hold the
+// whole result list past the point anyone is still waiting for it. The merge
+// helpers keep whatever the fast sources returned.
+const FETCH_TIMEOUT_MS = 3000;
 function ftimeout(url: string, init?: RequestInit): Promise<Response> {
   return fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), ...init });
 }
