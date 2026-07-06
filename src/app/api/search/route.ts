@@ -30,10 +30,15 @@ const TTL_MS = 5 * 60_000;
 const CACHE_MAX = 500;
 const memo = new Map<string, { at: number; results: SearchResult[] }>();
 
+/** Non-empty memoized results for this query, or null on miss/expiry. */
+function peekMemo(type: string, q: string): SearchResult[] | null {
+  const hit = memo.get(`${type}:${q.toLowerCase()}`);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.results;
+  return null;
+}
+
 async function searchType(type: string, q: string): Promise<SearchResult[]> {
   const key = `${type}:${q.toLowerCase()}`;
-  const hit = memo.get(key);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.results;
 
   let results: SearchResult[] = [];
   if (type === "all") results = await searchAll(q);
@@ -75,12 +80,19 @@ export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get("type");
   if (!q || !type) return NextResponse.json({ results: [] });
 
+  // A memo hit costs nothing upstream, so it must not spend the caller's daily
+  // budget. This is type-ahead: prefix typing and backtracking replay the same
+  // queries constantly, and charging each one exhausted an active user's quota
+  // mid-session (500/day is only ~dozens of titles at one bump per keystroke).
+  const cached = peekMemo(type, q);
+  if (cached) return NextResponse.json({ results: cached });
+
   try {
-    // budget check and upstream search race in parallel — this is type-ahead,
-    // every keystroke pays this route's latency. The rare over-limit caller
-    // wastes one upstream round trip; results are discarded.
+    // On a miss we do hit upstreams, so bump the budget — raced with the search
+    // so type-ahead doesn't pay a serial RPC round trip. The rare over-limit
+    // caller wastes one upstream round trip; results are discarded.
     const [allowed, results] = await Promise.all([
-      withinLimit(auth.db, "search", 500),
+      withinLimit(auth.db, "search", 2000),
       searchType(type, q),
     ]);
     if (!allowed) {
