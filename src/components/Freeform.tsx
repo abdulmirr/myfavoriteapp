@@ -93,6 +93,26 @@ export default function Freeform({
     };
   }, []);
 
+  // Two-finger trackpad scroll pans the world, Figma-style — no need to grab
+  // and drag the background. A native non-passive listener (React's onWheel is
+  // passive, so it can't preventDefault) keeps the wheel from scrolling the
+  // page behind the canvas. Re-attaches once the viewport is measured, since
+  // that swaps in a different div. deltaMode 1 = lines (mouse wheel) → px.
+  const ready = offset !== null;
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el || !ready) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const mult = e.deltaMode === 1 ? 16 : 1;
+      setOffset((prev) =>
+        prev ? clampOffset(prev.x + e.deltaX * mult, prev.y + e.deltaY * mult) : prev
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [ready, clampOffset]);
+
   // seed positions: stored values (world px), else scatter around world center
   useEffect(() => {
     setPositions((prev) => {
