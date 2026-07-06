@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Item, MediaType, SearchResult } from "@/lib/types";
 import { ADD_TYPES } from "@/lib/categories";
 import { supabase, authHeaders } from "@/lib/supabase";
+import { whoSaved } from "@/lib/social";
 import { useLiveSearch } from "@/lib/use-live-search";
 
 type Draft = Omit<SearchResult, "source_id"> & {
@@ -139,6 +140,20 @@ export default function AddFavorite({
     setError("");
     try {
       const db = supabase();
+
+      // dedupe against the library (same media_type+title, or canonical id) —
+      // mirrors the feed's savedByMe guard and the picks/import dedupe so the
+      // /add page can't silently pile up a second copy of the same favorite
+      const already = await whoSaved(
+        { media_type: src.media_type, title: src.title, canonical_id: src.canonical_id ?? null },
+        [profileId]
+      );
+      if (already.has(profileId)) {
+        setError("Already in your library.");
+        setSaving(false);
+        return;
+      }
+
       let imageUrl = src.image_url;
 
       if (src.file) {
