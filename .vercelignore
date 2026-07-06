@@ -1,0 +1,16 @@
+# Never upload to Vercel builds
+node_modules
+.next
+.git
+
+# design reference only — third-party mirror, not part of the app
+natural-selection
+
+# secrets + local-only
+.env
+.env.*
+.vercel
+
+# local design mirror / scratch
+.DS_Store
+*.tsbuildinfo
