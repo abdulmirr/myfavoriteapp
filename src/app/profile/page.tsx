@@ -119,7 +119,9 @@ function DangerAction({
 
   if (step === "idle") {
     return (
-      <button onClick={() => setStep("confirm")} className={`mt-3 w-fit ${SUBTLE_BTN} text-zinc-500 hover:text-red-500`}>
+      // block: buttons are inline-block, and consecutive idle actions in a
+      // Section would otherwise run together on one line
+      <button onClick={() => setStep("confirm")} className={`mt-3 block w-fit ${SUBTLE_BTN} text-zinc-500 hover:text-red-500`}>
         {label}
       </button>
     );
@@ -675,7 +677,7 @@ export default function ProfileSettingsPage() {
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => setExportOpen(true)} className={`mt-3 w-fit ${LINK_BTN}`}>
+                  <button onClick={() => setExportOpen(true)} className={`mt-3 block w-fit ${LINK_BTN}`}>
                     Export library
                   </button>
                 )}
@@ -683,7 +685,7 @@ export default function ProfileSettingsPage() {
                   <p className="save-appear mt-2 text-[11px] text-red-500">{exportError}</p>
                 )}
 
-                <button onClick={signOut} className={`mt-3 w-fit ${LINK_BTN}`}>
+                <button onClick={signOut} className={`mt-3 block w-fit ${LINK_BTN}`}>
                   Sign out
                 </button>
               </Section>
