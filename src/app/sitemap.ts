@@ -1,0 +1,27 @@
+import type { MetadataRoute } from "next";
+import { supabaseServer } from "@/lib/supabase";
+
+// without this the sitemap is prerendered once at build time and new
+// profiles never appear until the next deploy
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://myfavoriteapp.com";
+  const { data: profiles } = await supabaseServer()
+    .from("profiles")
+    .select("username, created_at")
+    .not("user_id", "is", null)
+    .limit(5000);
+
+  return [
+    { url: base, changeFrequency: "daily", priority: 1 },
+    { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },
+    ...(profiles ?? []).map((p) => ({
+      url: `${base}/${p.username}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+      lastModified: p.created_at ? new Date(p.created_at) : undefined,
+    })),
+  ];
+}

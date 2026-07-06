@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --grid-cols: 6;
+  --grid-gap: 36px;
+  --row-ratio: 0.5;
+  /* signature easings */
+  --ease-snap: cubic-bezier(0.2, 0, 0, 1);
+  --ease-morph: cubic-bezier(0.1, 0, 0, 1);
+  --ease-drift: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (max-width: 1279.98px) { :root { --grid-cols: 5 !important; } }
+@media (max-width: 1023.98px) { :root { --grid-cols: 4 !important; } }
+@media (max-width: 767.98px)  { :root { --grid-cols: 3 !important; --grid-gap: 12px !important; } }
+
+html {
+  color-scheme: light;
+  height: 100%;
+  overscroll-behavior: none;
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100%;
+  background: #fff;
+  color: var(--foreground);
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  overscroll-behavior: none;
+}
+
+* { scrollbar-width: none; }
+::-webkit-scrollbar { display: none; }
+
+img, .item-media { user-select: none; -webkit-user-drag: none; }
+img { -webkit-touch-callout: none; }
+
+/* ── tile hover system (place=below, anim=rise, fx=lift) ── */
+.hover-fx { --label-dur: 100ms; --img-dur: 100ms; --anim-distance: 4px; --lift: 8px; }
+
+.item-media-img {
+  /* per-item personality tilt, set inline as --tilt; composes with hover lift */
+  transform: rotate(var(--tilt, 0deg));
+  transition:
+    transform var(--img-dur) var(--ease-snap),
+    opacity var(--img-dur) ease;
+}
+.item-label {
+  opacity: 0;
+  margin-top: 8px;
+  pointer-events: none;
+  transition: opacity var(--label-dur) ease;
+}
+.item-label-inner {
+  transform: translateY(var(--anim-distance));
+  transition: transform var(--label-dur) var(--ease-snap);
+}
+.item-tile:hover .item-label { opacity: 1; }
+.item-tile:hover .item-label-inner { transform: none; }
+.item-tile:hover .item-media-img {
+  transform: translateY(calc(-1 * var(--lift))) rotate(var(--tilt, 0deg));
+}
+
+/* no hover on touch — labels stay visible instead of unreachable */
+@media (max-width: 767px), (hover: none), (pointer: coarse) {
+  .item-label { opacity: 1; }
+  .item-label-inner { transform: none; }
+  .item-tile:hover .item-media-img { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.item-name {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #18181b;
+  display: block;
+}
+.item-sub {
+  font-size: 0.75rem;
+  color: #71717a;
+  margin-top: 2px;
+  display: block;
+}
+
+/* ── polaroid frame for personal photos ── */
+.polaroid {
+  background: #fff;
+  padding: 5.5% 5.5% 15% 5.5%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* ── video: paused player — slim screen bezel with a scrubber ──
+   Sized in cqw (both hosts set container-type on the square media box) so the
+   bezel and bar keep their scale whatever shape the frame shrink-wraps to. */
+.screenframe {
+  position: relative;
+  background: #0d0d0e;
+  padding: 1.6cqw;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 5px 14px rgba(0, 0, 0, 0.06);
+}
+.screenframe::after {
+  /* the scrubber, paused a third of the way in */
+  content: "";
+  position: absolute;
+  left: 1.6cqw;
+  right: 1.6cqw;
+  bottom: 1.6cqw;
+  height: max(0.9cqw, 1.5px);
+  background: linear-gradient(90deg, #e53935 0 34%, rgba(255, 255, 255, 0.32) 34%);
+}
+
+/* ── book cover: cream fore-edge of pages peeking out at the right ── */
+.bookframe {
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 5px 14px rgba(0, 0, 0, 0.06);
+}
+.bookframe::before {
+  /* hinge shading along the spine */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 11%;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.03) 55%, transparent);
+  pointer-events: none;
+}
+.bookframe::after {
+  /* page block — inset a touch so the cover overhangs it; stays paper-cream
+     in dark mode, like the polaroid stays white */
+  content: "";
+  position: absolute;
+  top: 0.8cqw;
+  bottom: 0.8cqw;
+  right: -2.2cqw;
+  width: 2.2cqw;
+  background: repeating-linear-gradient(
+    90deg,
+    #fbfaf6 0,
+    #fbfaf6 0.32cqw,
+    #e4e1d8 0.32cqw,
+    #e4e1d8 0.42cqw
+  );
+}
+
+/* ── music: vinyl peeking out of the sleeve ── */
+.vinylframe {
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 5px 14px rgba(0, 0, 0, 0.06);
+}
+.vinylframe::before {
+  /* the record — behind the sleeve, a grooved crescent showing at the right */
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 3.5%;
+  bottom: 3.5%;
+  right: -5.5cqw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  --disc: #202024;
+  background:
+    repeating-radial-gradient(
+      circle,
+      transparent 0,
+      transparent 0.9cqw,
+      rgba(255, 255, 255, 0.06) 0.9cqw,
+      rgba(255, 255, 255, 0.06) 1.1cqw
+    ),
+    var(--disc);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+/* ── movie/tv poster: one-sheet behind glass in a thin snap frame ── */
+.posterframe {
+  position: relative;
+  background: #fff;
+  padding: 1.6cqw;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 5px 14px rgba(0, 0, 0, 0.06);
+}
+.posterframe::after {
+  /* faint diagonal glare — the glass in front of the one-sheet */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.14), transparent 40%);
+  pointer-events: none;
+}
+/* ── dark theme ─────────────────────────────────────────────────────────────
+   The palette is expressed with zinc utility classes throughout the app; a
+   `.dark` class on <html> remaps them here in one place. Attribute selectors
+   handle the variant classes (hover:/placeholder:/focus-within:) without
+   escaping gymnastics. Polaroid frames intentionally stay white. */
+.dark { color-scheme: dark; }
+.dark body { background: #0e0e0f; color: #ededed; }
+
+/* screen bezel lifts off the dark page */
+.dark .screenframe { background: #232327; }
+.dark .posterframe { background: #1f1f23; border-color: #2c2c31; }
+.dark .vinylframe::before { --disc: #2b2b30; }
+
+.dark .bg-white { background-color: #0e0e0f; }
+.dark [class~="bg-white/85"] { background-color: rgba(14, 14, 15, 0.85); }
+.dark [class~="bg-white/35"] { background-color: rgba(14, 14, 15, 0.35); }
+.dark [class~="bg-zinc-900/20"] { background-color: rgba(244, 244, 245, 0.15); }
+
+.dark .text-zinc-900 { color: #f4f4f5; }
+.dark .text-zinc-700 { color: #d4d4d8; }
+.dark .text-zinc-500 { color: #a1a1aa; }
+.dark .text-zinc-400 { color: #71717b; }
+.dark .text-zinc-300 { color: #52525c; }
+.dark [class~="hover:text-zinc-900"]:hover { color: #f4f4f5; }
+.dark [class~="hover:text-zinc-700"]:hover { color: #d4d4d8; }
+.dark [class~="group-focus-within:text-zinc-900"]:is(.group:focus-within *) { color: #f4f4f5; }
+
+/* primary buttons / slider handle invert: white on dark */
+.dark .bg-zinc-900 { background-color: #f4f4f5; }
+.dark .bg-zinc-900 { color: #0e0e0f; }
+.dark [class~="hover:bg-zinc-700"]:hover { background-color: #d4d4d8; }
+.dark [class~="disabled:bg-zinc-400"]:disabled { background-color: #52525c; }
+
+.dark .bg-zinc-100 { background-color: #1c1c1f; }
+.dark [class~="hover:bg-zinc-50"]:hover { background-color: #18181b; }
+
+.dark .border-zinc-400 { border-color: #52525c; }
+.dark .border-zinc-200 { border-color: #27272a; }
+.dark .border-zinc-100 { border-color: #1c1c1f; }
+.dark [class~="focus-within:border-zinc-900"]:focus-within { border-color: #f4f4f5; }
+.dark [class~="focus:border-zinc-400"]:focus { border-color: #71717b; }
+
+.dark [class~="placeholder:text-zinc-400"]::placeholder { color: #71717b; }
+.dark [class~="placeholder:text-zinc-300"]::placeholder { color: #52525c; }
+
+.dark .item-name { color: #f4f4f5; }
+.dark .item-sub { color: #a1a1aa; }
+.dark .shadow-2xl {
+  --tw-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--tw-shadow);
+}
+
+/* ── landing page ── */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.landing-float { animation: landing-float 7s ease-in-out infinite; }
+
+@keyframes landing-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.landing-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: landing-marquee 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-float,
+  .landing-marquee-track { animation: none; }
+}
+
+/* ── keyframes ── */
+@keyframes smart-search-wave {
+  0% { opacity: 0.92; }
+  35% { opacity: 0.28; }
+  70% { opacity: 1; }
+  100% { opacity: 0.92; }
+}
+@keyframes save-appear {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.save-appear { animation: save-appear 0.2s var(--ease-snap); }
+
+/* sidebar people panel — slide up in, plain fade out */
+@keyframes people-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes people-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.people-in { animation: people-in 0.26s var(--ease-snap); }
+.people-out { animation: people-out 0.15s ease-out forwards; }
