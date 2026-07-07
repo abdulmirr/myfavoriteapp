@@ -435,11 +435,14 @@ export default function Library({
             freeform ? "pointer-events-none relative -mt-[4.5rem] opacity-0" : "sticky top-0"
           }`}
         >
-          <span className="text-sm font-semibold tracking-tight text-zinc-900">Favorites</span>
+          {/* the mark goes home, same as the sidebar's */}
+          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
+            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
+          </Link>
           <button
             aria-label="Menu"
             onClick={() => setMobileMenu((m) => !m)}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center"
+            className="-mr-3 flex h-10 w-10 cursor-pointer items-center justify-center"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" stroke="#18181b" strokeWidth="1.5" strokeLinecap="round">
               <line
@@ -487,7 +490,7 @@ export default function Library({
         <main
           className={`relative transition-opacity duration-700 ease-out ${
             mounted && !gridDimmed ? "opacity-100" : "opacity-0"
-          } ${view === "freeform" ? "min-h-0 flex-1" : "px-4 py-6 sm:px-8 sm:py-8"}`}
+          } ${view === "freeform" ? "min-h-0 flex-1" : "px-5 py-6 sm:px-8 sm:py-8"}`}
         >
           {items.length === 0 ? (
             <p className="pt-16 text-center text-xs text-zinc-400">

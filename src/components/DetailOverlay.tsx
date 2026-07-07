@@ -340,7 +340,7 @@ export default function DetailOverlay({
       className="fixed inset-0 z-[60] overflow-y-auto"
     >
       <div
-        className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-center gap-12 px-8 py-16 md:grid-cols-2 md:gap-16 md:px-12"
+        className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-center gap-8 px-6 py-16 md:grid-cols-2 md:gap-16 md:px-12"
         onClick={(e) => {
           if (e.target !== e.currentTarget) return;
           // mirror the Escape handler: a stray backdrop tap must never

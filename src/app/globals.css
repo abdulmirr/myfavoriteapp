@@ -71,6 +71,19 @@ img { -webkit-touch-callout: none; }
   transform: translateY(calc(-1 * var(--lift))) rotate(var(--tilt, 0deg));
 }
 
+/* ── mobile library grid ──
+   The slider-driven column count is a desktop instrument; on phones the grid
+   locks to two generous columns (!important outranks the inline --grid-cols)
+   and the author line drops so covers and titles carry the row. */
+@media (max-width: 767.98px) {
+  .fav-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    column-gap: 20px !important;
+    row-gap: 28px !important;
+  }
+  .fav-grid .item-sub { display: none; }
+}
+
 /* no hover on touch — labels stay visible instead of unreachable */
 @media (max-width: 767px), (hover: none), (pointer: coarse) {
   .item-label { opacity: 1; }

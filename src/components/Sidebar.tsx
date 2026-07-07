@@ -617,8 +617,11 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* size */}
-        <SizeSlider cols={cols} onCols={onCols} />
+        {/* size — on phones the grid is locked to two columns (globals.css),
+            so the slider only shows there when it still does something */}
+        <div className={view === "grid" ? "hidden md:block" : undefined}>
+          <SizeSlider cols={cols} onCols={onCols} />
+        </div>
         </div>
 
         {/* favorite — pinned to the bottom edge, its own action zone */}

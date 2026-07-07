@@ -51,7 +51,7 @@ export default function Grid({
     <div className="hover-fx">
       <div
         ref={containerRef}
-        className="grid"
+        className="fav-grid grid"
         style={
           {
             // size slider overrides the responsive default; gap shrinks as
