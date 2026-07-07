@@ -78,8 +78,8 @@ export default function DetailOverlay({
   const [showSavedBy, setShowSavedBy] = useState(false);
   const [savedByMe, setSavedByMe] = useState<boolean | null>(null); // null = still checking
   const [favBusy, setFavBusy] = useState(false);
-  // favoriting asks for the viewer's own thoughts first — saving someone
-  // else's piece should be as intentional as adding your own
+  // favoriting still opens a thoughts prompt first — the note is encouraged
+  // (it's what makes the copy yours) but never required
   const [favOpen, setFavOpen] = useState(startFavoriting ?? false);
   const [favThoughts, setFavThoughts] = useState("");
   const [actionError, setActionError] = useState("");
@@ -126,7 +126,7 @@ export default function DetailOverlay({
   }, [item.id, viewerProfile, viewerFollowing]);
 
   const favorite = async () => {
-    if (!viewerProfile || favBusy || savedByMe || !favThoughts.trim()) return;
+    if (!viewerProfile || favBusy || savedByMe) return;
     setFavBusy(true);
     try {
       await copyItem(item, viewerProfile.id, favThoughts.trim());
@@ -723,10 +723,13 @@ export default function DetailOverlay({
               placeholder="Your thoughts — why is this a favorite?"
               className="mt-3 w-full resize-none border border-zinc-200 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-400 focus:outline-none"
             />
+            <p className="mt-1.5 text-[11px] text-zinc-400">
+              Optional — a line on why makes it yours.
+            </p>
             <div className="mt-3 flex items-center gap-3">
               <button
                 onClick={favorite}
-                disabled={favBusy || !favThoughts.trim()}
+                disabled={favBusy}
                 className="flex h-9 cursor-pointer items-center gap-2 bg-zinc-900 px-4 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-default disabled:bg-zinc-400"
               >
                 <img src="/favicon.svg" alt="" className="h-4.5 w-auto" />

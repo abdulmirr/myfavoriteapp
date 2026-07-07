@@ -10,9 +10,10 @@ import { EASE_SNAP, FramedCover, RevealWords, Rise } from "./bits";
 
 /**
  * Beat 2 — first favorites. A curated wall of well-known covers plus a search
- * for anything else. Every favorite requires written thoughts before it lands:
- * this is a page of taste, not a checklist. Committed covers morph into a
- * "your page" tray that assembles live at the bottom.
+ * for anything else. Every favorite opens a thoughts prompt before it lands —
+ * the note is nudged (this is a page of taste, not a checklist) but optional,
+ * so new users can stack picks fast. Committed covers morph into a "your page"
+ * tray that assembles live at the bottom.
  */
 
 /** what the user is about to favorite — from the wall or from search */
@@ -131,7 +132,7 @@ export default function PicksStep({
   };
 
   const commit = async () => {
-    if (!pending || !thoughts.trim() || saving) return;
+    if (!pending || saving) return;
     if (isDone(pending.media_type, pending.title)) {
       setError("Already in your library.");
       return;
@@ -223,7 +224,7 @@ export default function PicksStep({
         </h1>
         <Rise delay={0.35}>
           <p className="mt-2 text-xs text-zinc-400">
-            Every favorite carries a reason — this is a page of taste, not a log.
+            Add a line on why when you can — this is a page of taste, not a log.
           </p>
         </Rise>
 
@@ -390,7 +391,7 @@ export default function PicksStep({
           </div>
         </div>
 
-        {/* commit panel — thoughts required, then the cover morphs into the tray */}
+        {/* commit panel — thoughts nudged but optional, then the cover morphs into the tray */}
         <AnimatePresence>
           {pending && (
             <div className="fixed inset-0 z-[70] overflow-y-auto" role="dialog" aria-modal="true">
@@ -455,10 +456,13 @@ export default function PicksStep({
                       placeholder="Your thoughts — why is this a favorite?"
                       className="resize-none border border-zinc-200 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-400 focus:outline-none"
                     />
+                    <p className="-mt-2 text-[11px] text-zinc-400">
+                      Optional — a line on why makes it yours.
+                    </p>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={commit}
-                        disabled={saving || !thoughts.trim()}
+                        disabled={saving}
                         className="flex h-9 cursor-pointer items-center gap-2 bg-zinc-900 px-4 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-default disabled:bg-zinc-400"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}

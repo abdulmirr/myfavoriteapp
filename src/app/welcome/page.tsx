@@ -16,7 +16,7 @@ import RevealStep from "@/components/onboarding/RevealStep";
 
 /**
  * First-run onboarding — five beats, ~90 seconds, every one skippable:
- * claim your page → first favorites (thoughts required) → import → people →
+ * claim your page → first favorites (thoughts nudged, optional) → import → people →
  * reveal. Home routes un-onboarded owners here; the reveal (or "skip for
  * now") stamps profile_private.onboarded_at so it never shows again.
  */

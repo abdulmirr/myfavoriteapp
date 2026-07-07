@@ -262,7 +262,7 @@ function BulkReview({
         <div className="pointer-events-auto w-full max-w-xl border border-zinc-200 bg-white shadow-2xl">
           <div className="flex items-baseline justify-between border-b border-zinc-100 px-5 py-3">
             <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-              {basket.length} {basket.length === 1 ? "favorite" : "favorites"}
+              {basket.length} {basket.length === 1 ? "favorite" : "favorites"} · thoughts optional
             </span>
             <button
               onClick={onClose}
