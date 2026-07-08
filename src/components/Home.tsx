@@ -22,7 +22,6 @@ import {
   fetchRadar,
   fetchSuggestions,
   itemKeys,
-  promoteRadar,
   removeFromRadar,
   type RadarItem,
 } from "@/lib/social";
@@ -271,6 +270,22 @@ export default function Home() {
           </nav>
 
           <div className="flex items-center justify-end gap-3">
+            {viewer && (
+              <Link
+                href="/friends"
+                title="Friends"
+                aria-label="Friends"
+                className="flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900"
+              >
+                {/* two people — drawn to match the bell's weight */}
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden>
+                  <circle cx="6" cy="5.5" r="2.3" />
+                  <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
+                  <circle cx="11.6" cy="6.2" r="1.8" />
+                  <path d="M12.3 9.8c1.6.4 2.7 1.7 2.7 3.5" />
+                </svg>
+              </Link>
+            )}
             {viewer && <Notifications viewer={viewer} />}
             <Link
               href="/profile"
@@ -739,11 +754,32 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
 }
 
 
+/** A saved row shaped as a library Item so TileMedia frames it like the library. */
+function radarToItem(r: RadarItem): Item {
+  return {
+    id: r.id,
+    profile_id: "",
+    media_type: r.media_type,
+    title: r.title,
+    creator: r.creator,
+    description: "",
+    image_url: r.image_url,
+    view_url: r.view_url,
+    metadata: (r.metadata ?? {}) as Item["metadata"],
+    canonical_id: r.canonical_id,
+    pinned_order: null,
+    sort_order: 0,
+    pos_x: null,
+    pos_y: null,
+    pos_rot: null,
+    created_at: r.created_at,
+  };
+}
+
 /**
- * Saved for later — the private shelf of things spotted but not yet claimed.
- * Deliberately unnumbered and quiet: it's curiosity, never a backlog.
- * Each row resolves one of two ways: loved it (promote to favorite, keeping
- * the via-credit) or let it go.
+ * Your saved items — the private shelf of things spotted but not yet claimed.
+ * Deliberately unnumbered and quiet: it's curiosity, never a backlog. The only
+ * action is letting one go; favoriting happens where the piece itself lives.
  */
 function SavedStrip({ viewer }: { viewer: Profile }) {
   const [rows, setRows] = useState<RadarItem[] | null>(null);
@@ -777,27 +813,21 @@ function SavedStrip({ viewer }: { viewer: Profile }) {
   };
 
   return (
-    <div className="mt-14">
-      <h2 className="mb-5 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-        {/* bookmark — the same mark as the save action */}
-        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
-          <path d="M4 2.5h8v11.5l-4-3.2-4 3.2z" />
-        </svg>
-        Saved for later
-      </h2>
-      {/* three tight rows per line — the covers stay small, the actions hug
-          the text instead of floating at the far edge */}
-      <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-3">
+    <div className="mt-16">
+      {/* a section of its own — same voice as the "For you" header */}
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+          Your saved items
+        </h2>
+        <p className="text-xs text-zinc-400">Bookmarked to check out later.</p>
+      </div>
+      {/* three tight rows per line; each cover keeps its object-on-a-wall
+          frame (vinyl sleeve, fore-edge pages, snap frame) — never a bare square */}
+      <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-3">
         {rows.slice(0, 9).map((r) => (
           <div key={r.id} className="flex min-w-0 items-center gap-3">
-            <div className="h-10 w-10 shrink-0 overflow-hidden bg-zinc-100">
-              {r.image_url && (
-                <img
-                  src={thumbCover(r.image_url)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              )}
+            <div className="w-14 shrink-0">
+              <TileMedia item={radarToItem(r)} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs leading-snug tracking-[-0.01em] text-zinc-900">
@@ -805,22 +835,6 @@ function SavedStrip({ viewer }: { viewer: Profile }) {
               </p>
               {r.creator && <p className="truncate text-[11px] text-zinc-400">{r.creator}</p>}
             </div>
-            <button
-              onClick={() =>
-                act(r, async () => {
-                  await promoteRadar(r, viewer.id);
-                  playSfx(r.media_type);
-                })
-              }
-              disabled={busy.has(r.id)}
-              aria-label="Favorite"
-              title="Loved it — move to your favorites"
-              className={`shrink-0 cursor-pointer transition-opacity disabled:cursor-wait ${
-                busy.has(r.id) ? "opacity-40" : "opacity-80 hover:opacity-100"
-              }`}
-            >
-              <img src="/favicon.svg" alt="" className="h-3 w-auto" />
-            </button>
             <button
               onClick={() => act(r, () => removeFromRadar(r.id))}
               disabled={busy.has(r.id)}
@@ -1022,7 +1036,7 @@ function FlipCard({
             flipped ? "text-zinc-900 hover:text-zinc-400" : "text-zinc-400 hover:text-zinc-900"
           }`}
         >
-          {flipped ? "← back" : "why?"}
+          {flipped ? "back" : "why?"}
         </button>
         {viewer &&
           (saved === "done" ? (

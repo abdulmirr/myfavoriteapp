@@ -581,35 +581,15 @@ export default function Sidebar({
             {" · "}
             <span className="whitespace-nowrap">{followingCount} Following</span>
           </button>
-          {/* taste stats — one quiet metadata line, kept smaller than the
-              follower counts so it reads as a footnote, not a headline */}
-          {(tasteCount > 0 || (tasteMatch?.shared ?? 0) > 0) && (
-            <p className="text-[11px] leading-relaxed text-zinc-400/90">
-              {[
-                tasteCount > 0
-                  ? `${tasteCount} approve${tasteCount === 1 ? "s" : ""} ${isOwner ? "your" : "their"} taste`
-                  : null,
-                (tasteMatch?.shared ?? 0) > 0
-                  ? `${tasteMatch!.shared} shared favorite${tasteMatch!.shared === 1 ? "" : "s"}${
-                      tasteMatch!.top_type
-                        ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}`
-                        : ""
-                    }`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          )}
           {socialError && (
             <p className="save-appear text-[11px] text-red-500">{socialError}</p>
           )}
           {/* actions live in the text column, left-aligned like everything else.
               action row: follow (solid, same language as Favorite) + approve
               taste (quiet sibling) + ⋯ (block/report); socials get their own
-              line below. */}
+              line below, on the same rhythm. */}
           {(canFollow || (profile.socials?.length ?? 0) > 0) && (
-          <div className="mt-1 flex flex-col gap-2">
+          <div className="mt-1.5 flex flex-col gap-3">
             {canFollow && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 {!blocked && (
@@ -669,6 +649,26 @@ export default function Sidebar({
               </div>
             )}
           </div>
+          )}
+          {/* taste stats — the footnote of the profile zone, below the actions
+              and socials so the identity → actions → metadata order holds */}
+          {(tasteCount > 0 || (tasteMatch?.shared ?? 0) > 0) && (
+            <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400/90">
+              {[
+                tasteCount > 0
+                  ? `${tasteCount} approve${tasteCount === 1 ? "s" : ""} ${isOwner ? "your" : "their"} taste`
+                  : null,
+                (tasteMatch?.shared ?? 0) > 0
+                  ? `${tasteMatch!.shared} shared favorite${tasteMatch!.shared === 1 ? "" : "s"}${
+                      tasteMatch!.top_type
+                        ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}`
+                        : ""
+                    }`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           )}
         </div>
 

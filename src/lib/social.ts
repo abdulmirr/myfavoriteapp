@@ -236,6 +236,123 @@ export async function setItemInCollection(
   }
 }
 
+/* ── friends directory ─────────────────────────────────────────────────────── */
+
+/** A friend's showcase strip: their pinned Top 4, or latest saves when nothing is pinned. */
+export interface Showcase {
+  items: Item[];
+  pinned: boolean;
+}
+
+/**
+ * Showcase strips for a set of profiles, keyed by profile id. Pins are the
+ * person's chosen identity row, so any pin wins outright; only pinless
+ * libraries fall back to recency.
+ */
+export async function fetchShowcases(profileIds: string[]): Promise<Map<string, Showcase>> {
+  const map = new Map<string, Showcase>();
+  if (!profileIds.length) return map;
+  const db = supabase();
+  const { data: pins } = await db
+    .from("items")
+    .select("*")
+    .in("profile_id", profileIds)
+    .not("pinned_order", "is", null)
+    .order("pinned_order", { ascending: true });
+  for (const row of (pins ?? []) as Item[]) {
+    const cur = map.get(row.profile_id);
+    if (cur) cur.items.push(row);
+    else map.set(row.profile_id, { items: [row], pinned: true });
+  }
+  const bare = profileIds.filter((id) => !map.has(id));
+  if (bare.length) {
+    // newest-first slice big enough that one prolific library can't starve the
+    // rest at present scale; grouped into per-person strips client-side
+    const { data: recent } = await db
+      .from("items")
+      .select("*")
+      .in("profile_id", bare)
+      .order("created_at", { ascending: false })
+      .limit(400);
+    for (const row of (recent ?? []) as Item[]) {
+      const cur = map.get(row.profile_id);
+      if (!cur) map.set(row.profile_id, { items: [row], pinned: false });
+      else if (cur.items.length < 4) cur.items.push(row);
+    }
+  }
+  return map;
+}
+
+export interface DiscoverProfile extends Profile {
+  /** favorites in their library */
+  count: number;
+  /** distinct canonical favorites you both have */
+  shared: number;
+}
+
+/**
+ * The "other users" shelf: people you don't follow, ranked by taste overlap
+ * (shared canonical favorites, same identity taste_match counts) then by
+ * library size. One items scan instead of an RPC per candidate; empty
+ * libraries and blocked profiles are skipped.
+ */
+export async function fetchDiscover(
+  viewerId: string,
+  followingIds: string[]
+): Promise<DiscoverProfile[]> {
+  const db = supabase();
+  const [{ data: profs }, { data: blocks }, { data: mine }] = await Promise.all([
+    db
+      .from("profiles")
+      .select(PROFILE_COLS)
+      .neq("id", viewerId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    db.from("blocks").select("blocked_id").eq("blocker_id", viewerId),
+    db
+      .from("items")
+      .select("canonical_id")
+      .eq("profile_id", viewerId)
+      .not("canonical_id", "is", null)
+      .limit(2000),
+  ]);
+  const skip = new Set<string>([
+    viewerId,
+    ...followingIds,
+    ...(blocks ?? []).map((b) => b.blocked_id as string),
+  ]);
+  const candidates = ((profs ?? []) as Profile[]).filter((p) => !skip.has(p.id));
+  if (!candidates.length) return [];
+  const myCanon = new Set((mine ?? []).map((r) => r.canonical_id as string));
+  const { data: theirs } = await db
+    .from("items")
+    .select("profile_id, canonical_id")
+    .in(
+      "profile_id",
+      candidates.map((p) => p.id)
+    )
+    .limit(8000);
+  const counts = new Map<string, number>();
+  const overlap = new Map<string, Set<string>>();
+  for (const r of theirs ?? []) {
+    counts.set(r.profile_id, (counts.get(r.profile_id) ?? 0) + 1);
+    if (r.canonical_id && myCanon.has(r.canonical_id)) {
+      let s = overlap.get(r.profile_id);
+      if (!s) overlap.set(r.profile_id, (s = new Set()));
+      s.add(r.canonical_id);
+    }
+  }
+  return candidates
+    .filter((p) => (counts.get(p.id) ?? 0) > 0)
+    .map((p) => ({
+      ...p,
+      count: counts.get(p.id) ?? 0,
+      shared: overlap.get(p.id)?.size ?? 0,
+    }))
+    .sort((a, b) => b.shared - a.shared || b.count - a.count)
+    .slice(0, 30);
+}
+
 /* ── taste match ────────────────────────────────────────────────────────────── */
 
 export interface TasteMatch {
