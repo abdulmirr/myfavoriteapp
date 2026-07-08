@@ -34,7 +34,7 @@ export default function AppShell({
   const isYou = !!viewer && pathname === `/${viewer.username}`;
 
   const rowClass = (active: boolean) =>
-    `flex w-full cursor-pointer items-center py-1.5 transition-colors ${
+    `flex w-full cursor-pointer items-center py-2 transition-colors ${
       active ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
     }`;
 
@@ -42,7 +42,7 @@ export default function AppShell({
   const labelClass =
     "ml-3 whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100";
 
-  const iconBox = "flex h-7 w-7 shrink-0 items-center justify-center";
+  const iconBox = "flex h-8 w-8 shrink-0 items-center justify-center";
 
   const avatar = (size: string, text: string) => (
     <span className={`flex ${size} shrink-0 items-center justify-center overflow-hidden bg-zinc-100`}>
@@ -57,7 +57,7 @@ export default function AppShell({
   );
 
   const friendsIcon = (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden>
+    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden>
       <circle cx="6" cy="5.5" r="2.3" />
       <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
       <circle cx="11.6" cy="6.2" r="1.8" />
@@ -66,13 +66,13 @@ export default function AppShell({
   );
 
   const homeIcon = (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
       <path d="M2.5 6.5 8 2l5.5 4.5V14h-4v-4h-3v4h-4V6.5z" />
     </svg>
   );
 
   const exploreIcon = (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
       <circle cx="8" cy="8" r="6.3" />
       <path d="m10.5 5.5-1.6 3.4-3.4 1.6 1.6-3.4 3.4-1.6z" />
     </svg>
@@ -86,12 +86,12 @@ export default function AppShell({
           collapsed ? "md:invisible md:-ml-16" : "md:visible md:ml-0"
         }`}
       >
-        <div className="group absolute inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r border-zinc-100 bg-white px-[18px] py-8 transition-[width,padding,box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-56 hover:px-6 hover:shadow-2xl">
-          <Link href="/" aria-label="Home" className="mb-8 flex h-7 w-7 shrink-0 items-center justify-center transition-opacity hover:opacity-70">
+        <div className="group absolute inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden bg-white px-4 py-8 transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-56 hover:shadow-2xl">
+          <Link href="/" aria-label="Home" className="mb-8 flex h-8 w-8 shrink-0 items-center justify-center transition-opacity hover:opacity-70">
             <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
           </Link>
 
-          <nav className="flex flex-col gap-1 text-[13px]">
+          <nav className="flex flex-col gap-1 text-sm">
             <Link href="/" className={rowClass(isHome)} title="Home">
               <span className={iconBox}>{homeIcon}</span>
               <span className={labelClass}>Home</span>
@@ -111,13 +111,13 @@ export default function AppShell({
               </Link>
             )}
             {viewer && (
-              <div className="py-1.5">
+              <div className="py-2">
                 <Notifications viewer={viewer} align="left" label="Notifications" />
               </div>
             )}
             {viewer && (
               <Link href={`/${viewer.username}`} className={rowClass(isYou)} title="Your library">
-                <span className={iconBox}>{avatar("h-5 w-5", "text-[9px]")}</span>
+                <span className={iconBox}>{avatar("h-6 w-6", "text-[10px]")}</span>
                 <span className={labelClass}>You</span>
               </Link>
             )}
@@ -128,18 +128,23 @@ export default function AppShell({
             <Link
               href="/add"
               title="Add a favorite"
-              className="mt-4 flex h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+              className="mt-4 flex h-10 w-full shrink-0 cursor-pointer items-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
             >
-              <img src="/favicon.svg" alt="" className="h-4 w-auto" />
-              <span className="hidden whitespace-nowrap group-hover:inline">Favorite</span>
+              <span className="flex h-10 w-8 shrink-0 items-center justify-center">
+                <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+                  <rect x="1.5" y="1.5" width="13" height="13" />
+                  <path d="M8 5v6M5 8h6" />
+                </svg>
+              </span>
+              <span className={labelClass}>Favorite</span>
             </Link>
           )}
 
-          <div className="mt-auto flex flex-col text-[13px]">
+          <div className="mt-auto flex flex-col text-sm">
             {signedIn ? (
               <Link href="/profile" className={rowClass(pathname === "/profile")} title="Settings">
                 <span className={iconBox}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <circle cx="12" cy="12" r="3" />
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
@@ -150,10 +155,12 @@ export default function AppShell({
               <Link
                 href={`/signin?next=${encodeURIComponent(pathname)}`}
                 title="Start curating"
-                className="flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+                className="flex h-10 w-full cursor-pointer items-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
               >
-                <img src="/favicon.svg" alt="" className="h-4 w-auto" />
-                <span className="hidden whitespace-nowrap group-hover:inline">Start curating</span>
+                <span className="flex h-10 w-8 shrink-0 items-center justify-center">
+                  <img src="/favicon.svg" alt="" className="h-4 w-auto" />
+                </span>
+                <span className={labelClass}>Start curating</span>
               </Link>
             )}
           </div>

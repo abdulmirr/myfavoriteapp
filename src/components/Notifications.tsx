@@ -174,8 +174,8 @@ export default function Notifications({
           label ? "flex w-full items-center gap-3" : "relative flex h-7 w-7 items-center justify-center"
         } ${open || unread > 0 ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"}`}
       >
-        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <span className={`relative flex shrink-0 items-center justify-center ${label ? "h-8 w-8" : "h-7 w-7"}`}>
+          <svg width={label ? 17 : 15} height={label ? 17 : 15} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
             <path d="M8 2a4 4 0 0 0-4 4v2.5L2.5 11v.5h11V11L12 8.5V6a4 4 0 0 0-4-4z" />
             <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
           </svg>
@@ -187,7 +187,7 @@ export default function Notifications({
         </span>
         {label && (
           // rides along hidden in the icons-only rail; the rail's hover reveals it
-          <span className="whitespace-nowrap text-[13px] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <span className="whitespace-nowrap text-sm opacity-0 transition-opacity duration-200 group-hover:opacity-100">
             {label}
           </span>
         )}
