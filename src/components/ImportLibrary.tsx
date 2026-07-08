@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   IMPORT_CAP,
   parseImportFile,
@@ -28,7 +28,42 @@ export default function ImportLibrary({ profileId }: { profileId: string }) {
   // paste-a-profile pull — the primary path (no export file needed)
   const [grInput, setGrInput] = useState("");
   const [lbInput, setLbInput] = useState("");
+  const [fmInput, setFmInput] = useState("");
   const [pulling, setPulling] = useState<ImportSource | null>(null);
+
+  // the Spotify OAuth round trip lands its albums (or a human error message)
+  // in sessionStorage on the way back to this page
+  useEffect(() => {
+    let payload: string | null = null;
+    let oauthError: string | null = null;
+    try {
+      payload = sessionStorage.getItem("fav:spotify-import");
+      oauthError = sessionStorage.getItem("fav:spotify-error");
+      sessionStorage.removeItem("fav:spotify-import");
+      sessionStorage.removeItem("fav:spotify-error");
+    } catch {
+      return;
+    }
+    if (!payload && !oauthError) return;
+    let parsed: ImportRow[] | null = null;
+    if (payload) {
+      try {
+        parsed = JSON.parse(payload) as ImportRow[];
+      } catch {
+        oauthError = "Couldn't read what Spotify sent back — try connecting again.";
+      }
+    }
+    const rowsIn = parsed;
+    const errIn = oauthError;
+    queueMicrotask(() => {
+      if (rowsIn?.length) {
+        setRows(rowsIn);
+        setSource("spotify");
+      } else if (errIn) {
+        setError(errIn);
+      }
+    });
+  }, []);
 
   const pull = async (service: ImportSource, id: string) => {
     if (!id.trim() || pulling) return;
@@ -88,13 +123,17 @@ export default function ImportLibrary({ profileId }: { profileId: string }) {
   };
 
   const selectedCount = rows?.filter((r) => r.checked).length ?? 0;
+  // rank-based sources (Spotify, Last.fm) have no stars — the 4★+ shortcut
+  // would just wipe the selection there
+  const hasStars = rows?.some((r) => r.rating > 0) ?? false;
 
   return (
     <div className="mt-10 border-t border-zinc-100 pt-6">
       <h2 className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">Import</h2>
       <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-        Paste your public Goodreads or Letterboxd profile — your 4★+ books and films
-        pull in as favorites.
+        Bring your history with you — Goodreads and Letterboxd pull in your 4★+ books
+        and films, Spotify and Last.fm your most-loved albums. You pick what makes the
+        wall.
       </p>
 
       {progress ? (
@@ -116,12 +155,14 @@ export default function ImportLibrary({ profileId }: { profileId: string }) {
               {selectedCount} of {rows.length} selected
             </p>
             <div className="flex gap-3 text-[11px]">
-              <button
-                onClick={() => setRows(rows.map((r) => ({ ...r, checked: r.rating >= 4 })))}
-                className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                4★+
-              </button>
+              {hasStars && (
+                <button
+                  onClick={() => setRows(rows.map((r) => ({ ...r, checked: r.rating >= 4 })))}
+                  className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
+                >
+                  4★+
+                </button>
+              )}
               <button
                 onClick={() => setRows(rows.map((r) => ({ ...r, checked: true })))}
                 className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
@@ -214,6 +255,36 @@ export default function ImportLibrary({ profileId }: { profileId: string }) {
               {pulling === "letterboxd" ? "Pulling…" : "Pull →"}
             </button>
           </div>
+          <div className="flex gap-2">
+            <input
+              value={fmInput}
+              onChange={(e) => setFmInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && pull("lastfm", fmInput)}
+              placeholder="Last.fm username"
+              className="min-w-0 flex-1 border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-400 focus:outline-none"
+            />
+            <button
+              onClick={() => pull("lastfm", fmInput)}
+              disabled={!fmInput.trim() || !!pulling}
+              className="shrink-0 cursor-pointer text-xs text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-default disabled:text-zinc-300"
+            >
+              {pulling === "lastfm" ? "Pulling…" : "Pull →"}
+            </button>
+          </div>
+          <a
+            href="/api/import/spotify"
+            className="flex h-9 w-fit items-center gap-2 border border-zinc-200 px-3 text-xs text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-900"
+          >
+            {/* spotify mark, monochrome */}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.3a.75.75 0 0 1-1.03.25c-2.82-1.72-6.37-2.11-10.55-1.16a.75.75 0 1 1-.33-1.46c4.57-1.05 8.5-.6 11.66 1.34.35.22.46.68.25 1.03zm1.47-3.27a.94.94 0 0 1-1.29.31c-3.23-1.98-8.15-2.56-11.97-1.4a.94.94 0 1 1-.55-1.8c4.37-1.32 9.8-.68 13.5 1.6.44.27.58.85.31 1.29zm.13-3.41C15.24 8.32 8.94 8.11 5.25 9.23a1.13 1.13 0 1 1-.65-2.16c4.24-1.28 11.28-1.03 15.72 1.6a1.13 1.13 0 0 1-1.22 1.95z" />
+            </svg>
+            Connect Spotify — pull your albums →
+          </a>
+          <p className="-mt-1 text-[11px] leading-relaxed text-zinc-400">
+            Spotify keeps new apps invite-only for now — if the connection is refused,
+            Last.fm above pulls the same albums for anyone.
+          </p>
           <div className="flex items-center gap-3">
             <button
               onClick={() => fileRef.current?.click()}

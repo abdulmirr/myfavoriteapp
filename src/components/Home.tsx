@@ -3,9 +3,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Item, Profile, Recommendation, SearchResult } from "@/lib/types";
+import {
+  REC_CATEGORIES,
+  REC_MIN_PER_CATEGORY,
+  type Item,
+  type Profile,
+  type RecCategoryKey,
+  type RecCounts,
+  type Recommendation,
+  type SearchResult,
+} from "@/lib/types";
 import { supabase, authHeaders } from "@/lib/supabase";
-import { escapeLike, fetchFollowing, fetchSuggestions, itemKeys } from "@/lib/social";
+import {
+  addToRadar,
+  copyItem,
+  escapeLike,
+  fetchFollowing,
+  fetchRadar,
+  fetchSuggestions,
+  itemKeys,
+  promoteRadar,
+  removeFromRadar,
+  type RadarItem,
+} from "@/lib/social";
 import { useLiveSearch } from "@/lib/use-live-search";
 import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
@@ -69,14 +89,15 @@ function resultToItem(r: SearchResult): Item {
 }
 
 /** For You sections. Cards are square tiles like the library grid. */
-const REC_SECTIONS: { label: string; types: string[] }[] = [
-  { label: "Music", types: ["music"] },
-  { label: "Books", types: ["book"] },
-  { label: "Film & TV", types: ["movie", "tv"] },
-  { label: "Reading", types: ["article", "other", "podcast"] },
-];
+const SECTION_UI: Record<RecCategoryKey, { label: string; one: string; many: string }> = {
+  music: { label: "Music", one: "album", many: "albums" },
+  books: { label: "Books", one: "book", many: "books" },
+  filmtv: { label: "Film & TV", one: "film or show", many: "films or shows" },
+  reading: { label: "Reading", one: "article or podcast", many: "articles or podcasts" },
+};
+const REC_SECTIONS = REC_CATEGORIES.map((c) => ({ ...c, ...SECTION_UI[c.key] }));
 
-/** A weekly pick shaped as a library Item so TileMedia frames it like the library. */
+/** A daily pick shaped as a library Item so TileMedia frames it like the library. */
 function recToItem(rec: Recommendation): Item {
   return {
     id: `rec-${rec.media_type}-${rec.title}`,
@@ -522,11 +543,15 @@ const TYPE_TAG: Record<string, string> = {
   book: "Book", movie: "Film", tv: "TV", music: "Music", podcast: "Pod", article: "Read",
 };
 
-/* ── For You: weekly AI picks, one section per category ────────────────────── */
+/* ── For You: daily AI picks, one section per category ─────────────────────── */
 
 function ForYou({ viewer }: { viewer: Profile | null }) {
   const [recs, setRecs] = useState<Recommendation[]>([]);
-  const [state, setState] = useState<"loading" | "ready" | "empty" | "error">("loading");
+  const [counts, setCounts] = useState<Partial<RecCounts>>({});
+  const [total, setTotal] = useState(0);
+  const [state, setState] = useState<
+    "loading" | "ready" | "gated" | "budget" | "done" | "error"
+  >("loading");
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(() => {
@@ -541,7 +566,7 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.status === 202) {
-          // another request is generating this week's picks — check back a few
+          // another request is generating today's picks — check back a few
           // times, then stop (each retry spends recs budget). The attempt count
           // travels as an argument so a manual "Try again" starts fresh.
           if (attempt < 3) {
@@ -550,13 +575,29 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
           }
           throw new Error("202");
         }
+        if (res.status === 429) {
+          // the day's generation budget is spent — retrying can't succeed,
+          // so say that instead of offering a button that always fails
+          setState("budget");
+          return;
+        }
         if (!res.ok) throw new Error(String(res.status));
         const json = (await res.json()) as {
           recommendations: Recommendation[];
+          counts?: RecCounts;
+          total?: number;
+          gated?: boolean;
           empty?: boolean;
+          allDismissed?: boolean;
         };
-        if (json.empty || !json.recommendations.length) {
-          setState("empty");
+        setCounts(json.counts ?? {});
+        if (json.allDismissed) {
+          // they passed on the whole set — that's a judgment, not an empty
+          // library; the gate copy would be flatly wrong here
+          setState("done");
+        } else if (json.gated || json.empty || !json.recommendations.length) {
+          setTotal(json.total ?? 0);
+          setState("gated");
         } else {
           setRecs(json.recommendations);
           setState("ready");
@@ -583,19 +624,22 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
         <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
           For you
         </h1>
-        <p className="text-xs text-zinc-400">New picks every Monday, drawn from your library.</p>
+        <p className="text-xs text-zinc-400">New picks every day, drawn from your library.</p>
       </div>
 
       {state === "loading" && (
         <p className="pt-12 text-center text-xs text-zinc-400 [animation:smart-search-wave_1.6s_ease-in-out_infinite]">
-          Curating your week — the first load takes a minute…
+          Curating today’s picks — the first load takes a minute…
         </p>
       )}
 
-      {state === "empty" && (
+      {state === "gated" && (
         <div className="flex flex-col gap-2 pt-2">
           <p className="text-xs leading-relaxed text-zinc-400">
-            Nothing to go on yet — picks are drawn from what you save. Add a few favorites{" "}
+            {total === 0
+              ? "Nothing to go on yet — picks are drawn from what you save. "
+              : `Picks land as soon as any section reaches ${REC_MIN_PER_CATEGORY} favorites — that's enough to read your taste there. `}
+            Add {total === 0 ? "a few" : "more"} favorites{" "}
             {viewer ? (
               <Link href={`/${viewer.username}`} className="text-zinc-900 hover:text-zinc-400">
                 in your library
@@ -609,8 +653,33 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
             </Link>{" "}
             to bring your history with you.
           </p>
+          {total > 0 && (
+            <p className="text-[11px] tracking-wide text-zinc-400">
+              {REC_SECTIONS.map((s, i) => (
+                <span key={s.key}>
+                  {i > 0 && <span className="mx-1.5 text-zinc-300">·</span>}
+                  {s.label}{" "}
+                  <span className={(counts[s.key] ?? 0) > 0 ? "text-zinc-900" : undefined}>
+                    {Math.min(counts[s.key] ?? 0, REC_MIN_PER_CATEGORY)}/{REC_MIN_PER_CATEGORY}
+                  </span>
+                </span>
+              ))}
+            </p>
+          )}
           <Suggestions viewer={viewer} lead="Meanwhile, some libraries worth a look:" />
         </div>
+      )}
+
+      {state === "budget" && (
+        <p className="pt-12 text-center text-xs text-zinc-400">
+          Today’s curation budget is spent — fresh picks land tomorrow.
+        </p>
+      )}
+
+      {state === "done" && (
+        <p className="pt-12 text-center text-xs text-zinc-400">
+          You’ve passed on all of today’s picks — a fresh set lands tomorrow.
+        </p>
       )}
 
       {state === "error" && (
@@ -626,31 +695,277 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
         <div className="flex flex-col gap-14">
           {REC_SECTIONS.map((section) => {
             const picks = recs.filter((r) => section.types.includes(r.media_type));
-            if (!picks.length) return null;
+            const have = counts[section.key] ?? 0;
+            // no picks despite enough favorites means the model skipped an
+            // asked-for category — hide the section rather than nudge wrongly
+            if (!picks.length && have >= REC_MIN_PER_CATEGORY) return null;
+            const need = REC_MIN_PER_CATEGORY - have;
             return (
               <div key={section.label}>
                 <h2 className="mb-5 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
                   {section.label}
                 </h2>
-                <div className="hover-fx grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
-                  {picks.map((r, i) => (
-                    <FlipCard key={`${r.title}-${i}`} rec={r} />
-                  ))}
-                </div>
+                {picks.length ? (
+                  <div className="hover-fx grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
+                    {picks.map((r, i) => (
+                      <FlipCard
+                        key={`${r.title}-${i}`}
+                        rec={r}
+                        viewer={viewer}
+                        onDismiss={() =>
+                          setRecs((prev) =>
+                            prev.filter(
+                              (p) => !(p.media_type === r.media_type && p.title === r.title)
+                            )
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs leading-relaxed text-zinc-400">
+                    {have === 0
+                      ? `Favorite ${REC_MIN_PER_CATEGORY} ${section.many} and picks land here — that's enough to read your taste.`
+                      : `${have} of ${REC_MIN_PER_CATEGORY} saved — favorite ${need} more ${need === 1 ? section.one : section.many} to unlock picks here.`}
+                  </p>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
+      {viewer && state !== "loading" && <RadarStrip viewer={viewer} />}
+      {viewer && (state === "ready" || state === "budget" || state === "done") && (
+        <Rediscover viewer={viewer} />
+      )}
     </section>
   );
 }
 
 
+/**
+ * On your radar — the private shelf of things spotted but not yet claimed.
+ * Deliberately unnumbered and quiet: a radar is curiosity, never a backlog.
+ * Each row resolves one of two ways: loved it (promote to favorite, keeping
+ * the via-credit) or let it go.
+ */
+function RadarStrip({ viewer }: { viewer: Profile }) {
+  const [rows, setRows] = useState<RadarItem[] | null>(null);
+  const [busy, setBusy] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRadar(viewer.id).then((r) => !cancelled && setRows(r));
+    return () => {
+      cancelled = true;
+    };
+  }, [viewer.id]);
+
+  if (!rows?.length) return null;
+
+  const act = async (r: RadarItem, fn: () => Promise<void>) => {
+    if (busy.has(r.id)) return;
+    setBusy((s) => new Set(s).add(r.id));
+    try {
+      await fn();
+      setRows((prev) => (prev ?? []).filter((x) => x.id !== r.id));
+    } catch {
+      /* leave the row; a retry is one tap away */
+    } finally {
+      setBusy((s) => {
+        const next = new Set(s);
+        next.delete(r.id);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <div className="mt-14">
+      <h2 className="mb-5 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+        On your radar
+      </h2>
+      <div className="flex flex-col gap-4">
+        {rows.slice(0, 8).map((r) => (
+          <div key={r.id} className="flex items-center gap-4">
+            <div className="h-12 w-12 shrink-0 overflow-hidden bg-zinc-100">
+              {r.image_url && (
+                <img
+                  src={thumbCover(r.image_url)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+                {r.title}
+              </p>
+              {r.creator && <p className="truncate text-xs text-zinc-400">{r.creator}</p>}
+            </div>
+            <button
+              onClick={() =>
+                act(r, async () => {
+                  await promoteRadar(r, viewer.id);
+                  playSfx(r.media_type);
+                })
+              }
+              disabled={busy.has(r.id)}
+              title="Loved it — move to your favorites"
+              className="shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+            >
+              favorite
+            </button>
+            <button
+              onClick={() => act(r, () => removeFromRadar(r.id))}
+              disabled={busy.has(r.id)}
+              aria-label="Remove from radar"
+              title="Let it go"
+              className="shrink-0 cursor-pointer text-zinc-300 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                <path d="M2 2l8 8M10 2l-8 8" />
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Rediscover: one favorite from 30+ days back, rotated daily — the library
+ * remembered back to its owner (a taste page ages well; show that). Renders
+ * nothing while the library is too young to have a past.
+ */
+type RediscoverPick = Pick<Item, "id" | "title" | "creator" | "image_url" | "created_at">;
+
+function Rediscover({ viewer }: { viewer: Profile }) {
+  const [pick, setPick] = useState<{ item: RediscoverPick; months: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
+      const { data } = await supabase()
+        .from("items")
+        .select("id, title, creator, image_url, created_at")
+        .eq("profile_id", viewer.id)
+        .lt("created_at", cutoff)
+        .order("created_at", { ascending: true })
+        .limit(60);
+      if (cancelled || !data?.length) return;
+      // deterministic daily rotation — same pick all day, new pick tomorrow
+      const day = Math.floor(Date.now() / 864e5);
+      const item = data[day % data.length] as RediscoverPick;
+      setPick({
+        item,
+        months: Math.max(
+          1,
+          Math.round((Date.now() - new Date(item.created_at).getTime()) / (30 * 864e5))
+        ),
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewer.id]);
+
+  if (!pick) return null;
+  const { item, months } = pick;
+
+  return (
+    <div className="mt-14">
+      <h2 className="mb-5 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+        From your wall
+      </h2>
+      <Link
+        href={`/${viewer.username}?item=${item.id}`}
+        className="group flex items-center gap-4"
+      >
+        <div className="h-16 w-16 shrink-0 overflow-hidden bg-zinc-100">
+          {item.image_url && (
+            <img
+              src={thumbCover(item.image_url)}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+            {item.title}
+          </p>
+          {item.creator && <p className="truncate text-xs text-zinc-400">{item.creator}</p>}
+          <p className="mt-0.5 text-[11px] text-zinc-400 transition-colors group-hover:text-zinc-900">
+            Favorited {months} month{months === 1 ? "" : "s"} ago — still one of yours?
+          </p>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
 /** Cover that flips over to reveal why it was recommended. */
-function FlipCard({ rec }: { rec: Recommendation }) {
+function FlipCard({
+  rec,
+  viewer,
+  onDismiss,
+}: {
+  rec: Recommendation;
+  viewer: Profile | null;
+  onDismiss: () => void;
+}) {
   const [flipped, setFlipped] = useState(false);
+  const [saved, setSaved] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [onRadar, setOnRadar] = useState<"idle" | "saving" | "done">("idle");
+
+  const radar = async () => {
+    if (!viewer || onRadar !== "idle") return;
+    setOnRadar("saving");
+    try {
+      await addToRadar(recToItem(rec), viewer.id);
+      playUi("confirm");
+      setOnRadar("done");
+    } catch {
+      setOnRadar("idle");
+    }
+  };
+
+  const favorite = async () => {
+    if (!viewer || saved === "saving" || saved === "done") return;
+    setSaved("saving");
+    try {
+      // provenance stays null — this pick came from the engine, not a person
+      await copyItem(recToItem(rec), viewer.id);
+      playSfx(rec.media_type);
+      setSaved("done");
+    } catch {
+      setSaved("error");
+    }
+  };
+
+  const dismiss = async () => {
+    if (!viewer) return;
+    onDismiss(); // the card leaves immediately; the write is fire-and-forget
+    // supabase builders are lazy — .then() is what actually sends the request
+    supabase()
+      .from("rec_dismissals")
+      .upsert(
+        {
+          profile_id: viewer.id,
+          media_type: rec.media_type,
+          title: rec.title,
+          creator: rec.creator,
+        },
+        { onConflict: "profile_id,media_type,title", ignoreDuplicates: true }
+      )
+      .then(({ error }) => {
+        if (error) console.error("dismissal not saved:", error.message);
+      });
+  };
 
   // same object-on-a-wall treatment as the library grid: vinyl sleeve for
   // music, fore-edge pages for books, snap frame for film/tv
@@ -696,14 +1011,55 @@ function FlipCard({ rec }: { rec: Recommendation }) {
         {rec.title}
       </h3>
       {rec.creator && <p className="truncate text-xs text-zinc-400">{rec.creator}</p>}
-      <button
-        onClick={() => setFlipped((f) => !f)}
-        className={`mt-1.5 cursor-pointer text-[10px] uppercase tracking-[0.08em] transition-colors ${
-          flipped ? "text-zinc-900 hover:text-zinc-400" : "text-zinc-400 hover:text-zinc-900"
-        }`}
-      >
-        {flipped ? "← back" : "why?"}
-      </button>
+      <div className="mt-1.5 flex items-center gap-3">
+        <button
+          onClick={() => setFlipped((f) => !f)}
+          className={`cursor-pointer text-[10px] uppercase tracking-[0.08em] transition-colors ${
+            flipped ? "text-zinc-900 hover:text-zinc-400" : "text-zinc-400 hover:text-zinc-900"
+          }`}
+        >
+          {flipped ? "← back" : "why?"}
+        </button>
+        {viewer &&
+          (saved === "done" ? (
+            <span className="save-appear text-[10px] uppercase tracking-[0.08em] text-zinc-900">
+              favorited ✓
+            </span>
+          ) : (
+            <button
+              onClick={favorite}
+              disabled={saved === "saving"}
+              className="cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+            >
+              {saved === "saving" ? "saving…" : saved === "error" ? "retry?" : "favorite"}
+            </button>
+          ))}
+        {viewer && saved !== "done" && (
+          <>
+            {onRadar === "done" ? (
+              <span className="save-appear text-[10px] uppercase tracking-[0.08em] text-zinc-900">
+                on radar ✓
+              </span>
+            ) : (
+              <button
+                onClick={radar}
+                disabled={onRadar === "saving"}
+                title="Put on your radar (private)"
+                className="cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+              >
+                radar
+              </button>
+            )}
+            <button
+              onClick={dismiss}
+              title="Not for me — I won't suggest it again"
+              className="ml-auto cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:text-zinc-900"
+            >
+              pass
+            </button>
+          </>
+        )}
+      </div>
     </article>
   );
 }

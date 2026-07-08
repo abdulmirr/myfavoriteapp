@@ -6,12 +6,25 @@ import type { Item, Profile } from "@/lib/types";
 import { categoryOf, type Category } from "@/lib/categories";
 import { supabase } from "@/lib/supabase";
 import {
+  approveTaste,
   blockProfile,
+  createCollection,
+  deleteCollection,
+  fetchCollectionItemIds,
+  fetchCollections,
   fetchFollowers,
   fetchFollowing,
+  fetchTasteMatch,
+  friendlyError,
+  hasApprovedTaste,
   hasBlocked,
+  setTasteNote,
+  tasteApprovalCount,
+  unapproveTaste,
   unblockProfile,
   PROFILE_COLS,
+  type Collection,
+  type TasteMatch,
 } from "@/lib/social";
 import { playUi, preloadSfx } from "@/lib/sfx";
 import Sidebar, { type SortMode, type ViewMode } from "./Sidebar";
@@ -143,6 +156,15 @@ export default function Library({
     hasBlocked(viewerProfile.id, profile.id).then(setBlocked);
   }, [viewerProfile, profile.id]);
 
+  // a failed follow/block used to fail silently — say what happened, briefly
+  const [socialError, setSocialError] = useState("");
+  const socialErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashSocialError = useCallback((msg: string) => {
+    setSocialError(msg);
+    if (socialErrorTimer.current) clearTimeout(socialErrorTimer.current);
+    socialErrorTimer.current = setTimeout(() => setSocialError(""), 5000);
+  }, []);
+
   const toggleBlock = useCallback(async () => {
     if (!viewerProfile || blockBusy) return;
     setBlockBusy(true);
@@ -157,11 +179,13 @@ export default function Library({
         setFollowing((prev) => prev.filter((f) => f.id !== viewerProfile.id));
       }
     } catch (e) {
-      console.error("block toggle failed:", e instanceof Error ? e.message : e);
+      flashSocialError(
+        e instanceof Error ? friendlyError(e.message) : "Couldn't update the block — try again."
+      );
     } finally {
       setBlockBusy(false);
     }
-  }, [viewerProfile, profile.id, blocked, blockBusy]);
+  }, [viewerProfile, profile.id, blocked, blockBusy, flashSocialError]);
 
   const toggleFollow = useCallback(async () => {
     if (!viewerProfile || followBusy) return;
@@ -174,6 +198,7 @@ export default function Library({
         .eq("follower_id", viewerProfile.id)
         .eq("followee_id", profile.id);
       if (!error) setFollowers((prev) => prev.filter((f) => f.id !== viewerProfile.id));
+      else flashSocialError(friendlyError(error.message));
     } else {
       const { error } = await db
         .from("follows")
@@ -181,10 +206,160 @@ export default function Library({
       if (!error) {
         playUi("confirm");
         setFollowers((prev) => [...prev, viewerProfile]);
+      } else {
+        flashSocialError(friendlyError(error.message));
       }
     }
     setFollowBusy(false);
-  }, [viewerProfile, profile.id, isFollowing, followBusy]);
+  }, [viewerProfile, profile.id, isFollowing, followBusy, flashSocialError]);
+
+  // "Approve taste" — the person-level gesture next to Follow. Count is public
+  // (definer RPC); the row itself is only visible to giver + receiver.
+  const [tasteCount, setTasteCount] = useState(0);
+  const [approved, setApproved] = useState(false);
+  const [approveBusy, setApproveBusy] = useState(false);
+  // the optional-note nudge lives only in the moment right after approving —
+  // keyed by profile id so navigating to another library never carries it over
+  const [notePromptFor, setNotePromptFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stale = false;
+    tasteApprovalCount(profile.id).then((c) => {
+      if (!stale) setTasteCount(c);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [profile.id]);
+
+  useEffect(() => {
+    if (!viewerProfile || viewerProfile.id === profile.id) return;
+    let stale = false;
+    hasApprovedTaste(viewerProfile.id, profile.id).then((v) => {
+      if (!stale) setApproved(v);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [viewerProfile, profile.id]);
+
+  // curator shelves: public on the page, ?c=<id> makes a filtered view shareable
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [collectionItemIds, setCollectionItemIds] = useState<Set<string> | null>(null);
+
+  const collectionsLoaded = useRef(false);
+  const loadCollections = useCallback(() => {
+    fetchCollections(profile.id).then((c) => {
+      collectionsLoaded.current = true;
+      setCollections(c);
+    });
+  }, [profile.id]);
+
+  useEffect(() => {
+    loadCollections();
+    // a shared collection link opens pre-filtered (deferred a tick — the
+    // repo's hook rules ban synchronous setState inside effects)
+    const c = new URLSearchParams(window.location.search).get("c");
+    if (!c) return;
+    let stale = false;
+    queueMicrotask(() => {
+      if (!stale) setSelectedCollection(c);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [loadCollections]);
+
+  useEffect(() => {
+    let stale = false;
+    if (!selectedCollection) {
+      queueMicrotask(() => {
+        if (!stale) setCollectionItemIds(null);
+      });
+    } else {
+      fetchCollectionItemIds(selectedCollection).then((ids) => {
+        if (!stale) setCollectionItemIds(ids);
+      });
+    }
+    return () => {
+      stale = true;
+    };
+  }, [selectedCollection]);
+
+  const selectCollection = useCallback((id: string | null) => {
+    setSelectedCollection(id);
+    // keep the URL shareable without adding history entries per tap
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("c", id);
+    else url.searchParams.delete("c");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, []);
+
+  // a stale/foreign ?c= (deleted shelf, mistyped link, other profile's id)
+  // would filter the wall to a dead "No matches." — drop it once collections
+  // have actually loaded and the id isn't among them
+  useEffect(() => {
+    if (!selectedCollection || !collectionsLoaded.current) return;
+    if (collections.some((c) => c.id === selectedCollection)) return;
+    let stale = false;
+    queueMicrotask(() => {
+      if (!stale) selectCollection(null);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [collections, selectedCollection, selectCollection]);
+
+  // shared favorites between the viewer and this library — the compatibility read
+  const [tasteMatch, setTasteMatch] = useState<TasteMatch | null>(null);
+  useEffect(() => {
+    let stale = false;
+    if (!viewerProfile || viewerProfile.id === profile.id) {
+      queueMicrotask(() => {
+        if (!stale) setTasteMatch(null);
+      });
+    } else {
+      fetchTasteMatch(viewerProfile.id, profile.id).then((m) => {
+        if (!stale) setTasteMatch(m);
+      });
+    }
+    return () => {
+      stale = true;
+    };
+  }, [viewerProfile, profile.id]);
+
+  const toggleApprove = useCallback(async () => {
+    if (!viewerProfile || approveBusy) return;
+    setApproveBusy(true);
+    try {
+      if (approved) {
+        await unapproveTaste(viewerProfile.id, profile.id);
+        setApproved(false);
+        setNotePromptFor(null);
+        setTasteCount((c) => Math.max(0, c - 1));
+      } else {
+        await approveTaste(viewerProfile.id, profile.id);
+        playUi("confirm");
+        setApproved(true);
+        setNotePromptFor(profile.id);
+        setTasteCount((c) => c + 1);
+      }
+    } catch (e) {
+      console.error("approve toggle failed:", e instanceof Error ? e.message : e);
+    } finally {
+      setApproveBusy(false);
+    }
+  }, [viewerProfile, profile.id, approved, approveBusy]);
+
+  const sendTasteNote = useCallback(
+    async (note: string) => {
+      if (!viewerProfile) return;
+      await setTasteNote(viewerProfile.id, profile.id, note);
+      setNotePromptFor(null);
+    },
+    [viewerProfile, profile.id]
+  );
 
   // escape clears filters (NS behavior) when no overlay is open — but never
   // while typing in a field: first Escape should just leave the input
@@ -240,18 +415,23 @@ export default function Library({
       const miss = list.filter((i) => !inCategory(i));
       list = [...hit, ...miss];
     }
+    // a collection is a subset, not an ordering — non-members leave entirely
+    if (collectionItemIds) list = list.filter((i) => collectionItemIds.has(i.id));
     return list;
-  }, [items, sort, search, category, inCategory]);
+  }, [items, sort, search, category, inCategory, collectionItemIds]);
 
   const openItem = useCallback(
     (item: Item, rect: DOMRect, pushUrl = true) => {
       setOpen({ item, rect });
       setGridDimmed(true); // NS: the grid stays on screen, slowly fading under the morph
       if (pushUrl) {
-        window.history.pushState({ favItem: item.id }, "", `/${profile.username}?item=${item.id}`);
+        // merge, don't rebuild — a selected collection's ?c= must survive
+        const url = new URL(window.location.href);
+        url.searchParams.set("item", item.id);
+        window.history.pushState({ favItem: item.id }, "", url.pathname + url.search);
       }
     },
-    [profile.username]
+    []
   );
 
   /** the tile's on-screen rect, or a centered stand-in when it isn't visible */
@@ -262,10 +442,12 @@ export default function Library({
   }, []);
 
   const clearItemUrl = useCallback(() => {
-    if (new URLSearchParams(window.location.search).has("item")) {
-      window.history.replaceState({}, "", `/${profile.username}`);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("item")) {
+      url.searchParams.delete("item"); // keep ?c= and friends intact
+      window.history.replaceState({}, "", url.pathname + url.search);
     }
-  }, [profile.username]);
+  }, []);
 
   // deep link: open the linked favorite once the grid has painted
   const deepLinked = useRef(false);
@@ -364,10 +546,44 @@ export default function Library({
     [items]
   );
   const showHero =
-    view === "grid" && pinned.length > 0 && !search.trim() && category === "All" && sort === "default";
+    view === "grid" && pinned.length > 0 && !search.trim() && category === "All" &&
+    sort === "default" && !selectedCollection;
   const gridItems = useMemo(
     () => (showHero ? visible.filter((i) => !i.pinned_order) : visible),
     [showHero, visible]
+  );
+
+  // drag-to-reorder is only honest when the grid shows the real "my order":
+  // owner, default sort, nothing filtered, mouse-class pointer (touch scrolls)
+  const [finePointer, setFinePointer] = useState(false);
+  useEffect(() => {
+    let stale = false;
+    queueMicrotask(() => {
+      if (!stale) setFinePointer(window.matchMedia("(pointer: fine)").matches);
+    });
+    return () => {
+      stale = true;
+    };
+  }, []);
+  const canReorder =
+    isOwner && finePointer && sort === "default" && !search.trim() &&
+    category === "All" && !selectedCollection;
+
+  const commitReorder = useCallback(
+    (ids: string[]) => {
+      // the hero row keeps the head of the order; the grid reorders the rest
+      const full = showHero ? [...pinned.map((p) => p.id), ...ids] : ids;
+      const pos = new Map(full.map((id, idx) => [id, idx]));
+      setItems((prev) =>
+        prev.map((i) => (pos.has(i.id) ? { ...i, sort_order: pos.get(i.id)! } : i))
+      );
+      supabase()
+        .rpc("reorder_items", { p_ids: full })
+        .then(({ error }) => {
+          if (error) console.error("reorder not saved:", error.message);
+        });
+    },
+    [showHero, pinned]
   );
 
   // the intro shows at most 10 frames — don't hand it (and preload) more
@@ -401,6 +617,15 @@ export default function Library({
         isFollowing={isFollowing}
         followBusy={followBusy}
         onToggleFollow={toggleFollow}
+        tasteCount={tasteCount}
+        tasteMatch={tasteMatch}
+        socialError={socialError}
+        approved={approved}
+        approveBusy={approveBusy}
+        onToggleApprove={toggleApprove}
+        noteOpen={notePromptFor === profile.id}
+        onDismissNote={() => setNotePromptFor(null)}
+        onSendTasteNote={sendTasteNote}
         blocked={blocked}
         blockBusy={blockBusy}
         onToggleBlock={toggleBlock}
@@ -410,6 +635,18 @@ export default function Library({
         onSearch={setSearch}
         category={category}
         onCategory={setCategory}
+        collections={collections}
+        selectedCollection={selectedCollection}
+        onSelectCollection={selectCollection}
+        onCreateCollection={async (name) => {
+          const c = await createCollection(profile.id, name);
+          setCollections((prev) => [...prev, c]);
+        }}
+        onDeleteCollection={async (id) => {
+          await deleteCollection(id);
+          setCollections((prev) => prev.filter((c) => c.id !== id));
+          if (selectedCollection === id) selectCollection(null);
+        }}
         sort={sort}
         onSort={setSort}
         view={view}
@@ -531,7 +768,13 @@ export default function Library({
                 hiddenId={open?.item.id ?? null}
                 cols={cols}
                 onOpen={openItem}
+                onReorderCommit={canReorder ? commitReorder : undefined}
               />
+              {canReorder && gridItems.length > 1 && (
+                <Hint id="reorder" className="mt-8">
+                  Drag a favorite to rearrange your wall — this order is yours.
+                </Hint>
+              )}
             </>
           ) : (
             <>
@@ -573,6 +816,7 @@ export default function Library({
           onDelete={deleteItem}
           onTogglePin={isOwner ? togglePin : undefined}
           shareUrl={`/${profile.username}?item=${open.item.id}`}
+          onCollectionsChanged={loadCollections}
         />
       )}
     </div>

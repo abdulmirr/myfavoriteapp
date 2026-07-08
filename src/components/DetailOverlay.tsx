@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Item, Profile } from "@/lib/types";
-import { copyItem, whoSaved, favoritedCount, PROFILE_COLS, REPORT_EMAIL } from "@/lib/social";
+import {
+  addToRadar,
+  copyItem,
+  createCollection,
+  fetchCollections,
+  fetchItemCollectionIds,
+  setItemInCollection,
+  whoSaved,
+  favoritedCount,
+  PROFILE_COLS,
+  REPORT_EMAIL,
+  type Collection,
+} from "@/lib/social";
 import { supabase } from "@/lib/supabase";
 import { playUi } from "@/lib/sfx";
 import dynamic from "next/dynamic";
@@ -43,6 +55,7 @@ export default function DetailOverlay({
   startFavoriting,
   onTogglePin,
   shareUrl,
+  onCollectionsChanged,
 }: {
   item: Item;
   sourceRect: DOMRect;
@@ -62,6 +75,8 @@ export default function DetailOverlay({
   onTogglePin?: () => Promise<void>;
   /** permalink path for the copy-link action (e.g. /abdulmir?item=…) */
   shareUrl?: string;
+  /** owner: lets the library refresh sidebar collection counts after shelving */
+  onCollectionsChanged?: () => void;
 }) {
   const bgRef = useRef<HTMLDivElement>(null);
   const imgBoxRef = useRef<HTMLDivElement>(null);
@@ -85,6 +100,17 @@ export default function DetailOverlay({
   const [actionError, setActionError] = useState("");
   const [copied, setCopied] = useState(false);
   const [pinBusy, setPinBusy] = useState(false);
+  // the private shelf: null = still checking; the row id doubles as "on radar"
+  const [radarId, setRadarId] = useState<string | null>(null);
+  const [radarChecked, setRadarChecked] = useState(false);
+  const [radarBusy, setRadarBusy] = useState(false);
+  // owner shelving: collections + this item's memberships, loaded on first open
+  const [collectOpen, setCollectOpen] = useState(false);
+  const [ownerCollections, setOwnerCollections] = useState<Collection[] | null>(null);
+  const [memberOf, setMemberOf] = useState<Set<string>>(new Set());
+  const [collectBusy, setCollectBusy] = useState<Set<string>>(new Set());
+  const [newShelf, setNewShelf] = useState("");
+  const [newShelfBusy, setNewShelfBusy] = useState(false);
 
   // who in the viewer's circle (and the viewer) also favorited this,
   // plus the network-wide count and the "via @user" provenance
@@ -119,11 +145,135 @@ export default function DetailOverlay({
     } else {
       setViaProfile(null);
     }
+    if (viewerProfile && viewerProfile.id !== item.profile_id) {
+      supabase()
+        .from("radar_items")
+        .select("id")
+        .eq("profile_id", viewerProfile.id)
+        .eq("media_type", item.media_type)
+        .eq("title", item.title)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (cancelled) return;
+          setRadarId(data?.id ?? null);
+          setRadarChecked(true);
+        });
+    } else {
+      setRadarId(null);
+      setRadarChecked(false);
+    }
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id, viewerProfile, viewerFollowing]);
+
+  // one exit from edit mode — the Cancel button and the mobile X share it,
+  // so a new editable field can't be reset in one and forgotten in the other
+  const cancelEdit = () => {
+    setEditing(false);
+    setConfirmDelete(false);
+    setActionError("");
+    setTitle(item.title);
+    setCreator(item.creator);
+    setDescription(item.description);
+  };
+
+  const openCollect = async () => {
+    if (collectOpen) {
+      setCollectOpen(false);
+      return;
+    }
+    setCollectOpen(true);
+    if (!ownerCollections) {
+      const [cols, mine] = await Promise.all([
+        fetchCollections(item.profile_id),
+        fetchItemCollectionIds(item.id),
+      ]);
+      setOwnerCollections(cols);
+      setMemberOf(mine);
+    }
+  };
+
+  const toggleMembership = async (collectionId: string) => {
+    if (collectBusy.has(collectionId)) return;
+    setCollectBusy((s) => new Set(s).add(collectionId));
+    const joining = !memberOf.has(collectionId);
+    try {
+      await setItemInCollection(collectionId, item.id, joining);
+      setMemberOf((prev) => {
+        const next = new Set(prev);
+        if (joining) next.add(collectionId);
+        else next.delete(collectionId);
+        return next;
+      });
+      setOwnerCollections((prev) =>
+        (prev ?? []).map((c) =>
+          c.id === collectionId ? { ...c, count: c.count + (joining ? 1 : -1) } : c
+        )
+      );
+      onCollectionsChanged?.();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Couldn't update the collection.");
+    } finally {
+      setCollectBusy((s) => {
+        const next = new Set(s);
+        next.delete(collectionId);
+        return next;
+      });
+    }
+  };
+
+  const createShelfWithItem = async () => {
+    const name = newShelf.trim();
+    if (!name || newShelfBusy) return;
+    setNewShelfBusy(true);
+    setActionError("");
+    try {
+      const c = await createCollection(item.profile_id, name);
+      await setItemInCollection(c.id, item.id, true);
+      setOwnerCollections((prev) => [...(prev ?? []), { ...c, count: 1 }]);
+      setMemberOf((prev) => new Set(prev).add(c.id));
+      setNewShelf("");
+      onCollectionsChanged?.();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Couldn't create that collection.");
+    } finally {
+      setNewShelfBusy(false);
+    }
+  };
+
+  const toggleRadar = async () => {
+    if (!viewerProfile || radarBusy) return;
+    setRadarBusy(true);
+    setActionError("");
+    try {
+      if (radarId) {
+        await supabase().from("radar_items").delete().eq("id", radarId);
+        setRadarId(null);
+      } else {
+        await addToRadar(item, viewerProfile.id);
+        const { data } = await supabase()
+          .from("radar_items")
+          .select("id")
+          .eq("profile_id", viewerProfile.id)
+          .eq("media_type", item.media_type)
+          .eq("title", item.title)
+          .maybeSingle();
+        setRadarId(data?.id ?? null);
+        playUi("confirm");
+      }
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Couldn't update your radar.");
+    } finally {
+      setRadarBusy(false);
+    }
+  };
+
+  // the canonical work's own page — everyone who loves it, network-wide
+  const itemPageHref = item.canonical_id
+    ? `/item/${item.canonical_id.split("/").map(encodeURIComponent).join("/")}`
+    : null;
 
   const favorite = async () => {
     if (!viewerProfile || favBusy || savedByMe) return;
@@ -420,6 +570,19 @@ export default function DetailOverlay({
                     </button>
                   )
                 )}
+                {/* the quiet middle gesture — intrigued, not ready to claim it */}
+                {viewerProfile && !isOwner && savedByMe === false && radarChecked && (
+                  <button
+                    onClick={toggleRadar}
+                    disabled={radarBusy}
+                    title={radarId ? "On your radar — tap to remove" : "Put on your radar (private)"}
+                    className={`cursor-pointer text-[10px] uppercase tracking-[0.08em] transition-colors disabled:cursor-wait ${
+                      radarId ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                    }`}
+                  >
+                    {radarId ? "On radar ✓" : "Radar"}
+                  </button>
+                )}
                 {/* signed-out viewers get the same button — it leads through
                     sign-in and back to this exact item */}
                 {!viewerProfile && item.profile_id && !item.id.startsWith("discover-") && (
@@ -479,6 +642,17 @@ export default function DetailOverlay({
                     </svg>
                   </button>
                 )}
+                {isOwner && item.profile_id && (
+                  <button
+                    onClick={openCollect}
+                    title="Add to a collection"
+                    className={`cursor-pointer text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                      collectOpen ? "text-zinc-900 hover:text-zinc-400" : "text-zinc-400 hover:text-zinc-900"
+                    }`}
+                  >
+                    Collect
+                  </button>
+                )}
                 {shareUrl && (
                   <button
                     onClick={copyLink}
@@ -522,6 +696,43 @@ export default function DetailOverlay({
               </div>
               {actionError && (
                 <p className="save-appear mt-2 text-[11px] text-red-500">{actionError}</p>
+              )}
+              {collectOpen && (
+                <div className="save-appear mt-3 flex flex-col gap-1.5 border-l border-zinc-100 pl-3">
+                  {ownerCollections === null ? (
+                    <p className="text-[11px] text-zinc-400">Loading…</p>
+                  ) : (
+                    <>
+                      {ownerCollections.map((c) => {
+                        const member = memberOf.has(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => toggleMembership(c.id)}
+                            disabled={collectBusy.has(c.id)}
+                            className={`w-fit cursor-pointer text-left text-xs transition-colors disabled:cursor-wait ${
+                              member ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                            }`}
+                          >
+                            {member ? "✓ " : ""}
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                      <input
+                        value={newShelf}
+                        maxLength={40}
+                        placeholder={
+                          ownerCollections.length ? "New collection…" : "Name a collection…"
+                        }
+                        onChange={(e) => setNewShelf(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && createShelfWithItem()}
+                        disabled={newShelfBusy}
+                        className="w-full max-w-[200px] border-b border-zinc-200 bg-transparent pb-0.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400 disabled:cursor-wait"
+                      />
+                    </>
+                  )}
+                </div>
               )}
               {isOwner && onTogglePin && !item.pinned_order && (
                 <Hint id="pin" className="mt-2">
@@ -583,11 +794,33 @@ export default function DetailOverlay({
                       : savedBy.length > 1
                         ? ` and ${savedBy.length - 1} other${savedBy.length > 2 ? "s" : ""} you follow`
                         : ""}
+                    {itemPageHref && (
+                      <>
+                        {" · "}
+                        <Link
+                          href={itemPageHref}
+                          className="text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-900 hover:underline"
+                        >
+                          everyone →
+                        </Link>
+                      </>
+                    )}
                   </span>
                 </div>
               ) : totalSaves > 0 ? (
                 <p className="save-appear mt-6 text-[11px] text-zinc-400">
                   Favorited by {totalSaves} {totalSaves === 1 ? "person" : "people"}
+                  {itemPageHref && totalSaves > 1 && (
+                    <>
+                      {" · "}
+                      <Link
+                        href={itemPageHref}
+                        className="text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-900 hover:underline"
+                      >
+                        everyone →
+                      </Link>
+                    </>
+                  )}
                 </p>
               ) : null}
             </>
@@ -632,14 +865,7 @@ export default function DetailOverlay({
                   {busy ? "Saving..." : "Save"}
                 </button>
                 <button
-                  onClick={() => {
-                    setEditing(false);
-                    setConfirmDelete(false);
-                    setActionError("");
-                    setTitle(item.title);
-                    setCreator(item.creator);
-                    setDescription(item.description);
-                  }}
+                  onClick={cancelEdit}
                   className="cursor-pointer px-2 text-xs text-zinc-400 transition-colors hover:text-zinc-900"
                 >
                   Cancel
@@ -683,8 +909,14 @@ export default function DetailOverlay({
         Click outside to return
       </div>
       <button
-        aria-label="Close"
-        onClick={close}
+        aria-label={editing ? "Cancel edit" : "Close"}
+        onClick={() => {
+          // mid-edit, the X backs out of the edit (like Cancel) instead of
+          // silently discarding it with the whole overlay — same guard the
+          // backdrop and Escape already apply
+          if (editing) cancelEdit();
+          else close();
+        }}
         className="fixed right-6 top-6 z-10 cursor-pointer text-zinc-400 md:hidden"
       >
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.5">

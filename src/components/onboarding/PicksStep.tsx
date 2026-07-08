@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import type { MediaType, Profile, SearchResult } from "@/lib/types";
 import { supabase, authHeaders } from "@/lib/supabase";
+import { friendlyError } from "@/lib/social";
 import { useLiveSearch } from "@/lib/use-live-search";
 import { STARTER_SECTIONS, type StarterPick } from "@/lib/starter-picks";
 import { EASE_SNAP, FramedCover, RevealWords, Rise } from "./bits";
@@ -157,7 +158,7 @@ export default function PicksStep({
         })
         .select("id")
         .single();
-      if (insErr) throw new Error(insErr.message);
+      if (insErr) throw new Error(friendlyError(insErr.message));
 
       const key = keyOf(pending.media_type, pending.title);
       setAdded((prev) => [
