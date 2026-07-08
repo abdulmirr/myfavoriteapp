@@ -29,7 +29,7 @@ import DetailOverlay from "./DetailOverlay";
 import { ExploreFeed } from "./Explore";
 import { FriendsStrip, InviteFriendButton } from "./Friends";
 import Suggestions from "./Suggestions";
-import SearchBar, { resultToItem, TYPE_TAG, type FeedItem } from "./SearchBar";
+import { TYPE_TAG, type FeedItem } from "./SearchBar";
 import { TileMedia } from "./Tile";
 
 // visitors-only (and framer-motion-heavy) — keep it out of the signed-in bundle
@@ -184,18 +184,8 @@ export default function Home() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <header className="sticky top-14 z-20 bg-white/85 backdrop-blur md:top-0">
-          <div className="mx-auto grid max-w-4xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-5 sm:px-8">
-            <div className="min-w-0">
-              <SearchBar
-                onPick={(r, rect) => {
-                  const item = resultToItem(r);
-                  playSfx(item.media_type);
-                  setQuick({ item, rect });
-                }}
-              />
-            </div>
-
+        <header className="sticky top-14 z-20 bg-white/85 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-5 py-5 sm:px-8">
             <nav className="flex gap-6 text-xs">
               {(
                 [
@@ -215,9 +205,6 @@ export default function Home() {
                 </button>
               ))}
             </nav>
-
-            {/* right column balances the grid so the tabs stay centered */}
-            <div />
           </div>
         </header>
 

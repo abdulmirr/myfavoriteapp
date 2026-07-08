@@ -54,9 +54,12 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
 }
 
 /**
- * The library's controls in one sticky row under the profile header: search,
- * category buckets, sort, grid ⇄ freeform, tile size. These
- * belong to the content they act on — app navigation lives in the shell's rail.
+ * The library's controls in one sticky row under the profile header, grouped
+ * by what they do: Filter (search + category buckets) on the left narrows
+ * what you see; View (sort · grid ⇄ freeform · tile size) on the right changes
+ * how you see it. On phones the clusters stack into two lines instead of
+ * scrolling sideways. These belong to the content they act on — app
+ * navigation lives in the shell's top bar.
  */
 export default function LibraryToolbar({
   search,
@@ -84,45 +87,48 @@ export default function LibraryToolbar({
   onCols: (c: number) => void;
 }) {
   return (
-    <div className="sticky top-14 z-20 bg-white/85 backdrop-blur md:top-0">
-      <div className="mx-auto flex w-full max-w-5xl items-center gap-5 overflow-x-auto px-5 py-3 text-xs sm:px-8 [scrollbar-width:none]">
-        {/* search */}
-        <div className="group flex w-32 shrink-0 items-center gap-1.5 border-b border-zinc-400 pb-1 focus-within:border-zinc-900 sm:w-40">
-          <svg
-            className="h-3 w-3 shrink-0 text-zinc-400 group-focus-within:text-zinc-900"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <circle cx="5" cy="5" r="4" />
-            <path d="M8 8l3 3" />
-          </svg>
-          <input
-            value={search}
-            placeholder="Search"
-            onChange={(e) => onSearch(e.target.value)}
-            className="w-full bg-transparent text-xs leading-4 text-zinc-900 outline-none placeholder:text-zinc-400"
-          />
+    <div className="sticky top-14 z-20 bg-white/85 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-10 gap-y-2.5 px-5 py-3 text-xs sm:px-8">
+        {/* filter — what you're looking at */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2.5">
+          <div className="group flex w-32 shrink-0 items-center gap-1.5 border-b border-zinc-400 pb-1 focus-within:border-zinc-900 sm:w-40">
+            <svg
+              className="h-3 w-3 shrink-0 text-zinc-400 group-focus-within:text-zinc-900"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <circle cx="5" cy="5" r="4" />
+              <path d="M8 8l3 3" />
+            </svg>
+            <input
+              value={search}
+              placeholder="Search"
+              onChange={(e) => onSearch(e.target.value)}
+              className="w-full bg-transparent text-xs leading-4 text-zinc-900 outline-none placeholder:text-zinc-400"
+            />
+          </div>
+
+          {/* categories with live counts */}
+          <nav className="flex items-center gap-4">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                onClick={() => onCategory(c)}
+                className={`cursor-pointer whitespace-nowrap transition-colors ${
+                  category === c
+                    ? "font-medium text-zinc-900"
+                    : "text-zinc-400 hover:text-zinc-900"
+                }`}
+              >
+                {c === "All" ? "All" : `${counts[c] ?? 0} ${c}`}
+              </button>
+            ))}
+          </nav>
         </div>
 
-        {/* categories with live counts */}
-        <nav className="flex shrink-0 items-center gap-4">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => onCategory(c)}
-              className={`cursor-pointer whitespace-nowrap transition-colors ${
-                category === c
-                  ? "font-medium text-zinc-900"
-                  : "text-zinc-400 hover:text-zinc-900"
-              }`}
-            >
-              {c === "All" ? "All" : `${counts[c] ?? 0} ${c}`}
-            </button>
-          ))}
-        </nav>
-
+        {/* view — how you're looking at it */}
         <div className="ml-auto flex shrink-0 items-center gap-4">
           {/* one word that cycles: my order → latest → oldest → my order */}
           <button

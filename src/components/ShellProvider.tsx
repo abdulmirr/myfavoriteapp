@@ -78,9 +78,12 @@ export default function ShellProvider({ children }: { children: React.ReactNode 
     return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>;
   }
 
+  // focused tasks keep only the way home — no add/bell/avatar noise
+  const minimal = pathname.startsWith("/add");
+
   return (
     <Ctx.Provider value={ctx}>
-      <AppShell viewer={viewer} signedIn={signedIn} collapsed={collapsed}>
+      <AppShell viewer={viewer} signedIn={signedIn} collapsed={collapsed} minimal={minimal}>
         {children}
       </AppShell>
     </Ctx.Provider>

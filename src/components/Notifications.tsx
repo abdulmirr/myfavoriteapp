@@ -34,16 +34,10 @@ function timeAgo(iso: string): string {
 export default function Notifications({
   viewer,
   align = "right",
-  label,
-  labelShown = false,
 }: {
   viewer: Profile;
-  /** which edge the dropdown hangs from — "left" for the library sidebar */
+  /** which edge the dropdown hangs from */
   align?: "left" | "right";
-  /** optional text beside the bell — the nav rail renders it as a labelled row */
-  label?: string;
-  /** whether the rail is expanded, so the label fades in with the others */
-  labelShown?: boolean;
 }) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -173,12 +167,12 @@ export default function Notifications({
       <button
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={toggle}
-        className={`cursor-pointer transition-colors ${
-          label ? "flex w-full items-center gap-3" : "relative flex h-7 w-7 items-center justify-center"
-        } ${open || unread > 0 ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"}`}
+        className={`relative flex h-7 w-7 cursor-pointer items-center justify-center transition-colors ${
+          open || unread > 0 ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+        }`}
       >
-        <span className={`relative flex shrink-0 items-center justify-center ${label ? "h-8 w-8" : "h-7 w-7"}`}>
-          <svg width={label ? 17 : 15} height={label ? 17 : 15} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
             <path d="M8 2a4 4 0 0 0-4 4v2.5L2.5 11v.5h11V11L12 8.5V6a4 4 0 0 0-4-4z" />
             <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
           </svg>
@@ -188,65 +182,24 @@ export default function Notifications({
             </span>
           )}
         </span>
-        {label && (
-          // rides along hidden in the icons-only rail; the rail's expansion reveals it
-          <span
-            className={`whitespace-nowrap text-sm transition-opacity duration-200 ${
-              labelShown ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            {label}
-          </span>
-        )}
       </button>
 
       {open && (
         <div
-          className={
-            label
-              ? // rail mode: one sheet from the screen's left edge — it covers
-                // the rail (z-[60] over its z-50), so the bar itself reads as
-                // having morphed into notifications. fixed escapes the rail's
-                // overflow-hidden.
-                "panel-in fixed inset-y-0 left-0 z-[60] flex w-96 max-w-[calc(100vw-2rem)] flex-col border-r border-zinc-200 bg-white shadow-2xl"
-              : `save-appear absolute top-full z-40 mt-2 w-[21.5rem] max-w-[calc(100vw-2rem)] border border-zinc-200 bg-white shadow-2xl ${
-                  align === "right" ? "right-0" : "left-0"
-                }`
-          }
+          className={`save-appear fixed inset-x-4 top-16 z-40 border border-zinc-200 bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-[21.5rem] sm:max-w-[calc(100vw-2rem)] ${
+            align === "right" ? "sm:right-0" : "sm:left-0"
+          }`}
         >
-          {label ? (
-            // the sheet gets the app's title voice — same weight as the feed headers
-            <div className="flex items-start justify-between px-5 pb-4 pt-7">
-              <div className="flex flex-col gap-0.5">
-                <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-                  Notifications
-                </h2>
-                {fresh.size > 0 && list !== null && (
-                  <span className="text-[11px] text-[#e53935]">{fresh.size} new</span>
-                )}
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="mt-1.5 cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
-                  <path d="M2 2l8 8M10 2L2 10" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-baseline justify-between border-b border-zinc-100 px-4 py-2.5">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                Notifications
+          <div className="flex items-baseline justify-between border-b border-zinc-100 px-4 py-2.5">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+              Notifications
+            </span>
+            {fresh.size > 0 && list !== null && (
+              <span className="text-[10px] text-[#e53935]">
+                {fresh.size} new
               </span>
-              {fresh.size > 0 && list !== null && (
-                <span className="text-[10px] text-[#e53935]">
-                  {fresh.size} new
-                </span>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           {list === null ? (
             <ul>
@@ -266,7 +219,7 @@ export default function Notifications({
               <p className="mt-1 text-[11px] text-zinc-400">Share your page to be found.</p>
             </div>
           ) : (
-            <ul className={label ? "flex-1 overflow-y-auto" : "max-h-96 overflow-y-auto"}>
+            <ul className="max-h-96 overflow-y-auto">
               {list.map((n, i) => {
                 const who = n.actor?.display_name || (n.actor ? `@${n.actor.username}` : "Someone");
                 return (

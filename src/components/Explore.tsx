@@ -193,7 +193,7 @@ export default function Explore() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <header className="sticky top-14 z-20 bg-white/85 backdrop-blur md:top-0">
+        <header className="sticky top-14 z-20 bg-white/85 backdrop-blur">
           <div className="mx-auto flex max-w-4xl items-center justify-end px-5 py-5 sm:px-8">
             <SearchBar
               onPick={(r, rect) => {
