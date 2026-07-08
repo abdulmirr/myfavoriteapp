@@ -25,7 +25,6 @@ import {
 import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
 import dynamic from "next/dynamic";
-import AppShell from "./AppShell";
 import DetailOverlay from "./DetailOverlay";
 import { ExploreFeed } from "./Explore";
 import { FriendsStrip, InviteFriendButton } from "./Friends";
@@ -179,7 +178,7 @@ export default function Home() {
   }
 
   return (
-    <AppShell viewer={viewer} signedIn>
+    <>
       <div
         className={`bg-white transition-opacity duration-700 ease-out ${
           mounted ? "opacity-100" : "opacity-0"
@@ -273,7 +272,7 @@ export default function Home() {
           />
         )}
       </div>
-    </AppShell>
+    </>
   );
 }
 

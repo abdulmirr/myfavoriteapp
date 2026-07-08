@@ -35,12 +35,15 @@ export default function Notifications({
   viewer,
   align = "right",
   label,
+  labelShown = false,
 }: {
   viewer: Profile;
   /** which edge the dropdown hangs from — "left" for the library sidebar */
   align?: "left" | "right";
   /** optional text beside the bell — the nav rail renders it as a labelled row */
   label?: string;
+  /** whether the rail is expanded, so the label fades in with the others */
+  labelShown?: boolean;
 }) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -186,8 +189,12 @@ export default function Notifications({
           )}
         </span>
         {label && (
-          // rides along hidden in the icons-only rail; the rail's hover reveals it
-          <span className="whitespace-nowrap text-sm opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          // rides along hidden in the icons-only rail; the rail's expansion reveals it
+          <span
+            className={`whitespace-nowrap text-sm transition-opacity duration-200 ${
+              labelShown ? "opacity-100" : "opacity-0"
+            }`}
+          >
             {label}
           </span>
         )}

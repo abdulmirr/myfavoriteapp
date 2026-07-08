@@ -6,7 +6,6 @@ import type { Item, Profile } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { fetchFollowing } from "@/lib/social";
 import { playSfx, preloadSfx } from "@/lib/sfx";
-import AppShell from "./AppShell";
 import DetailOverlay from "./DetailOverlay";
 import SearchBar, { resultToItem, type FeedItem } from "./SearchBar";
 import Suggestions from "./Suggestions";
@@ -188,7 +187,7 @@ export default function Explore() {
   }, [viewer]);
 
   return (
-    <AppShell viewer={viewer} signedIn={!!userId}>
+    <>
       <div
         className={`bg-white transition-opacity duration-700 ease-out ${
           mounted ? "opacity-100" : "opacity-0"
@@ -225,6 +224,6 @@ export default function Explore() {
           />
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -6,7 +6,6 @@ import type { Item, Profile, SearchResult } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { playSfx, preloadSfx } from "@/lib/sfx";
 import AddFavorite, { resultKey } from "@/components/AddFavorite";
-import AppShell from "@/components/AppShell";
 
 /**
  * /add — the favorite palette as its own minimal page: type picker up top,
@@ -110,7 +109,6 @@ export default function AddPage() {
   const selectedKeys = new Set(basket.map(resultKey));
 
   return (
-    <AppShell viewer={viewer} signedIn>
     <div
       className="min-h-full bg-white"
       onClick={(e) => {
@@ -195,7 +193,6 @@ export default function AddPage() {
         />
       )}
     </div>
-    </AppShell>
   );
 }
 

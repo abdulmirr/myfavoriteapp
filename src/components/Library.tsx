@@ -22,7 +22,7 @@ import {
   type TasteMatch,
 } from "@/lib/social";
 import { playUi, preloadSfx } from "@/lib/sfx";
-import AppShell from "./AppShell";
+import { useShell } from "./ShellProvider";
 import ProfileHeader from "./ProfileHeader";
 import LibraryToolbar, { type SortMode, type ViewMode } from "./LibraryToolbar";
 import Grid from "./Grid";
@@ -522,8 +522,16 @@ export default function Library({
   // leaving a lone floating "Grid" button as the way back
   const freeform = view === "freeform";
 
+  // ask the persistent shell to slide its chrome away in freeform, and restore
+  // it when leaving the view or the page
+  const { setCollapsed } = useShell();
+  useEffect(() => {
+    setCollapsed(freeform);
+    return () => setCollapsed(false);
+  }, [freeform, setCollapsed]);
+
   return (
-    <AppShell viewer={viewerProfile} signedIn={!!userId} collapsed={freeform}>
+    <>
       <IntroOverlay images={introImages} />
 
       <ProfileHeader
@@ -683,6 +691,6 @@ export default function Library({
           shareUrl={`/${profile.username}?item=${open.item.id}`}
         />
       )}
-    </AppShell>
+    </>
   );
 }

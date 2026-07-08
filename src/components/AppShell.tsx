@@ -1,16 +1,22 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Profile } from "@/lib/types";
 import Notifications from "./Notifications";
 
 /**
- * The persistent chrome every signed-in page lives inside. Desktop: an
- * icons-only left rail that expands to labels on hover (IG-style), with the
- * primary action — Favorite — as the one solid button below the nav. Mobile:
- * a slim top bar + bottom tab bar. The content area is a stage — pages only
- * ever swap what renders inside it.
+ * The persistent chrome every signed-in page lives inside — mounted once by
+ * ShellProvider, above the pages, so navigation only swaps the content and the
+ * rail never remounts. Desktop: an icons-only left rail that widens to labels
+ * on hover, the primary action (Favorite) the one solid button below the nav.
+ * Mobile: a slim top bar + bottom tab bar.
+ *
+ * Hover is JS-driven, not CSS `:hover`, for two reasons: clicking a nav item
+ * collapses the rail and keeps it collapsed until you leave and re-enter (so it
+ * doesn't snap back open under the cursor after navigating), and it stays flat
+ * — a hairline edge, no shadow.
  *
  * `collapsed` slides all chrome away (freeform view is full-screen).
  */
@@ -32,14 +38,25 @@ export default function AppShell({
   const isExplore = pathname.startsWith("/explore");
   const isYou = !!viewer && pathname === `/${viewer.username}`;
 
+  // hover-intent: expand on enter, collapse on leave — but a click (which
+  // navigates) collapses and suppresses re-expansion until the pointer
+  // actually leaves and returns, so the rail never pops open under the cursor.
+  const [expanded, setExpanded] = useState(false);
+  const suppressed = useRef(false);
+  const onNav = () => {
+    setExpanded(false);
+    suppressed.current = true;
+  };
+
   const rowClass = (active: boolean) =>
     `flex w-full cursor-pointer items-center py-2 transition-colors ${
       active ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
     }`;
 
-  // labels ride along hidden; the rail's hover reveals them
-  const labelClass =
-    "ml-3 whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100";
+  // labels ride along hidden; the rail's expansion reveals them
+  const labelClass = `ml-3 whitespace-nowrap transition-opacity duration-200 ${
+    expanded ? "opacity-100" : "opacity-0"
+  }`;
 
   const iconBox = "flex h-8 w-8 shrink-0 items-center justify-center";
 
@@ -79,31 +96,42 @@ export default function AppShell({
           collapsed ? "md:invisible md:-ml-16" : "md:visible md:ml-0"
         }`}
       >
-        <div className="group absolute inset-y-0 left-0 z-50 flex w-16 flex-col overflow-hidden bg-white px-4 py-8 transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-56 hover:shadow-2xl">
-          <Link href="/" aria-label="Home" className="mb-8 flex h-8 w-8 shrink-0 items-center justify-center transition-opacity hover:opacity-70">
+        <div
+          onMouseEnter={() => {
+            if (!suppressed.current) setExpanded(true);
+          }}
+          onMouseLeave={() => {
+            suppressed.current = false;
+            setExpanded(false);
+          }}
+          className={`absolute inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-zinc-100 bg-white px-4 py-8 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            expanded ? "w-56" : "w-16"
+          }`}
+        >
+          <Link href="/" aria-label="Home" onClick={onNav} className="mb-8 flex h-8 w-8 shrink-0 items-center justify-center transition-opacity hover:opacity-70">
             <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
           </Link>
 
           <nav className="flex flex-col gap-1 text-sm">
-            <Link href="/" className={rowClass(isHome)} title="Home">
+            <Link href="/" onClick={onNav} className={rowClass(isHome)} title="Home">
               <span className={iconBox}>{homeIcon}</span>
               <span className={labelClass}>Home</span>
             </Link>
             {/* signed-out visitors get Explore here — their door into the
                 network; signed in, it lives as a tab on Home */}
             {!signedIn && (
-              <Link href="/explore" className={rowClass(isExplore)} title="Explore">
+              <Link href="/explore" onClick={onNav} className={rowClass(isExplore)} title="Explore">
                 <span className={iconBox}>{exploreIcon}</span>
                 <span className={labelClass}>Explore</span>
               </Link>
             )}
             {viewer && (
               <div className="py-2">
-                <Notifications viewer={viewer} align="left" label="Notifications" />
+                <Notifications viewer={viewer} align="left" label="Notifications" labelShown={expanded} />
               </div>
             )}
             {viewer && (
-              <Link href={`/${viewer.username}`} className={rowClass(isYou)} title="Your library">
+              <Link href={`/${viewer.username}`} onClick={onNav} className={rowClass(isYou)} title="Your library">
                 <span className={iconBox}>{avatar("h-6 w-6", "text-[10px]")}</span>
                 <span className={labelClass}>You</span>
               </Link>
@@ -114,6 +142,7 @@ export default function AppShell({
           {signedIn && (
             <Link
               href="/add"
+              onClick={onNav}
               title="Add a favorite"
               className="mt-4 flex h-10 w-full shrink-0 cursor-pointer items-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
             >
@@ -129,7 +158,7 @@ export default function AppShell({
 
           <div className="mt-auto flex flex-col text-sm">
             {signedIn ? (
-              <Link href="/profile" className={rowClass(pathname === "/profile")} title="Settings">
+              <Link href="/profile" onClick={onNav} className={rowClass(pathname === "/profile")} title="Settings">
                 <span className={iconBox}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <circle cx="12" cy="12" r="3" />
@@ -141,6 +170,7 @@ export default function AppShell({
             ) : (
               <Link
                 href={`/signin?next=${encodeURIComponent(pathname)}`}
+                onClick={onNav}
                 title="Start curating"
                 className="flex h-10 w-full cursor-pointer items-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
               >
