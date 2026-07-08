@@ -777,7 +777,7 @@ function radarToItem(r: RadarItem): Item {
 }
 
 /**
- * Your saved items — the private shelf of things spotted but not yet claimed.
+ * Your saved stuff — the private shelf of things spotted but not yet claimed.
  * Deliberately unnumbered and quiet: it's curiosity, never a backlog. The only
  * action is letting one go; favoriting happens where the piece itself lives.
  */
@@ -815,12 +815,13 @@ function SavedStrip({ viewer }: { viewer: Profile }) {
   return (
     <div className="mt-16">
       {/* a section of its own — same voice as the "For you" header */}
-      <div className="mb-8 flex flex-col gap-1.5">
-        <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-          Your saved items
-        </h2>
-        <p className="text-xs text-zinc-400">Bookmarked to check out later.</p>
-      </div>
+      <h2 className="mb-8 flex items-center gap-2 text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+        {/* bookmark — the same mark as the save action */}
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
+          <path d="M4 2.5h8v11.5l-4-3.2-4 3.2z" />
+        </svg>
+        Your saved stuff
+      </h2>
       {/* three tight rows per line; each cover keeps its object-on-a-wall
           frame (vinyl sleeve, fore-edge pages, snap frame) — never a bare square */}
       <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-3">
