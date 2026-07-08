@@ -27,19 +27,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: base, changeFrequency: "daily", priority: 1 },
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },
-    ...(profiles ?? []).flatMap((p) => [
-      {
-        url: `${base}/${p.username}`,
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-        lastModified: p.created_at ? new Date(p.created_at) : undefined,
-      },
-      {
-        url: `${base}/${p.username}/four`,
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      },
-    ]),
+    ...(profiles ?? []).map((p) => ({
+      url: `${base}/${p.username}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+      lastModified: p.created_at ? new Date(p.created_at) : undefined,
+    })),
     ...canonicals.map((id) => ({
       url: `${base}/item/${id.split("/").map(encodeURIComponent).join("/")}`,
       changeFrequency: "weekly" as const,

@@ -110,133 +110,6 @@ function ShareButton({ username }: { username: string }) {
   );
 }
 
-/**
- * Curator shelves in the sidebar: tap to filter the grid, tap again to clear.
- * Owners get inline create and a quiet ✕ (confirm on second tap) per shelf —
- * deleting a shelf never touches the favorites on it.
- */
-function CollectionsBlock({
-  collections,
-  selected,
-  onSelect,
-  isOwner,
-  onCreate,
-  onDelete,
-}: {
-  collections: { id: string; name: string; count: number }[];
-  selected: string | null;
-  onSelect: (id: string | null) => void;
-  isOwner: boolean;
-  onCreate: (name: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}) {
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-
-  const create = async () => {
-    const trimmed = name.trim();
-    if (!trimmed || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await onCreate(trimmed);
-      setName("");
-      setAdding(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't create that.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <nav className="flex flex-col gap-1 text-xs">
-      <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-        Collections
-      </span>
-      {collections.map((c) => (
-        <div key={c.id} className="group flex items-center gap-2">
-          <button
-            onClick={() => onSelect(selected === c.id ? null : c.id)}
-            className={`min-w-0 cursor-pointer truncate text-left transition-colors ${
-              selected === c.id
-                ? "font-medium text-zinc-900"
-                : "text-zinc-400 hover:text-zinc-900"
-            }`}
-          >
-            {c.name}
-            <span className="ml-1.5 text-zinc-300">{c.count}</span>
-          </button>
-          {isOwner &&
-            (confirmDelete === c.id ? (
-              <button
-                onClick={async () => {
-                  setConfirmDelete(null);
-                  try {
-                    await onDelete(c.id);
-                  } catch {
-                    /* the row stays; another tap retries */
-                  }
-                }}
-                className="shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-red-500 hover:text-red-600"
-              >
-                delete?
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setConfirmDelete(c.id);
-                  setTimeout(() => setConfirmDelete((v) => (v === c.id ? null : v)), 2500);
-                }}
-                aria-label={`Delete collection ${c.name}`}
-                className="shrink-0 cursor-pointer text-zinc-300 opacity-0 transition-opacity hover:text-zinc-900 group-hover:opacity-100"
-              >
-                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-                  <path d="M2 2l8 8M10 2l-8 8" />
-                </svg>
-              </button>
-            ))}
-        </div>
-      ))}
-      {isOwner &&
-        (adding ? (
-          <div className="mt-0.5 flex flex-col gap-1">
-            <input
-              value={name}
-              autoFocus
-              maxLength={40}
-              placeholder="e.g. 2026 canon"
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") create();
-                if (e.key === "Escape") {
-                  setAdding(false);
-                  setName("");
-                  setError("");
-                }
-              }}
-              onBlur={() => {
-                if (!name.trim()) setAdding(false);
-              }}
-              className="w-full border-b border-zinc-200 bg-transparent pb-0.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
-            />
-            {error && <span className="text-[11px] text-red-500">{error}</span>}
-          </div>
-        ) : (
-          <button
-            onClick={() => setAdding(true)}
-            className="w-fit cursor-pointer text-left text-zinc-300 transition-colors hover:text-zinc-900"
-          >
-            + New collection
-          </button>
-        ))}
-    </nav>
-  );
-}
-
 /** Minimal line icons for known social platforms; falls back to a text label. */
 function SocialIcon({ label }: { label: string }) {
   const key = label.trim().toLowerCase();
@@ -532,7 +405,6 @@ function PeoplePanel({
 
 export default function Sidebar({
   profile,
-  itemsCount,
   counts,
   followerCount,
   followingCount,
@@ -563,11 +435,6 @@ export default function Sidebar({
   onSearch,
   category,
   onCategory,
-  collections,
-  selectedCollection,
-  onSelectCollection,
-  onCreateCollection,
-  onDeleteCollection,
   sort,
   onSort,
   view,
@@ -579,7 +446,6 @@ export default function Sidebar({
   onCloseMobile,
 }: {
   profile: Profile;
-  itemsCount: number;
   counts: Record<Category, number>;
   followerCount: number;
   followingCount: number;
@@ -613,12 +479,6 @@ export default function Sidebar({
   onSearch: (v: string) => void;
   category: Category;
   onCategory: (c: Category) => void;
-  /** curator shelves — public on the page; empty array hides the block for visitors */
-  collections: { id: string; name: string; count: number }[];
-  selectedCollection: string | null;
-  onSelectCollection: (id: string | null) => void;
-  onCreateCollection: (name: string) => Promise<void>;
-  onDeleteCollection: (id: string) => Promise<void>;
   sort: SortMode;
   onSort: (s: SortMode) => void;
   view: ViewMode;
@@ -721,40 +581,28 @@ export default function Sidebar({
             {" · "}
             <span className="whitespace-nowrap">{followingCount} Following</span>
           </button>
-          {/* the person-level stat — same sentence the notification uses */}
-          {tasteCount > 0 && (
-            <p className="text-xs text-zinc-400">
-              {tasteCount} approve{tasteCount === 1 ? "s" : ""} {isOwner ? "your" : "their"} taste
-            </p>
-          )}
-          {/* the compatibility read — shared canonical favorites */}
-          {(tasteMatch?.shared ?? 0) > 0 && (
-            <p className="text-xs text-zinc-400">
-              You share {tasteMatch!.shared} favorite{tasteMatch!.shared === 1 ? "" : "s"}
-              {tasteMatch!.top_type ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}` : ""}
+          {/* taste stats — one quiet metadata line, kept smaller than the
+              follower counts so it reads as a footnote, not a headline */}
+          {(tasteCount > 0 || (tasteMatch?.shared ?? 0) > 0) && (
+            <p className="text-[11px] leading-relaxed text-zinc-400/90">
+              {[
+                tasteCount > 0
+                  ? `${tasteCount} approve${tasteCount === 1 ? "s" : ""} ${isOwner ? "your" : "their"} taste`
+                  : null,
+                (tasteMatch?.shared ?? 0) > 0
+                  ? `${tasteMatch!.shared} shared favorite${tasteMatch!.shared === 1 ? "" : "s"}${
+                      tasteMatch!.top_type
+                        ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}`
+                        : ""
+                    }`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           )}
           {socialError && (
             <p className="save-appear text-[11px] text-red-500">{socialError}</p>
-          )}
-          {/* the evergreen artifact — "what are your four favorites?" */}
-          {itemsCount > 0 && (
-            <div className="flex flex-wrap gap-x-3">
-              <Link
-                href={`/${profile.username}/four`}
-                className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                Four favorites →
-              </Link>
-              {isOwner && (
-                <Link
-                  href="/recap"
-                  className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
-                >
-                  Recap →
-                </Link>
-              )}
-            </div>
           )}
           {/* actions live in the text column, left-aligned like everything else.
               action row: follow (solid, same language as Favorite) + approve
@@ -876,18 +724,6 @@ export default function Sidebar({
             </button>
           ))}
         </nav>
-
-        {/* collections — curator shelves; selecting one filters the grid */}
-        {(collections.length > 0 || isOwner) && (
-          <CollectionsBlock
-            collections={collections}
-            selected={selectedCollection}
-            onSelect={onSelectCollection}
-            isOwner={isOwner}
-            onCreate={onCreateCollection}
-            onDelete={onDeleteCollection}
-          />
-        )}
 
         {/* sort + view — one tight group, matching row rhythm */}
         <div className="flex flex-col gap-1 text-xs">

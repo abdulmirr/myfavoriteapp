@@ -96,11 +96,17 @@ async function articlePreview(url: string): Promise<{ usable: boolean; image: st
 }
 
 /**
- * Today (UTC) — the cache key for daily recs. Stored in the `week_start`
+ * Today in the requester's timezone — the cache key for daily recs, so the
+ * set rolls over at THEIR midnight, not UTC's (which lands mid-evening in the
+ * Americas and read as a random mid-day refresh). Stored in the `week_start`
  * column, whose name predates the daily cadence; it's just a date key.
+ * The offset is `Date.getTimezoneOffset()` minutes sent by the client
+ * (positive west of UTC); absent or garbage falls back to UTC.
  */
-function dayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+function dayKey(req: NextRequest): string {
+  const raw = parseInt(req.headers.get("x-tz-offset") ?? "", 10);
+  const offset = Number.isFinite(raw) ? Math.max(-840, Math.min(840, raw)) : 0;
+  return new Date(Date.now() - offset * 60_000).toISOString().slice(0, 10);
 }
 
 /** the per-category ask, spliced into the prompt only when that category is unlocked */
@@ -167,7 +173,7 @@ async function generate(
                 .join("\n")}\n\n`
             : "") +
           (radar.length
-            ? `Already on my radar — I know about these, so don't recommend them, but they're a live signal of what I'm curious about right now:\n${radar
+            ? `Already on my saved-for-later list — I know about these, so don't recommend them, but they're a live signal of what I'm curious about right now (never call this list a "radar" in your reasons):\n${radar
                 .map(
                   (d) =>
                     `- [${d.media_type}] ${d.title.slice(0, 200)}${d.creator ? ` by ${d.creator.slice(0, 100)}` : ""}`
@@ -305,7 +311,7 @@ export async function POST(req: NextRequest) {
   const notDismissed = (recs: Recommendation[]) =>
     recs.filter((r) => !dismissedKeys.has(`${r.media_type}|${r.title.toLowerCase()}`));
 
-  const day = dayKey();
+  const day = dayKey(req);
   const total = saved.length;
 
   // every success response goes through here so the dismissed-filter and the
@@ -323,49 +329,17 @@ export async function POST(req: NextRequest) {
   };
 
   // claim-row pattern: the day's row is inserted empty before the model call,
-  // so N parallel first loads spend exactly one Anthropic call.
+  // so N parallel first loads spend exactly one Anthropic call. A populated
+  // row is the day's set, full stop — the ONLY thing that refreshes For You
+  // is the day key rolling over at the requester's midnight. (A category
+  // unlocked mid-day gets its picks tomorrow; the UI says so.)
   const { data: cached } = await db
     .from("recommendations")
     .select("items, created_at")
     .eq("profile_id", profile.id)
     .eq("week_start", day)
     .maybeSingle<{ items: Recommendation[]; created_at: string }>();
-  if (cached?.items?.length) {
-    // a category that unlocked after these picks were generated has no picks
-    // in them — regenerate now, so "save 2 more books" pays off immediately
-    // instead of tomorrow. The age floor debounces the regen loop a model
-    // that under-delivers an asked-for category would otherwise cause.
-    const missing = eligible.some(
-      (c) => !cached.items.some((r) => c.types.includes(r.media_type))
-    );
-    const regen =
-      missing && Date.now() - new Date(cached.created_at).getTime() > 10 * 60 * 1000;
-    if (!regen) return respond(cached.items);
-  }
-
-  // when a regen retires a populated set, keep it in hand — if the budget is
-  // spent or the model fails, restoring yesterday's-good picks beats a blank
-  // For You for the rest of the day
-  const previous = cached?.items?.length ? cached.items : null;
-
-  /** put the retired picks back into the still-empty claim row (never over a
-      concurrent generator's finished set), then serve them */
-  const restorePrevious = async () => {
-    const { data: row } = await db
-      .from("recommendations")
-      .select("items")
-      .eq("profile_id", profile.id)
-      .eq("week_start", day)
-      .maybeSingle<{ items: Recommendation[] }>();
-    if (row && !row.items?.length) {
-      await db
-        .from("recommendations")
-        .update({ items: previous })
-        .eq("profile_id", profile.id)
-        .eq("week_start", day);
-    }
-    return respond(previous!);
-  };
+  if (cached?.items?.length) return respond(cached.items);
 
   let claimed = false;
   if (!cached) {
@@ -373,18 +347,6 @@ export async function POST(req: NextRequest) {
       .from("recommendations")
       .insert({ profile_id: profile.id, week_start: day, items: [] });
     claimed = !claimErr; // unique violation → someone else is generating
-  } else if (cached.items?.length) {
-    // retiring the pre-unlock set: the created_at match deletes only the exact
-    // row we examined, never a concurrent regenerator's fresh claim, and the
-    // unique constraint on the re-insert arbitrates who generates
-    await db.from("recommendations").delete()
-      .eq("profile_id", profile.id)
-      .eq("week_start", day)
-      .eq("created_at", cached.created_at);
-    const { error: claimErr } = await db
-      .from("recommendations")
-      .insert({ profile_id: profile.id, week_start: day, items: [] });
-    claimed = !claimErr;
   } else if (Date.now() - new Date(cached.created_at).getTime() > STALE_CLAIM_MS) {
     // the original claimer died mid-generation — take over atomically, so N
     // concurrent requests can't all decide the claim is theirs (that would
@@ -432,8 +394,6 @@ export async function POST(req: NextRequest) {
   // generates (waiters and re-polls already returned above), so a slow first
   // load can't burn the whole daily quota on retries
   if (!(await withinLimit(db, "recs", 20))) {
-    // a regen must never trade good picks for a budget error
-    if (previous) return restorePrevious();
     await db.from("recommendations").delete()
       .eq("profile_id", profile.id).eq("week_start", day);
     return NextResponse.json({ error: "daily limit reached" }, { status: 429 });
@@ -464,8 +424,6 @@ export async function POST(req: NextRequest) {
     return respond(recommendations);
   } catch (e) {
     console.error("recommendation generation failed:", e);
-    // a failed regen serves the retired set instead of an error
-    if (previous) return restorePrevious();
     // free the claim so a retry can generate — but only while it's still
     // empty, so a concurrent generator's finished results are never wiped
     const { data: row } = await db
