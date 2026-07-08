@@ -28,7 +28,7 @@ import dynamic from "next/dynamic";
 import AppShell from "./AppShell";
 import DetailOverlay from "./DetailOverlay";
 import { ExploreFeed } from "./Explore";
-import FriendsView from "./Friends";
+import { FriendsStrip, InviteFriendButton } from "./Friends";
 import Suggestions from "./Suggestions";
 import SearchBar, { resultToItem, TYPE_TAG, type FeedItem } from "./SearchBar";
 import { TileMedia } from "./Tile";
@@ -36,7 +36,7 @@ import { TileMedia } from "./Tile";
 // visitors-only (and framer-motion-heavy) — keep it out of the signed-in bundle
 const Landing = dynamic(() => import("./Landing"));
 
-type Tab = "foryou" | "friends" | "following" | "explore";
+type Tab = "foryou" | "friends" | "explore";
 
 // stable identity so DetailOverlay's data effect doesn't re-fire every parent
 // render while `friends` is still loading (null)
@@ -202,7 +202,6 @@ export default function Home() {
                 [
                   { key: "foryou", label: "For You" },
                   { key: "friends", label: "Friends" },
-                  { key: "following", label: "Activity" },
                   { key: "explore", label: "Explore" },
                 ] as { key: Tab; label: string }[]
               ).map((t) => (
@@ -227,14 +226,31 @@ export default function Home() {
           {tab === "foryou" ? (
             <ForYou viewer={viewer} />
           ) : tab === "friends" ? (
-            viewer && <FriendsView viewer={viewer} />
-          ) : tab === "following" ? (
-            <FollowingFeed
-              viewer={viewer}
-              friends={friends}
-              onOpen={(item, rect, favoriting) => setQuick({ item, rect, favoriting })}
-              overlaySaved={overlaySaved}
-            />
+            <section>
+              <div className="mb-8 flex items-end justify-between gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+                    Friends
+                  </h1>
+                  <p className="text-xs text-zinc-400">
+                    Your people — and what they’ve been favoriting.
+                  </p>
+                </div>
+                <InviteFriendButton />
+              </div>
+              {friends && friends.length > 0 && (
+                <div className="mb-12">
+                  <FriendsStrip friends={friends} />
+                </div>
+              )}
+              <FollowingFeed
+                viewer={viewer}
+                friends={friends}
+                onOpen={(item, rect, favoriting) => setQuick({ item, rect, favoriting })}
+                overlaySaved={overlaySaved}
+                heading={false}
+              />
+            </section>
           ) : (
             <ExploreFeed viewer={viewer} onOpen={(item, rect) => setQuick({ item, rect })} />
           )}
@@ -814,11 +830,14 @@ function FollowingFeed({
   friends,
   onOpen,
   overlaySaved,
+  heading = true,
 }: {
   viewer: Profile | null;
   friends: Profile[] | null;
   onOpen: (item: Item, rect: DOMRect, favoriting?: boolean) => void;
   overlaySaved: string[];
+  /** false when a parent (the Friends tab) already provides the header */
+  heading?: boolean;
 }) {
   const [feed, setFeed] = useState<FeedItem[] | null>(null);
   const [followCount, setFollowCount] = useState<number | null>(null);
@@ -931,12 +950,14 @@ function FollowingFeed({
 
   return (
     <section>
-      <div className="mb-10 flex flex-col gap-1.5">
-        <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-          Activity
-        </h1>
-        <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
-      </div>
+      {heading && (
+        <div className="mb-10 flex flex-col gap-1.5">
+          <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+            Activity
+          </h1>
+          <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
+        </div>
+      )}
 
       {error ? (
         <div className="pt-12 text-center">

@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
-import FriendsPage from "@/components/FriendsPage";
+import { redirect } from "next/navigation";
 
-// signed-in directory — nothing here for crawlers
-export const metadata: Metadata = {
-  title: "Friends",
-  robots: { index: false },
-};
-
-export default function Page() {
-  return <FriendsPage />;
+// Friends lives as a tab on Home now — old links land there
+export default function FriendsPage() {
+  redirect("/");
 }

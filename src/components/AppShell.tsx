@@ -30,7 +30,6 @@ export default function AppShell({
 
   const isHome = pathname === "/";
   const isExplore = pathname.startsWith("/explore");
-  const isFriends = pathname.startsWith("/friends");
   const isYou = !!viewer && pathname === `/${viewer.username}`;
 
   const rowClass = (active: boolean) =>
@@ -56,16 +55,7 @@ export default function AppShell({
     </span>
   );
 
-  const friendsIcon = (
-    <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden>
-      <circle cx="6" cy="5.5" r="2.3" />
-      <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
-      <circle cx="11.6" cy="6.2" r="1.8" />
-      <path d="M12.3 9.8c1.6.4 2.7 1.7 2.7 3.5" />
-    </svg>
-  );
-
-  const homeIcon = (
+   const homeIcon = (
     <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
       <path d="M2.5 6.5 8 2l5.5 4.5V14h-4v-4h-3v4h-4V6.5z" />
     </svg>
@@ -102,12 +92,6 @@ export default function AppShell({
               <Link href="/explore" className={rowClass(isExplore)} title="Explore">
                 <span className={iconBox}>{exploreIcon}</span>
                 <span className={labelClass}>Explore</span>
-              </Link>
-            )}
-            {viewer && (
-              <Link href="/friends" className={rowClass(isFriends)} title="Friends">
-                <span className={iconBox}>{friendsIcon}</span>
-                <span className={labelClass}>Friends</span>
               </Link>
             )}
             {viewer && (
@@ -209,16 +193,6 @@ export default function AppShell({
             <svg width="19" height="19" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round">
               <circle cx="8" cy="8" r="6.3" />
               <path d="m10.5 5.5-1.6 3.4-3.4 1.6 1.6-3.4 3.4-1.6z" />
-            </svg>
-          </Link>
-        )}
-        {viewer && (
-          <Link href="/friends" aria-label="Friends" className={`flex flex-1 items-center justify-center ${isFriends ? "text-zinc-900" : "text-zinc-400"}`}>
-            <svg width="19" height="19" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-              <circle cx="6" cy="5.5" r="2.3" />
-              <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
-              <circle cx="11.6" cy="6.2" r="1.8" />
-              <path d="M12.3 9.8c1.6.4 2.7 1.7 2.7 3.5" />
             </svg>
           </Link>
         )}

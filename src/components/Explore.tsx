@@ -10,6 +10,7 @@ import AppShell from "./AppShell";
 import DetailOverlay from "./DetailOverlay";
 import SearchBar, { resultToItem, type FeedItem } from "./SearchBar";
 import Suggestions from "./Suggestions";
+import { DiscoverPeople } from "./Friends";
 import { TileMedia } from "./Tile";
 
 const NO_FOLLOWING: Profile[] = [];
@@ -85,8 +86,14 @@ export function ExploreFeed({
       </div>
 
       <div>
-        <h2 className="mb-1 text-[10px] uppercase tracking-[0.08em] text-zinc-400">People</h2>
-        <Suggestions viewer={viewer} lead="Libraries worth a look:" />
+        <h2 className="mb-5 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+          People with similar taste
+        </h2>
+        {viewer ? (
+          <DiscoverPeople viewer={viewer} />
+        ) : (
+          <Suggestions viewer={viewer} lead="Libraries worth a look:" />
+        )}
       </div>
 
       <div className="mt-14">
