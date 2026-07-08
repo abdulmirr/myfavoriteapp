@@ -9,6 +9,12 @@ import { REPORT_EMAIL, socialHref } from "@/lib/social";
 export type SortMode = "default" | "latest" | "oldest";
 export type ViewMode = "grid" | "freeform";
 
+/** media_type → the word the taste-match line uses */
+export const MATCH_TYPE: Record<string, string> = {
+  book: "books", movie: "films", tv: "shows", music: "music",
+  podcast: "podcasts", video: "videos", article: "reads", photo: "photos", other: "pieces",
+};
+
 export const MIN_COLS = 3;
 export const MAX_COLS = 20;
 
@@ -101,6 +107,133 @@ export function ShareButton({ username }: { username: string }) {
         </svg>
       )}
     </button>
+  );
+}
+
+/**
+ * Curator shelves in the sidebar: tap to filter the grid, tap again to clear.
+ * Owners get inline create and a quiet ✕ (confirm on second tap) per shelf —
+ * deleting a shelf never touches the favorites on it.
+ */
+export function CollectionsBlock({
+  collections,
+  selected,
+  onSelect,
+  isOwner,
+  onCreate,
+  onDelete,
+}: {
+  collections: { id: string; name: string; count: number }[];
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+  isOwner: boolean;
+  onCreate: (name: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const create = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onCreate(trimmed);
+      setName("");
+      setAdding(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't create that.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <nav className="flex flex-col gap-1 text-xs">
+      <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+        Collections
+      </span>
+      {collections.map((c) => (
+        <div key={c.id} className="group flex items-center gap-2">
+          <button
+            onClick={() => onSelect(selected === c.id ? null : c.id)}
+            className={`min-w-0 cursor-pointer truncate text-left transition-colors ${
+              selected === c.id
+                ? "font-medium text-zinc-900"
+                : "text-zinc-400 hover:text-zinc-900"
+            }`}
+          >
+            {c.name}
+            <span className="ml-1.5 text-zinc-300">{c.count}</span>
+          </button>
+          {isOwner &&
+            (confirmDelete === c.id ? (
+              <button
+                onClick={async () => {
+                  setConfirmDelete(null);
+                  try {
+                    await onDelete(c.id);
+                  } catch {
+                    /* the row stays; another tap retries */
+                  }
+                }}
+                className="shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-red-500 hover:text-red-600"
+              >
+                delete?
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setConfirmDelete(c.id);
+                  setTimeout(() => setConfirmDelete((v) => (v === c.id ? null : v)), 2500);
+                }}
+                aria-label={`Delete collection ${c.name}`}
+                className="shrink-0 cursor-pointer text-zinc-300 opacity-0 transition-opacity hover:text-zinc-900 group-hover:opacity-100"
+              >
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                  <path d="M2 2l8 8M10 2l-8 8" />
+                </svg>
+              </button>
+            ))}
+        </div>
+      ))}
+      {isOwner &&
+        (adding ? (
+          <div className="mt-0.5 flex flex-col gap-1">
+            <input
+              value={name}
+              autoFocus
+              maxLength={40}
+              placeholder="e.g. 2026 canon"
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") create();
+                if (e.key === "Escape") {
+                  setAdding(false);
+                  setName("");
+                  setError("");
+                }
+              }}
+              onBlur={() => {
+                if (!name.trim()) setAdding(false);
+              }}
+              className="w-full border-b border-zinc-200 bg-transparent pb-0.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
+            />
+            {error && <span className="text-[11px] text-red-500">{error}</span>}
+          </div>
+        ) : (
+          <button
+            onClick={() => setAdding(true)}
+            className="w-fit cursor-pointer text-left text-zinc-300 transition-colors hover:text-zinc-900"
+          >
+            + New collection
+          </button>
+        ))}
+    </nav>
   );
 }
 
@@ -207,8 +340,10 @@ export function MoreButton({
           <circle cx="13" cy="8" r="1.3" />
         </svg>
       </button>
+      {/* blocked hides Follow + approve, leaving ⋯ at the row's left edge —
+          hang the menu from whichever side keeps it inside the sidebar */}
       {open && (
-        <div className="save-appear absolute left-0 top-full z-20 mt-2 flex w-28 flex-col border border-zinc-200 bg-white py-1 shadow-xl">
+        <div className={`save-appear absolute top-full z-20 mt-2 flex w-28 flex-col border border-zinc-200 bg-white py-1 shadow-xl ${blocked ? "left-0" : "right-0"}`}>
           <button
             onClick={() => {
               setOpen(false);
@@ -230,6 +365,74 @@ export function MoreButton({
           </a>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The moment after "Approve taste" lands: a one-time nudge to attach a short
+ * note — the ice-breaker the receiver reads in their notifications. Optional
+ * by design (nudge, don't gate); dismissing it loses nothing.
+ */
+export function TasteNoteNudge({
+  onSend,
+  onDismiss,
+}: {
+  onSend: (note: string) => Promise<void>;
+  onDismiss: () => void;
+}) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const send = async () => {
+    const note = value.trim();
+    if (!note || busy) return;
+    setBusy(true);
+    try {
+      await onSend(note);
+    } catch (e) {
+      console.error("taste note failed:", e instanceof Error ? e.message : e);
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="save-appear">
+      <div className="flex items-center gap-1.5 border-b border-zinc-300 pb-1 focus-within:border-zinc-900">
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") send();
+            if (e.key === "Escape") onDismiss();
+          }}
+          maxLength={140}
+          placeholder="Add a note (optional)"
+          className="w-full bg-transparent text-[11px] text-zinc-900 outline-none placeholder:text-zinc-400"
+        />
+        {value.trim() ? (
+          <button
+            onClick={send}
+            disabled={busy}
+            className="cursor-pointer whitespace-nowrap text-[11px] font-medium text-zinc-900 transition-colors hover:text-zinc-400 disabled:cursor-wait"
+          >
+            Send
+          </button>
+        ) : (
+          <button
+            onClick={onDismiss}
+            aria-label="Skip the note"
+            className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+              <path d="M2 2l8 8M10 2L2 10" />
+            </svg>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -342,6 +545,15 @@ export default function Sidebar({
   isFollowing,
   followBusy,
   onToggleFollow,
+  tasteCount,
+  tasteMatch,
+  socialError,
+  approved,
+  approveBusy,
+  onToggleApprove,
+  noteOpen,
+  onDismissNote,
+  onSendTasteNote,
   blocked,
   blockBusy,
   onToggleBlock,
@@ -351,6 +563,11 @@ export default function Sidebar({
   onSearch,
   category,
   onCategory,
+  collections,
+  selectedCollection,
+  onSelectCollection,
+  onCreateCollection,
+  onDeleteCollection,
   sort,
   onSort,
   view,
@@ -375,6 +592,18 @@ export default function Sidebar({
   isFollowing: boolean;
   followBusy: boolean;
   onToggleFollow: () => void;
+  tasteCount: number;
+  /** shared favorites between viewer and this library (null while unknown/own page) */
+  tasteMatch: { shared: number; top_type: string | null } | null;
+  /** transient failure from follow/block — cleared by the caller */
+  socialError: string;
+  approved: boolean;
+  approveBusy: boolean;
+  onToggleApprove: () => void;
+  /** the optional-note nudge, shown only right after approving */
+  noteOpen: boolean;
+  onDismissNote: () => void;
+  onSendTasteNote: (note: string) => Promise<void>;
   blocked: boolean;
   blockBusy: boolean;
   onToggleBlock: () => void;
@@ -384,6 +613,12 @@ export default function Sidebar({
   onSearch: (v: string) => void;
   category: Category;
   onCategory: (c: Category) => void;
+  /** curator shelves — public on the page; empty array hides the block for visitors */
+  collections: { id: string; name: string; count: number }[];
+  selectedCollection: string | null;
+  onSelectCollection: (id: string | null) => void;
+  onCreateCollection: (name: string) => Promise<void>;
+  onDeleteCollection: (id: string) => Promise<void>;
   sort: SortMode;
   onSort: (s: SortMode) => void;
   view: ViewMode;
@@ -486,25 +721,77 @@ export default function Sidebar({
             {" · "}
             <span className="whitespace-nowrap">{followingCount} Following</span>
           </button>
+          {/* the person-level stat — same sentence the notification uses */}
+          {tasteCount > 0 && (
+            <p className="text-xs text-zinc-400">
+              {tasteCount} approve{tasteCount === 1 ? "s" : ""} {isOwner ? "your" : "their"} taste
+            </p>
+          )}
+          {/* the compatibility read — shared canonical favorites */}
+          {(tasteMatch?.shared ?? 0) > 0 && (
+            <p className="text-xs text-zinc-400">
+              You share {tasteMatch!.shared} favorite{tasteMatch!.shared === 1 ? "" : "s"}
+              {tasteMatch!.top_type ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}` : ""}
+            </p>
+          )}
+          {socialError && (
+            <p className="save-appear text-[11px] text-red-500">{socialError}</p>
+          )}
+          {/* the evergreen artifact — "what are your four favorites?" */}
+          {itemsCount > 0 && (
+            <div className="flex flex-wrap gap-x-3">
+              <Link
+                href={`/${profile.username}/four`}
+                className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
+              >
+                Four favorites →
+              </Link>
+              {isOwner && (
+                <Link
+                  href="/recap"
+                  className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
+                >
+                  Recap →
+                </Link>
+              )}
+            </div>
+          )}
           {/* actions live in the text column, left-aligned like everything else.
-              action row: follow (solid, same language as Favorite) + ⋯
-              (block/report); socials get their own line below. */}
+              action row: follow (solid, same language as Favorite) + approve
+              taste (quiet sibling) + ⋯ (block/report); socials get their own
+              line below. */}
           {(canFollow || (profile.socials?.length ?? 0) > 0) && (
           <div className="mt-1 flex flex-col gap-2">
             {canFollow && (
-              <div className="flex items-center gap-x-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 {!blocked && (
-                  <button
-                    onClick={onToggleFollow}
-                    disabled={followBusy}
-                    className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
-                      isFollowing
-                        ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
-                        : "bg-zinc-900 text-white hover:bg-zinc-700"
-                    }`}
-                  >
-                    {isFollowing ? "Following ✓" : "Follow"}
-                  </button>
+                  <>
+                    <button
+                      onClick={onToggleFollow}
+                      disabled={followBusy}
+                      className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                        isFollowing
+                          ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
+                          : "bg-zinc-900 text-white hover:bg-zinc-700"
+                      }`}
+                    >
+                      {isFollowing ? "Following ✓" : "Follow"}
+                    </button>
+                    <button
+                      onClick={onToggleApprove}
+                      disabled={approveBusy}
+                      aria-label={approved ? "Approved — tap to undo" : "Approve taste"}
+                      title={approved ? "Approved" : "Approve taste"}
+                      className={`flex h-7 shrink-0 cursor-pointer items-center transition-colors disabled:cursor-wait ${
+                        approved ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                      }`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill={approved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+                        <path d="M2.5 7.5h2v6h-2z" />
+                        <path d="M4.5 12.7c.4.5 1 .8 1.7.8h4.7c.6 0 1.1-.4 1.2-1l.9-4.2c.1-.7-.4-1.3-1.1-1.3H8.7l.6-2.6c.1-.6-.2-1.2-.8-1.4-.5-.2-1 0-1.2.5L4.5 7.5" />
+                      </svg>
+                    </button>
+                  </>
                 )}
                 <MoreButton
                   username={profile.username}
@@ -513,6 +800,9 @@ export default function Sidebar({
                   onToggleBlock={onToggleBlock}
                 />
               </div>
+            )}
+            {canFollow && !blocked && noteOpen && (
+              <TasteNoteNudge onSend={onSendTasteNote} onDismiss={onDismissNote} />
             )}
             {(profile.socials?.length ?? 0) > 0 && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -586,6 +876,18 @@ export default function Sidebar({
             </button>
           ))}
         </nav>
+
+        {/* collections — curator shelves; selecting one filters the grid */}
+        {(collections.length > 0 || isOwner) && (
+          <CollectionsBlock
+            collections={collections}
+            selected={selectedCollection}
+            onSelect={onSelectCollection}
+            isOwner={isOwner}
+            onCreate={onCreateCollection}
+            onDelete={onDeleteCollection}
+          />
+        )}
 
         {/* sort + view — one tight group, matching row rhythm */}
         <div className="flex flex-col gap-1 text-xs">

@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { supabaseServer } from "@/lib/supabase";
+import { coverDataUris } from "@/lib/og-covers";
 
 /**
  * The profile share card: the person's name set in the brand mono, with their
@@ -42,23 +43,7 @@ export default async function Image({ params }: { params: Promise<{ username: st
       .order("sort_order", { ascending: true })
       .limit(40);
     const urls = (items ?? []).map((i) => i.image_url as string);
-    // satori fetches <img> URLs itself, with no timeout, and one failed cover
-    // rejects the whole render (Open Library's cover host fails frequently) —
-    // fetch them here instead, drop failures, and hand it data URIs
-    const fetched = await Promise.all(
-      urls.slice(0, 8).map(async (u) => {
-        try {
-          const r = await fetch(u, { signal: AbortSignal.timeout(4000) });
-          if (!r.ok) return null;
-          const mime = r.headers.get("content-type")?.split(";")[0] ?? "image/jpeg";
-          if (!mime.startsWith("image/")) return null;
-          return `data:${mime};base64,${Buffer.from(await r.arrayBuffer()).toString("base64")}`;
-        } catch {
-          return null;
-        }
-      })
-    );
-    covers = fetched.filter((c): c is string => !!c).slice(0, 4);
+    covers = await coverDataUris(urls, 4);
     const { count: total } = await db
       .from("items")
       .select("id", { count: "exact", head: true })

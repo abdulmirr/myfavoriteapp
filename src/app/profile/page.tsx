@@ -195,6 +195,14 @@ export default function ProfileSettingsPage() {
   const [digest, setDigest] = useState(false);
   const [digestBusy, setDigestBusy] = useState(false);
 
+  // activity emails (first follower / favorited via you / taste) — default on
+  const [events, setEvents] = useState(true);
+  const [eventsBusy, setEventsBusy] = useState(false);
+
+  // standing note to the recommendation engine (profile_private.taste_note)
+  const [tasteNote, setTasteNote] = useState("");
+  const [noteStatus, setNoteStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+
   // change password (reveals an inline field)
   const [pwOpen, setPwOpen] = useState(false);
   const [pw, setPw] = useState("");
@@ -247,12 +255,16 @@ export default function ProfileSettingsPage() {
       const { data: p, error: loadErr } = await db
         .from("profiles")
         .select(
-          "id, user_id, username, display_name, bio, avatar_url, socials, profile_private(digest_opt_in)"
+          "id, user_id, username, display_name, bio, avatar_url, socials, profile_private(digest_opt_in, taste_note, email_events)"
         )
         .eq("user_id", session.user.id)
         .maybeSingle();
       if (p) {
-        type PrivRow = { digest_opt_in: boolean };
+        type PrivRow = {
+          digest_opt_in: boolean;
+          taste_note: string | null;
+          email_events: boolean;
+        };
         const { profile_private: privRaw, ...profRow } = p as unknown as Profile & {
           profile_private: PrivRow | PrivRow[] | null;
         };
@@ -279,6 +291,8 @@ export default function ProfileSettingsPage() {
         });
         setAvatarPreview(prof.avatar_url);
         setDigest(priv?.digest_opt_in ?? false);
+        setTasteNote(priv?.taste_note ?? "");
+        setEvents(priv?.email_events ?? true);
       }
       // a transient query failure is not "no profile" — don't show a dead end
       setLoadFailed(!p && !!loadErr);
@@ -363,6 +377,31 @@ export default function ProfileSettingsPage() {
     setDigestBusy(false);
   };
 
+  const toggleEvents = async () => {
+    if (!profile || eventsBusy) return;
+    setEventsBusy(true);
+    setDigestError("");
+    const next = !events;
+    const { error: err } = await supabase()
+      .from("profile_private")
+      .upsert({ profile_id: profile.id, email_events: next }, { onConflict: "profile_id" });
+    if (err) setDigestError("Couldn't save — try again.");
+    else setEvents(next);
+    setEventsBusy(false);
+  };
+
+  const saveTasteNote = async () => {
+    if (!profile || noteStatus === "saving") return;
+    setNoteStatus("saving");
+    const { error: err } = await supabase()
+      .from("profile_private")
+      .upsert(
+        { profile_id: profile.id, taste_note: tasteNote.trim() },
+        { onConflict: "profile_id" }
+      );
+    setNoteStatus(err ? "error" : "done");
+  };
+
   const updatePassword = async () => {
     if (pw.length < 6) {
       setPwError("At least 6 characters.");
@@ -417,7 +456,13 @@ export default function ProfileSettingsPage() {
         JSON.stringify({ profile: profile.username, exported_at: new Date().toISOString(), items }, null, 2)
       );
     } else {
-      const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      // quote-escape, and defang leading =+-@ so a title like "=CMD(…)" can't
+      // execute as a formula when the export opens in a spreadsheet
+      const esc = (v: unknown) => {
+        let s = String(v ?? "").replace(/"/g, '""');
+        if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+        return `"${s}"`;
+      };
       const rows = items.map((i) =>
         [i.media_type, i.title, i.creator, (i.metadata as { year?: string })?.year ?? "",
          i.description, i.view_url ?? "", i.created_at].map(esc).join(",")
@@ -483,7 +528,11 @@ export default function ProfileSettingsPage() {
                         const f = e.target.files?.[0];
                         if (f) {
                           setAvatarFile(f);
-                          setAvatarPreview(URL.createObjectURL(f));
+                          setAvatarPreview((prev) => {
+                            // re-picking leaks the previous preview blob otherwise
+                            if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                            return URL.createObjectURL(f);
+                          });
                         }
                       }}
                     />
@@ -602,12 +651,65 @@ export default function ProfileSettingsPage() {
                 </div>
               </Section>
 
+              <Section title="For You">
+                <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+                  A standing note to your taste engine — what to lean into, what to skip.
+                  It reads this alongside your library every day.
+                </p>
+                <textarea
+                  value={tasteNote}
+                  onChange={(e) => {
+                    setTasteNote(e.target.value.slice(0, 500));
+                    if (noteStatus !== "idle") setNoteStatus("idle");
+                  }}
+                  rows={2}
+                  placeholder="e.g. More quiet literary fiction, no self-help. Deep albums over singles."
+                  className="mt-2 w-full resize-none border border-zinc-200 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-400 focus:outline-none"
+                />
+                <div className="mt-1 flex items-center gap-3">
+                  <button
+                    onClick={saveTasteNote}
+                    disabled={noteStatus === "saving"}
+                    className={`disabled:cursor-wait ${LINK_BTN}`}
+                  >
+                    {noteStatus === "saving" ? "Saving…" : "Save note"}
+                  </button>
+                  {noteStatus === "done" && (
+                    <span className="save-appear text-[11px] text-emerald-600">
+                      Saved — shapes tomorrow’s picks
+                    </span>
+                  )}
+                  {noteStatus === "error" && (
+                    <span className="save-appear text-[11px] text-red-500">
+                      Couldn&rsquo;t save — try again.
+                    </span>
+                  )}
+                </div>
+              </Section>
+
               <Section title="Email">
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="min-w-0 pr-4">
+                    <span className="text-sm text-zinc-500">Activity</span>
+                    <p className="text-[11px] leading-relaxed text-zinc-400">
+                      Your first follower, favorites spreading from your library, taste
+                      approvals. At most one a day.
+                    </p>
+                  </div>
+                  <button
+                    onClick={toggleEvents}
+                    disabled={eventsBusy}
+                    className={`shrink-0 disabled:cursor-wait ${LINK_BTN}`}
+                  >
+                    {events ? "On →" : "Off →"}
+                  </button>
+                </div>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="min-w-0 pr-4">
                     <span className="text-sm text-zinc-500">Weekly digest</span>
                     <p className="text-[11px] leading-relaxed text-zinc-400">
-                      Mondays: new followers, favorites that spread from your library, fresh picks.
+                      Mondays: who followed you, what spread from your library, what the
+                      people you follow favorited. Quiet weeks send nothing.
                     </p>
                   </div>
                   <button

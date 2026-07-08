@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import type { Item, MediaType, Recommendation } from "@/lib/types";
+import {
+  REC_CATEGORIES,
+  REC_MIN_PER_CATEGORY,
+  type Item,
+  type MediaType,
+  type RecCategoryKey,
+  type RecCounts,
+  type Recommendation,
+} from "@/lib/types";
 import { tmdb, books, music, podcasts, wikipedia } from "@/lib/search-sources";
 import { requireUser, withinLimit, safeFetch } from "@/lib/api-guard";
 
 // Claude call + artwork enrichment can take a while on the first request of
-// the week; every later request is a cached DB read.
+// the day; every later request is a cached DB read.
 export const maxDuration = 120;
 
 // Sonnet 5: near-Opus quality on taste-matching at a fraction of the cost.
@@ -87,16 +95,40 @@ async function articlePreview(url: string): Promise<{ usable: boolean; image: st
   }
 }
 
-/** Monday of the current week (UTC) — the cache key for weekly recs. */
-function weekStart(): string {
-  const now = new Date();
-  const day = now.getUTCDay(); // 0 = Sunday
-  const diff = day === 0 ? 6 : day - 1;
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diff));
-  return monday.toISOString().slice(0, 10);
+/**
+ * Today (UTC) — the cache key for daily recs. Stored in the `week_start`
+ * column, whose name predates the daily cadence; it's just a date key.
+ */
+function dayKey(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
-async function generate(items: Item[], tasteNote: string): Promise<Recommendation[]> {
+/** the per-category ask, spliced into the prompt only when that category is unlocked */
+const CATEGORY_ASK: Record<RecCategoryKey, string> = {
+  music: "exactly 3 music (albums)",
+  books: "exactly 3 books",
+  filmtv: "exactly 3 films or shows (media_type movie or tv)",
+  reading:
+    "exactly 3 articles/essays/blog posts (media_type article — real, well-known " +
+    "pieces that are freely readable online; set creator to the author, and set " +
+    "url to the piece's canonical page — you should be confident the URL is real; " +
+    "prefer pieces whose URL you know over more obscure ones)",
+};
+
+/** what a "not for me" tap stores — enough to name the pick back to the model */
+interface Dismissal {
+  media_type: string;
+  title: string;
+  creator: string;
+}
+
+async function generate(
+  items: Item[],
+  tasteNote: string,
+  eligible: RecCategoryKey[],
+  dismissed: Dismissal[],
+  radar: Dismissal[]
+): Promise<Recommendation[]> {
   const library = items
     .map((i) => {
       const year = i.metadata?.year ? ` (${i.metadata.year})` : "";
@@ -126,13 +158,27 @@ async function generate(items: Item[], tasteNote: string): Promise<Recommendatio
           (tasteNote
             ? `A standing note from me about what to pick: ${tasteNote}\n\n`
             : "") +
-          "Recommend exactly 12 things for me this week: exactly 3 music (albums), " +
-          "exactly 3 books, exactly 3 films or shows (media_type movie or tv), and " +
-          "exactly 3 articles/essays/blog posts (media_type article — real, well-known " +
-          "pieces that are freely readable online; set creator to the author, and set " +
-          "url to the piece's canonical page — you should be confident the URL is real; " +
-          "prefer pieces whose URL you know over more obscure ones). For each, explain " +
-          "in 1-2 sentences why it fits my taste, referencing specific things I've saved.",
+          (dismissed.length
+            ? `I passed on these recent suggestions — never recommend them again, and read them as taste signal too:\n${dismissed
+                .map(
+                  (d) =>
+                    `- [${d.media_type}] ${d.title.slice(0, 200)}${d.creator ? ` by ${d.creator.slice(0, 100)}` : ""}`
+                )
+                .join("\n")}\n\n`
+            : "") +
+          (radar.length
+            ? `Already on my radar — I know about these, so don't recommend them, but they're a live signal of what I'm curious about right now:\n${radar
+                .map(
+                  (d) =>
+                    `- [${d.media_type}] ${d.title.slice(0, 200)}${d.creator ? ` by ${d.creator.slice(0, 100)}` : ""}`
+                )
+                .join("\n")}\n\n`
+            : "") +
+          `Recommend exactly ${eligible.length * 3} things for me today: ` +
+          eligible.map((key) => CATEGORY_ASK[key]).join("; ") +
+          ". Stick to those categories only — I haven't saved enough elsewhere for " +
+          "you to read my taste there. For each, explain in 1-2 sentences why it " +
+          "fits my taste, referencing specific things I've saved.",
       },
     ],
   });
@@ -144,10 +190,17 @@ async function generate(items: Item[], tasteNote: string): Promise<Recommendatio
     recommendations: (Omit<Recommendation, "image_url" | "view_url"> & { url: string })[];
   };
 
+  // the prompt scopes the ask to unlocked categories; drop any stray pick the
+  // model returns outside them rather than surface a low-signal guess
+  const wanted = new Set(
+    REC_CATEGORIES.filter((c) => eligible.includes(c.key)).flatMap((c) => c.types)
+  );
+  const picks = parsed.recommendations.filter((r) => wanted.has(r.media_type as MediaType));
+
   // enrich each pick with artwork + a link from the same sources the
   // library's add-search uses, so the grid looks native
   return Promise.all(
-    parsed.recommendations.map(async (rec) => {
+    picks.map(async (rec) => {
       let image_url: string | null = null;
       let view_url: string | null = null;
       try {
@@ -207,30 +260,131 @@ export async function POST(req: NextRequest) {
     .maybeSingle<{ id: string }>();
   if (!profile) return NextResponse.json({ error: "no profile" }, { status: 404 });
 
-  const { data: priv } = await db
-    .from("profile_private")
-    .select("taste_note")
-    .eq("profile_id", profile.id)
-    .maybeSingle<{ taste_note: string }>();
+  // taste gate: with no category at REC_MIN_PER_CATEGORY the model would be
+  // guessing — tell the UI to ask for more saves instead of spending a
+  // generation on thin data
+  const { data: typeRows } = await db
+    .from("items")
+    .select("media_type")
+    .eq("profile_id", profile.id);
+  const saved = (typeRows ?? []) as { media_type: MediaType }[];
+  const counts = Object.fromEntries(
+    REC_CATEGORIES.map((c) => [c.key, saved.filter((r) => c.types.includes(r.media_type)).length])
+  ) as RecCounts;
+  const eligible = REC_CATEGORIES.filter((c) => counts[c.key] >= REC_MIN_PER_CATEGORY);
+  if (!eligible.length) {
+    return NextResponse.json({ gated: true, total: saved.length, counts, recommendations: [] });
+  }
 
-  const week = weekStart();
+  const [{ data: priv }, { data: dismissedRows }, { data: radarRows }] = await Promise.all([
+    db
+      .from("profile_private")
+      .select("taste_note")
+      .eq("profile_id", profile.id)
+      .maybeSingle<{ taste_note: string }>(),
+    db
+      .from("rec_dismissals")
+      .select("media_type, title, creator")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(40),
+    db
+      .from("radar_items")
+      .select("media_type, title, creator")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+  const dismissed = (dismissedRows ?? []) as Dismissal[];
+  const radar = (radarRows ?? []) as Dismissal[];
+  // a pick dismissed (or put on the radar) after today's set was cached still
+  // vanishes on reload — the cache row is left intact, only the response filtered
+  const dismissedKeys = new Set(
+    [...dismissed, ...radar].map((d) => `${d.media_type}|${d.title.toLowerCase()}`)
+  );
+  const notDismissed = (recs: Recommendation[]) =>
+    recs.filter((r) => !dismissedKeys.has(`${r.media_type}|${r.title.toLowerCase()}`));
 
-  // claim-row pattern: the week's row is inserted empty before the model call,
+  const day = dayKey();
+  const total = saved.length;
+
+  // every success response goes through here so the dismissed-filter and the
+  // shape (counts/total, allDismissed when the user passed on the whole set)
+  // can't drift between the cached, waiter, restored, and fresh paths
+  const respond = (recs: Recommendation[]) => {
+    const filtered = notDismissed(recs);
+    return NextResponse.json({
+      day,
+      recommendations: filtered,
+      counts,
+      total,
+      ...(recs.length && !filtered.length ? { allDismissed: true } : {}),
+    });
+  };
+
+  // claim-row pattern: the day's row is inserted empty before the model call,
   // so N parallel first loads spend exactly one Anthropic call.
   const { data: cached } = await db
     .from("recommendations")
     .select("items, created_at")
     .eq("profile_id", profile.id)
-    .eq("week_start", week)
+    .eq("week_start", day)
     .maybeSingle<{ items: Recommendation[]; created_at: string }>();
-  if (cached?.items?.length) return NextResponse.json({ week, recommendations: cached.items });
+  if (cached?.items?.length) {
+    // a category that unlocked after these picks were generated has no picks
+    // in them — regenerate now, so "save 2 more books" pays off immediately
+    // instead of tomorrow. The age floor debounces the regen loop a model
+    // that under-delivers an asked-for category would otherwise cause.
+    const missing = eligible.some(
+      (c) => !cached.items.some((r) => c.types.includes(r.media_type))
+    );
+    const regen =
+      missing && Date.now() - new Date(cached.created_at).getTime() > 10 * 60 * 1000;
+    if (!regen) return respond(cached.items);
+  }
+
+  // when a regen retires a populated set, keep it in hand — if the budget is
+  // spent or the model fails, restoring yesterday's-good picks beats a blank
+  // For You for the rest of the day
+  const previous = cached?.items?.length ? cached.items : null;
+
+  /** put the retired picks back into the still-empty claim row (never over a
+      concurrent generator's finished set), then serve them */
+  const restorePrevious = async () => {
+    const { data: row } = await db
+      .from("recommendations")
+      .select("items")
+      .eq("profile_id", profile.id)
+      .eq("week_start", day)
+      .maybeSingle<{ items: Recommendation[] }>();
+    if (row && !row.items?.length) {
+      await db
+        .from("recommendations")
+        .update({ items: previous })
+        .eq("profile_id", profile.id)
+        .eq("week_start", day);
+    }
+    return respond(previous!);
+  };
 
   let claimed = false;
   if (!cached) {
     const { error: claimErr } = await db
       .from("recommendations")
-      .insert({ profile_id: profile.id, week_start: week, items: [] });
+      .insert({ profile_id: profile.id, week_start: day, items: [] });
     claimed = !claimErr; // unique violation → someone else is generating
+  } else if (cached.items?.length) {
+    // retiring the pre-unlock set: the created_at match deletes only the exact
+    // row we examined, never a concurrent regenerator's fresh claim, and the
+    // unique constraint on the re-insert arbitrates who generates
+    await db.from("recommendations").delete()
+      .eq("profile_id", profile.id)
+      .eq("week_start", day)
+      .eq("created_at", cached.created_at);
+    const { error: claimErr } = await db
+      .from("recommendations")
+      .insert({ profile_id: profile.id, week_start: day, items: [] });
+    claimed = !claimErr;
   } else if (Date.now() - new Date(cached.created_at).getTime() > STALE_CLAIM_MS) {
     // the original claimer died mid-generation — take over atomically, so N
     // concurrent requests can't all decide the claim is theirs (that would
@@ -240,7 +394,7 @@ export async function POST(req: NextRequest) {
       .from("recommendations")
       .update({ created_at: new Date().toISOString() })
       .eq("profile_id", profile.id)
-      .eq("week_start", week)
+      .eq("week_start", day)
       .lt("created_at", new Date(Date.now() - STALE_CLAIM_MS).toISOString())
       .select("week_start");
     claimed = !!reclaimed?.length;
@@ -254,9 +408,9 @@ export async function POST(req: NextRequest) {
         .from("recommendations")
         .select("items")
         .eq("profile_id", profile.id)
-        .eq("week_start", week)
+        .eq("week_start", day)
         .maybeSingle<{ items: Recommendation[] }>();
-      if (row?.items?.length) return NextResponse.json({ week, recommendations: row.items });
+      if (row?.items?.length) return respond(row.items);
     }
     return NextResponse.json({ pending: true }, { status: 202 });
   }
@@ -268,45 +422,61 @@ export async function POST(req: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(120);
   if (!items?.length) {
-    // release the claim — an empty library shouldn't hold the week's slot
+    // release the claim — an empty library shouldn't hold the day's slot
     await db.from("recommendations").delete()
-      .eq("profile_id", profile.id).eq("week_start", week);
-    return NextResponse.json({ week, recommendations: [], empty: true });
+      .eq("profile_id", profile.id).eq("week_start", day);
+    return NextResponse.json({ day, recommendations: [], empty: true });
   }
 
   // budget caps Anthropic spend — charge only the request that actually
   // generates (waiters and re-polls already returned above), so a slow first
   // load can't burn the whole daily quota on retries
   if (!(await withinLimit(db, "recs", 20))) {
+    // a regen must never trade good picks for a budget error
+    if (previous) return restorePrevious();
     await db.from("recommendations").delete()
-      .eq("profile_id", profile.id).eq("week_start", week);
+      .eq("profile_id", profile.id).eq("week_start", day);
     return NextResponse.json({ error: "daily limit reached" }, { status: 429 });
   }
 
   try {
-    const recommendations = await generate(items as Item[], priv?.taste_note?.trim() ?? "");
+    const recommendations = await generate(
+      items as Item[],
+      priv?.taste_note?.trim() ?? "",
+      eligible.map((c) => c.key),
+      dismissed,
+      radar
+    );
 
     const { error: saveErr } = await db
       .from("recommendations")
       .update({ items: recommendations })
       .eq("profile_id", profile.id)
-      .eq("week_start", week);
+      .eq("week_start", day);
     if (saveErr) console.error("recommendation cache write failed:", saveErr.message);
 
-    return NextResponse.json({ week, recommendations });
+    // keep a week of picks history (recent-past sets may become a revisitable
+    // surface); anything older is dead weight
+    const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+    await db.from("recommendations").delete()
+      .eq("profile_id", profile.id).lt("week_start", weekAgo);
+
+    return respond(recommendations);
   } catch (e) {
     console.error("recommendation generation failed:", e);
+    // a failed regen serves the retired set instead of an error
+    if (previous) return restorePrevious();
     // free the claim so a retry can generate — but only while it's still
     // empty, so a concurrent generator's finished results are never wiped
     const { data: row } = await db
       .from("recommendations")
       .select("items")
       .eq("profile_id", profile.id)
-      .eq("week_start", week)
+      .eq("week_start", day)
       .maybeSingle<{ items: Recommendation[] }>();
     if (!row?.items?.length) {
       await db.from("recommendations").delete()
-        .eq("profile_id", profile.id).eq("week_start", week);
+        .eq("profile_id", profile.id).eq("week_start", day);
     }
     return NextResponse.json({ error: "generation failed" }, { status: 502 });
   }

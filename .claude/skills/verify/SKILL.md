@@ -12,13 +12,15 @@ description: Build/launch/drive recipe for verifying changes to the Favorites ap
 ## Auth handle (no UI login needed)
 Auth is client-side Supabase (localStorage). To drive signed-in flows:
 1. Create a throwaway user with `supabase.auth.signUp()` (anon key from `.env.local`). If no session returned, confirm the email directly in the DB (`update auth.users set email_confirmed_at = now()`) via `scripts/db.mjs` (pooler connection — direct host doesn't resolve on this network), then `signInWithPassword`.
-2. A DB trigger auto-creates a profile; seed `public.items` for it via direct pg (bypasses RLS).
+2. A DB trigger auto-creates a profile — but `profiles.id` ≠ `auth.users.id`. The profile gets its own uuid and is claimed via `profiles.user_id`. Wait/poll for `select id from profiles where user_id = <auth uid>` and use THAT id for items/notifications/profile_private. Never insert the profile row yourself (violates `profiles_user_id_key` once the trigger fires).
 3. API routes: pass `Authorization: Bearer <access_token>`.
-4. Browser: inject localStorage key `sb-bvpruvuenqdwilysgojy-auth-token` with `{access_token, refresh_token, expires_at, token_type:"bearer", user:{id,aud:"authenticated",email,role:"authenticated"}}` via Playwright `addInitScript`, then load the page.
+4. Browser: inject localStorage key `sb-bvpruvuenqdwilysgojy-auth-token` with `{access_token, refresh_token, expires_at, token_type:"bearer", user:{id,aud:"authenticated",email,role:"authenticated"}}` via Playwright `addInitScript`, then load the page. Fresh users get routed to `/welcome` — stamp `profile_private.onboarded_at` first (upsert on `profile_id`) to land on the feed.
 5. **Always clean up**: delete friendships/recommendations/items/profile rows and the `auth.users` row for the test user.
 
 ## Gotchas
 - Scripts importing project deps must live under the repo (e.g. `scripts/_tmp.mjs`), not the scratchpad — module resolution.
+- Abdul's long-running :3000 dev server can serve **stale route code** (especially after `npm run build` runs alongside it, sharing `.next/`) — if the API behaves like your changes aren't there, verify against your own fresh `next dev --port 3100` instead of debugging the diff.
+- **Two dev servers can't share `.next/`**: a second `next dev --port 3100` alongside Abdul's :3000 one produces ChunkLoadErrors and 30s requests. Run `npm run build && npx next start --port 3100` instead — stable, and it exercises the prod bundle.
 - Playwright browsers may need `npx playwright install chromium` first.
 - Remote images (mzstatic/TMDB) load slowly — wait for `networkidle` + a few seconds before screenshots.
 - `/api/recommendations` first call per week hits Claude (~20s); repeat calls must return in <1s (DB cache).

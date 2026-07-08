@@ -1,9 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { hashRange } from "@/lib/rand";
 import { useSystemTheme } from "@/lib/use-system-theme";
+import { supabase } from "@/lib/supabase";
+import { fetchSuggestions } from "@/lib/social";
+import { thumbCover } from "@/lib/img";
+import type { Profile } from "@/lib/types";
 import SiteFooter from "./SiteFooter";
 
 /**
@@ -112,6 +117,110 @@ const FEED_DEMO: {
     p: piece("book-the-secret-history.jpg", "The Secret History", "Donna Tartt", "book"),
   },
 ];
+
+/* ── beat 3.5: real libraries, live now — the walk-in door for visitors ── */
+function LiveLibraries() {
+  const [rows, setRows] = useState<{ profile: Profile; covers: string[] }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const profiles = (await fetchSuggestions(null)).slice(0, 3);
+      if (!profiles.length || cancelled) return;
+      const { data } = await supabase()
+        .from("items")
+        .select("profile_id, image_url")
+        .in("profile_id", profiles.map((p) => p.id))
+        .not("image_url", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (cancelled) return;
+      const grouped = new Map<string, string[]>();
+      for (const r of data ?? []) {
+        const arr = grouped.get(r.profile_id) ?? [];
+        if (arr.length < 4) arr.push(thumbCover(r.image_url as string));
+        grouped.set(r.profile_id, arr);
+      }
+      setRows(
+        profiles
+          .map((p) => ({ profile: p, covers: grouped.get(p.id) ?? [] }))
+          // a card with one cover reads as an empty room — skip thin walls
+          .filter((r) => r.covers.length >= 3)
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!rows.length) return null;
+
+  return (
+    <section className="mx-auto w-full max-w-lg px-5 pb-28 sm:px-8 sm:pb-36">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.6, ease: REVEAL_EASE }}
+        className="flex flex-col gap-1.5"
+      >
+        <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+          Walls already up.
+        </h2>
+        <p className="text-xs text-zinc-400">A few libraries live right now — walk in.</p>
+      </motion.div>
+
+      <div className="mt-12 flex flex-col gap-10">
+        {rows.map((r, i) => (
+          <motion.div
+            key={r.profile.id}
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.55, delay: i * 0.07, ease: REVEAL_EASE }}
+          >
+            <Link href={`/${r.profile.username}`} className="group block">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+                  {r.profile.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={r.profile.avatar_url}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[10px] font-semibold text-zinc-300">
+                      {(r.profile.display_name || r.profile.username).slice(0, 1)}
+                    </span>
+                  )}
+                </div>
+                <p className="min-w-0 flex-1 truncate text-xs text-zinc-400">
+                  <span className="text-[13px] font-medium text-zinc-900">
+                    {r.profile.display_name || `@${r.profile.username}`}
+                  </span>{" "}
+                  @{r.profile.username}
+                </p>
+                <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors group-hover:text-zinc-900">
+                  visit →
+                </span>
+              </div>
+              <div className="mt-4 flex gap-3 border-l border-zinc-100 pl-6 sm:ml-4">
+                {r.covers.map((c, j) => (
+                  <div key={j} className="h-20 w-20 shrink-0 overflow-hidden bg-zinc-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 /* ── beat 4: the closing film strip ── */
 
@@ -333,7 +442,7 @@ export default function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.65, ease: DRIFT_EASE }}
           >
-            Favorite is a library for everything you love.
+            Favorites is a library for everything you love.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-5"
@@ -429,7 +538,7 @@ export default function Landing() {
             See what your people love.
           </h2>
           <p className="text-xs text-zinc-400">
-            Follow your friends&rsquo; libraries, and get picks tuned to your taste every week.
+            Follow your friends&rsquo; libraries, and get picks tuned to your taste every day.
           </p>
         </motion.div>
 
@@ -481,6 +590,9 @@ export default function Landing() {
           ))}
         </div>
       </section>
+
+      {/* ── beat 3.5: real libraries, live now ── */}
+      <LiveLibraries />
 
       {/* ── beat 4: close ── */}
       <section className="pb-8 pt-16 sm:pt-24">

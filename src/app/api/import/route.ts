@@ -2,21 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, withinLimit } from "@/lib/api-guard";
 
 /**
- * Pull someone's public library from Goodreads or Letterboxd — no sign-in
- * required on their side (Goodreads killed its API in 2020 and Letterboxd's
- * is private, so public-profile pulls ARE the integration).
+ * Pull someone's public library from Goodreads, Letterboxd, or Last.fm — no
+ * sign-in required on their side (Goodreads killed its API in 2020,
+ * Letterboxd's is private, and Last.fm listening data is public by username).
  * Upstream hosts are fixed, so no SSRF surface.
  */
 
 export const maxDuration = 60;
 
 export type ImportRow = {
-  media_type: "book" | "movie";
+  media_type: "book" | "movie" | "music";
   title: string;
   creator: string;
   year: string;
-  rating: number; // 0–5
+  rating: number; // 0–5 (real user stars; 0 where the source has none)
   review: string;
+  /** rank-based pre-selection for sources without star ratings */
+  prechecked?: boolean;
 };
 
 const UA =
@@ -149,6 +151,45 @@ async function pullLetterboxd(input: string): Promise<ImportRow[]> {
   return rows;
 }
 
+/* ── Last.fm: top albums by username (public data, key-authenticated) ───────── */
+
+async function pullLastfm(input: string): Promise<ImportRow[]> {
+  const key = process.env.LASTFM_API_KEY;
+  if (!key) throw new Error("Last.fm import isn't configured yet");
+  const username = (input.match(/last\.fm\/user\/([^/?#\s]+)/i)?.[1] ?? input)
+    .trim()
+    .replace(/^@/, "");
+  if (!/^[a-zA-Z][a-zA-Z0-9_-]{1,14}$/.test(username)) {
+    throw new Error("that doesn't look like a Last.fm username");
+  }
+  const res = await fetch(
+    `https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=${encodeURIComponent(
+      username
+    )}&api_key=${key}&format=json&period=overall&limit=200`,
+    { signal: AbortSignal.timeout(10_000) }
+  );
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: number;
+    topalbums?: { album?: { name: string; artist?: { name?: string } }[] };
+  };
+  if (json.error === 6) throw new Error("no Last.fm user by that name");
+  if (json.error || !res.ok) throw new Error("couldn't reach Last.fm — try again");
+  const albums = json.topalbums?.album ?? [];
+  if (!albums.length) throw new Error("that profile has no listening history yet");
+  // most-played first — pre-check the top shelf, leave the long tail to them
+  return albums
+    .filter((a) => a.name)
+    .map((a, i) => ({
+      media_type: "music" as const,
+      title: a.name,
+      creator: a.artist?.name ?? "",
+      year: "",
+      rating: 0,
+      review: "",
+      prechecked: i < 24,
+    }));
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireUser(req);
   if (!auth) return NextResponse.json({ error: "not signed in" }, { status: 401 });
@@ -158,12 +199,17 @@ export async function GET(req: NextRequest) {
 
   const service = req.nextUrl.searchParams.get("service");
   const id = req.nextUrl.searchParams.get("id")?.trim();
-  if (!id || (service !== "goodreads" && service !== "letterboxd")) {
+  if (!id || (service !== "goodreads" && service !== "letterboxd" && service !== "lastfm")) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
   try {
-    const rows = service === "goodreads" ? await pullGoodreads(id) : await pullLetterboxd(id);
+    const rows =
+      service === "goodreads"
+        ? await pullGoodreads(id)
+        : service === "letterboxd"
+          ? await pullLetterboxd(id)
+          : await pullLastfm(id);
     return NextResponse.json({ rows });
   } catch (e) {
     return NextResponse.json(

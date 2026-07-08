@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Item, MediaType, SearchResult } from "@/lib/types";
 import { ADD_TYPES } from "@/lib/categories";
 import { supabase, authHeaders } from "@/lib/supabase";
-import { whoSaved } from "@/lib/social";
+import { friendlyError, whoSaved } from "@/lib/social";
 import { useLiveSearch } from "@/lib/use-live-search";
 
 type Draft = Omit<SearchResult, "source_id"> & {
@@ -181,7 +181,7 @@ export default function AddFavorite({
         })
         .select()
         .single();
-      if (insErr) throw new Error(insErr.message);
+      if (insErr) throw new Error(friendlyError(insErr.message));
       onAdded(data as Item);
     } catch (e) {
       setError(

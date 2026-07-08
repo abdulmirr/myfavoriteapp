@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
-import { socialHref } from "@/lib/social";
-import { ShareButton, SocialIcon, MoreButton } from "./Sidebar";
+import { socialHref, type TasteMatch } from "@/lib/social";
+import { ShareButton, SocialIcon, MoreButton, TasteNoteNudge, MATCH_TYPE } from "./Sidebar";
 
 /** Followers/following, one tab at a time — a centered modal off the stat row. */
 function PeopleModal({
@@ -113,10 +113,18 @@ export default function ProfileHeader({
   isFollowing,
   followBusy,
   onToggleFollow,
+  tasteCount,
+  tasteMatch,
+  socialError,
+  approved,
+  approveBusy,
+  onToggleApprove,
+  noteOpen,
+  onDismissNote,
+  onSendTasteNote,
   blocked,
   blockBusy,
   onToggleBlock,
-  sharedCount,
 }: {
   profile: Profile;
   itemCount: number;
@@ -127,11 +135,22 @@ export default function ProfileHeader({
   isFollowing: boolean;
   followBusy: boolean;
   onToggleFollow: () => void;
+  /** how many people approve this profile's taste — public, person-level */
+  tasteCount: number;
+  /** shared canonical favorites between viewer and this profile — the compatibility read */
+  tasteMatch: TasteMatch | null;
+  /** a failed follow/block explains itself, briefly */
+  socialError: string;
+  approved: boolean;
+  approveBusy: boolean;
+  onToggleApprove: () => void;
+  /** one-time nudge to attach a note right after approving */
+  noteOpen: boolean;
+  onDismissNote: () => void;
+  onSendTasteNote: (note: string) => Promise<void>;
   blocked: boolean;
   blockBusy: boolean;
   onToggleBlock: () => void;
-  /** favorites the signed-in viewer and this profile have in common — null hides the line */
-  sharedCount: number | null;
 }) {
   const [people, setPeople] = useState<"followers" | "following" | null>(null);
 
@@ -151,7 +170,7 @@ export default function ProfileHeader({
   };
 
   return (
-    <header className="mx-auto w-full max-w-4xl px-5 pb-2 pt-8 sm:px-8 sm:pt-12">
+    <header className="mx-auto w-full max-w-5xl px-5 pb-2 pt-8 sm:px-8 sm:pt-12">
       <div className="flex items-start gap-5 sm:gap-8">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 sm:h-24 sm:w-24">
           {profile.avatar_url ? (
@@ -186,17 +205,34 @@ export default function ProfileHeader({
               ) : (
                 canFollow &&
                 !blocked && (
-                  <button
-                    onClick={onToggleFollow}
-                    disabled={followBusy}
-                    className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
-                      isFollowing
-                        ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
-                        : "bg-zinc-900 text-white hover:bg-zinc-700"
-                    }`}
-                  >
-                    {isFollowing ? "Following ✓" : "Follow"}
-                  </button>
+                  <>
+                    <button
+                      onClick={onToggleFollow}
+                      disabled={followBusy}
+                      className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                        isFollowing
+                          ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
+                          : "bg-zinc-900 text-white hover:bg-zinc-700"
+                      }`}
+                    >
+                      {isFollowing ? "Following ✓" : "Follow"}
+                    </button>
+                    {/* approve taste — the quiet person-level gesture beside Follow */}
+                    <button
+                      onClick={onToggleApprove}
+                      disabled={approveBusy}
+                      aria-label={approved ? "Approved — tap to undo" : "Approve taste"}
+                      title={approved ? "Approved" : "Approve taste"}
+                      className={`flex h-7 shrink-0 cursor-pointer items-center transition-colors disabled:cursor-wait ${
+                        approved ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                      }`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill={approved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+                        <path d="M2.5 7.5h2v6h-2z" />
+                        <path d="M4.5 12.7c.4.5 1 .8 1.7.8h4.7c.6 0 1.1-.4 1.2-1l.9-4.2c.1-.7-.4-1.3-1.1-1.3H8.7l.6-2.6c.1-.6-.2-1.2-.8-1.4-.5-.2-1 0-1.2.5L4.5 7.5" />
+                      </svg>
+                    </button>
+                  </>
                 )
               )}
               <ShareButton username={profile.username} />
@@ -216,15 +252,53 @@ export default function ProfileHeader({
             {stat(`favorite${itemCount === 1 ? "" : "s"}`, itemCount)}
             {stat(`follower${followers.length === 1 ? "" : "s"}`, followers.length, () => setPeople("followers"))}
             {stat("following", following.length, () => setPeople("following"))}
-            {sharedCount !== null && sharedCount > 0 && (
-              <span className="whitespace-nowrap text-zinc-900">
-                ✦ you share {sharedCount} favorite{sharedCount === 1 ? "" : "s"}
+            {/* the person-level stat — same sentence the notification uses */}
+            {tasteCount > 0 && (
+              <span className="whitespace-nowrap">
+                <span className="font-medium text-zinc-900">{tasteCount}</span> approve
+                {tasteCount === 1 ? "s" : ""} {isOwner ? "your" : "their"} taste
               </span>
             )}
           </div>
 
+          {/* the compatibility read — shared canonical favorites */}
+          {(tasteMatch?.shared ?? 0) > 0 && (
+            <p className="text-xs text-zinc-900">
+              ✦ You share {tasteMatch!.shared} favorite{tasteMatch!.shared === 1 ? "" : "s"}
+              {tasteMatch!.top_type ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}` : ""}
+            </p>
+          )}
+          {socialError && (
+            <p className="save-appear text-[11px] text-red-500">{socialError}</p>
+          )}
+          {canFollow && !blocked && noteOpen && (
+            <div className="max-w-xs">
+              <TasteNoteNudge onSend={onSendTasteNote} onDismiss={onDismissNote} />
+            </div>
+          )}
+
           {profile.bio && (
             <p className="max-w-md text-xs leading-relaxed text-zinc-500">{profile.bio}</p>
+          )}
+
+          {/* the evergreen artifact — "what are your four favorites?" */}
+          {itemCount > 0 && (
+            <div className="flex flex-wrap gap-x-3">
+              <Link
+                href={`/${profile.username}/four`}
+                className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
+              >
+                Four favorites →
+              </Link>
+              {isOwner && (
+                <Link
+                  href="/recap"
+                  className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
+                >
+                  Recap →
+                </Link>
+              )}
+            </div>
           )}
 
           {(profile.socials?.length ?? 0) > 0 && (

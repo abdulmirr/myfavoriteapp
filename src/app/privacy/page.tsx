@@ -34,7 +34,7 @@ export default function PrivacyPage() {
         <LI>
           <Strong>Your library</Strong> — because that&rsquo;s the whole product. It&rsquo;s what
           we show back to you and to the people who visit your profile, and it&rsquo;s what your
-          weekly recommendations are drawn from.
+          daily recommendations are drawn from.
         </LI>
         <LI>
           <Strong>Technical logs</Strong> — to debug, secure the service, and understand whether
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
         We use a small number of trusted infrastructure providers to actually run the service.
         They process data on our behalf under their own privacy commitments. The list, in plain
         terms: a hosting provider, a database provider, an email provider, and an AI model
-        provider that turns your library into your weekly recommendations — it processes your
+        provider that turns your library into your daily recommendations — it processes your
         library to generate them and doesn&rsquo;t train on your data. When you search for
         something to add, your search term is sent to public media catalogs (TMDB, iTunes, Open
         Library) to find artwork and metadata. We will update this list as it changes.

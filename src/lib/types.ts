@@ -35,7 +35,27 @@ export interface Item {
   created_at: string;
 }
 
-/** One AI pick in the weekly "For You" set. */
+/**
+ * "For You" taste gate: a category's picks unlock at REC_MIN_PER_CATEGORY
+ * saved items of its types — below that the model is guessing, and the UI
+ * says so instead. Any one unlocked category unlocks the page, so a fresh
+ * onboarding graduate with 3 books sees book picks the next morning.
+ */
+export const REC_MIN_PER_CATEGORY = 3;
+
+export type RecCategoryKey = "music" | "books" | "filmtv" | "reading";
+
+export const REC_CATEGORIES: { key: RecCategoryKey; types: MediaType[] }[] = [
+  { key: "music", types: ["music"] },
+  { key: "books", types: ["book"] },
+  { key: "filmtv", types: ["movie", "tv"] },
+  { key: "reading", types: ["article", "other", "podcast"] },
+];
+
+/** how many favorites the viewer has in each category — drives the gates above */
+export type RecCounts = Record<RecCategoryKey, number>;
+
+/** One AI pick in the daily "For You" set. */
 export interface Recommendation {
   media_type: MediaType;
   title: string;

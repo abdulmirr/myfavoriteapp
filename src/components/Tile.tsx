@@ -118,18 +118,23 @@ function Tile({
   dimmed,
   hidden,
   eager,
+  lifted = false,
   onOpen,
 }: {
   item: Item;
   dimmed: boolean;
   hidden: boolean;
   eager?: boolean;
+  /** mid-drag: the picked-up tile reads lifted while the wall shuffles under it */
+  lifted?: boolean;
   onOpen: (item: Item, rect: DOMRect) => void;
 }) {
   return (
     <div
       data-item-id={item.id}
-      className={`transition-opacity duration-300 ${dimmed ? "opacity-25" : "opacity-100"}`}
+      className={`transition-[opacity,transform] duration-300 ${
+        dimmed ? "opacity-25" : "opacity-100"
+      } ${lifted ? "z-10 scale-[1.05] opacity-80" : ""}`}
       style={hidden ? { visibility: "hidden" } : undefined}
     >
       <button

@@ -8,14 +8,14 @@ import { supabase, authHeaders } from "./supabase";
  * through /api/search for artwork + canonical id.
  */
 
-export type ImportSource = "goodreads" | "letterboxd";
+export type ImportSource = "goodreads" | "letterboxd" | "lastfm" | "spotify";
 
 export type ImportRow = {
   media_type: MediaType;
   title: string;
   creator: string;
   year: string;
-  rating: number; // 0–5
+  rating: number; // 0–5 (0 for sources without star ratings)
   review: string;
   checked: boolean;
 };
@@ -124,11 +124,13 @@ export async function pullImportRows(
   );
   // a platform-level failure (gateway timeout page) isn't JSON — keep the
   // human-message contract instead of surfacing a raw SyntaxError
-  const json = (await res
-    .json()
-    .catch(() => ({}))) as { rows?: Omit<ImportRow, "checked">[]; error?: string };
+  const json = (await res.json().catch(() => ({}))) as {
+    rows?: (Omit<ImportRow, "checked"> & { prechecked?: boolean })[];
+    error?: string;
+  };
   if (!res.ok || !json.rows) throw new Error(json.error ?? "Couldn't pull that profile — try again.");
-  return json.rows.map((r) => ({ ...r, checked: r.rating >= 4 }));
+  // star sources pre-check 4★+; rank sources (Last.fm) pre-check their top shelf
+  return json.rows.map((r) => ({ ...r, checked: r.prechecked ?? r.rating >= 4 }));
 }
 
 /** Read an export file (Goodreads CSV or Letterboxd ZIP). Throws with a human message. */
@@ -154,7 +156,8 @@ export async function parseImportFile(
 
 async function enrich(row: ImportRow): Promise<Partial<SearchResult>> {
   try {
-    const type = row.media_type === "book" ? "book" : "movie";
+    const type =
+      row.media_type === "book" ? "book" : row.media_type === "music" ? "music" : "movie";
     const res = await fetch(
       `/api/search?type=${type}&q=${encodeURIComponent(`${row.title} ${row.creator}`.trim())}`,
       { headers: await authHeaders() }

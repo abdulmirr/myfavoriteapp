@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { CATEGORIES, type Category } from "@/lib/categories";
+import type { Collection } from "@/lib/social";
+import { CollectionsBlock } from "./Sidebar";
 
 export type SortMode = "default" | "latest" | "oldest";
 export type ViewMode = "grid" | "freeform";
@@ -64,6 +66,12 @@ export default function LibraryToolbar({
   category,
   onCategory,
   counts,
+  isOwner,
+  collections,
+  selectedCollection,
+  onSelectCollection,
+  onCreateCollection,
+  onDeleteCollection,
   sort,
   onSort,
   view,
@@ -76,6 +84,13 @@ export default function LibraryToolbar({
   category: Category;
   onCategory: (c: Category) => void;
   counts: Record<Category, number>;
+  isOwner: boolean;
+  /** curator shelves — tap to filter the grid, tap again to clear */
+  collections: Collection[];
+  selectedCollection: string | null;
+  onSelectCollection: (id: string | null) => void;
+  onCreateCollection: (name: string) => Promise<void>;
+  onDeleteCollection: (id: string) => Promise<void>;
   sort: SortMode;
   onSort: (s: SortMode) => void;
   view: ViewMode;
@@ -85,7 +100,7 @@ export default function LibraryToolbar({
 }) {
   return (
     <div className="sticky top-14 z-20 bg-white/85 backdrop-blur md:top-0">
-      <div className="mx-auto flex w-full max-w-4xl items-center gap-5 overflow-x-auto px-5 py-3 text-xs sm:px-8 [scrollbar-width:none]">
+      <div className="mx-auto flex w-full max-w-5xl items-center gap-5 overflow-x-auto px-5 py-3 text-xs sm:px-8 [scrollbar-width:none]">
         {/* search */}
         <div className="group flex w-32 shrink-0 items-center gap-1.5 border-b border-zinc-400 pb-1 focus-within:border-zinc-900 sm:w-40">
           <svg
@@ -155,6 +170,22 @@ export default function LibraryToolbar({
           </div>
         </div>
       </div>
+
+      {/* curator shelves — a second row, only when there's something to show */}
+      {(collections.length > 0 || isOwner) && (
+        <div className="mx-auto w-full max-w-5xl px-5 pb-2 sm:px-8">
+          <div className="[&_nav]:flex-row [&_nav]:flex-wrap [&_nav]:items-center [&_nav]:gap-x-4 [&_nav]:gap-y-1">
+            <CollectionsBlock
+              collections={collections}
+              selected={selectedCollection}
+              onSelect={onSelectCollection}
+              isOwner={isOwner}
+              onCreate={onCreateCollection}
+              onDelete={onDeleteCollection}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
