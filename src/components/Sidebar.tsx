@@ -62,7 +62,7 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
 }
 
 /** Share this page — native share sheet on touch, clipboard everywhere else. */
-function ShareButton({ username }: { username: string }) {
+export function ShareButton({ username }: { username: string }) {
   const [done, setDone] = useState(false);
 
   const share = async () => {
@@ -105,7 +105,7 @@ function ShareButton({ username }: { username: string }) {
 }
 
 /** Minimal line icons for known social platforms; falls back to a text label. */
-function SocialIcon({ label }: { label: string }) {
+export function SocialIcon({ label }: { label: string }) {
   const key = label.trim().toLowerCase();
   if (key === "x" || key.includes("twitter")) {
     return (
@@ -161,7 +161,7 @@ function SocialIcon({ label }: { label: string }) {
 }
 
 /** "⋯" — block/report tucked behind one quiet icon; the menu makes you choose. */
-function MoreButton({
+export function MoreButton({
   username,
   blocked,
   blockBusy,

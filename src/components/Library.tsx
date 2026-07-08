@@ -10,11 +10,14 @@ import {
   fetchFollowers,
   fetchFollowing,
   hasBlocked,
+  itemKeys,
   unblockProfile,
   PROFILE_COLS,
 } from "@/lib/social";
 import { playUi, preloadSfx } from "@/lib/sfx";
-import Sidebar, { type SortMode, type ViewMode } from "./Sidebar";
+import AppShell from "./AppShell";
+import ProfileHeader from "./ProfileHeader";
+import LibraryToolbar, { type SortMode, type ViewMode } from "./LibraryToolbar";
 import Grid from "./Grid";
 import Freeform from "./Freeform";
 import DetailOverlay from "./DetailOverlay";
@@ -44,12 +47,10 @@ export default function Library({
   const [cols, setCols] = useState(5); // default density: 5 per row until the slider is touched
   const [open, setOpen] = useState<{ item: Item; rect: DOMRect } | null>(null);
   const [gridDimmed, setGridDimmed] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [followers, setFollowers] = useState<Profile[]>([]);
   const [following, setFollowing] = useState<Profile[]>([]);
   const [viewerFollowing, setViewerFollowing] = useState<Profile[]>([]);
-  const [peopleOpen, setPeopleOpen] = useState(false);
   const [viewerProfile, setViewerProfile] = useState<Profile | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
   const refetchedClaim = useRef(false);
@@ -131,6 +132,32 @@ export default function Library({
 
   const isFollowing = !!viewerProfile && followers.some((f) => f.id === viewerProfile.id);
   const canFollow = !!viewerProfile && viewerProfile.id !== profile.id;
+
+  // taste match — the viewer's library keys, intersected with this profile's
+  // items via the same canonical/title matching the feed uses for "Favorited"
+  const [viewerKeys, setViewerKeys] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!viewerProfile || viewerProfile.id === profile.id) {
+      setViewerKeys(null);
+      return;
+    }
+    supabase()
+      .from("items")
+      .select("media_type, title, canonical_id")
+      .eq("profile_id", viewerProfile.id)
+      .then(({ data }) =>
+        setViewerKeys(
+          new Set(
+            ((data ?? []) as Pick<Item, "media_type" | "title" | "canonical_id">[]).flatMap(itemKeys)
+          )
+        )
+      );
+  }, [viewerProfile, profile.id]);
+
+  const sharedCount = useMemo(() => {
+    if (!viewerKeys) return null;
+    return items.filter((i) => itemKeys(i).some((k) => viewerKeys.has(k))).length;
+  }, [items, viewerKeys]);
 
   // blocking — severs follows both ways; unblock restores nothing
   const [blocked, setBlocked] = useState(false);
@@ -383,20 +410,15 @@ export default function Library({
   const freeform = view === "freeform";
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <AppShell viewer={viewerProfile} signedIn={!!userId} collapsed={freeform}>
       <IntroOverlay images={introImages} />
 
-      <Sidebar
+      <ProfileHeader
         profile={profile}
-        itemsCount={items.length}
-        counts={counts}
-        followerCount={followers.length}
-        followingCount={following.length}
-        onPeople={() => setPeopleOpen(true)}
-        peopleOpen={peopleOpen}
-        onClosePeople={() => setPeopleOpen(false)}
+        itemCount={items.length}
         followers={followers}
         following={following}
+        isOwner={isOwner}
         canFollow={canFollow}
         isFollowing={isFollowing}
         followBusy={followBusy}
@@ -404,93 +426,28 @@ export default function Library({
         blocked={blocked}
         blockBusy={blockBusy}
         onToggleBlock={toggleBlock}
-        isOwner={isOwner}
-        signedIn={!!userId}
+        sharedCount={sharedCount}
+      />
+
+      <LibraryToolbar
         search={search}
         onSearch={setSearch}
         category={category}
         onCategory={setCategory}
+        counts={counts}
         sort={sort}
         onSort={setSort}
         view={view}
-        onView={(v) => {
-          setView(v);
-          setMobileMenu(false);
-        }}
+        onView={setView}
         cols={cols}
         onCols={changeCols}
-        collapsed={freeform}
-        mobileOpen={mobileMenu}
-        onCloseMobile={() => setMobileMenu(false)}
       />
 
-      <div
-        className={`relative flex flex-1 flex-col ${
-          freeform ? "overflow-hidden" : "overflow-y-auto overscroll-contain"
-        }`}
-      >
-        {/* mobile header — slides up and out in freeform */}
-        <header
-          className={`z-30 flex min-h-[4.5rem] shrink-0 items-center justify-between bg-white/85 px-5 py-4 backdrop-blur transition-[margin,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:hidden ${
-            freeform ? "pointer-events-none relative -mt-[4.5rem] opacity-0" : "sticky top-0"
-          }`}
-        >
-          {/* the mark goes home, same as the sidebar's */}
-          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-          </Link>
-          <button
-            aria-label="Menu"
-            onClick={() => setMobileMenu((m) => !m)}
-            className="-mr-3 flex h-10 w-10 cursor-pointer items-center justify-center"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" stroke="#18181b" strokeWidth="1.5" strokeLinecap="round">
-              <line
-                x1="1" y1="8" x2="15" y2="8"
-                style={{
-                  transform: mobileMenu ? "rotate(45deg)" : "translateY(-4px)",
-                  transformOrigin: "center",
-                  transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              />
-              <line
-                x1="1" y1="8" x2="15" y2="8"
-                style={{ opacity: mobileMenu ? 0 : 1, transition: "opacity 200ms ease" }}
-              />
-              <line
-                x1="1" y1="8" x2="15" y2="8"
-                style={{
-                  transform: mobileMenu ? "rotate(-45deg)" : "translateY(4px)",
-                  transformOrigin: "center",
-                  transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              />
-            </svg>
-          </button>
-        </header>
-
-        {/* freeform is full-screen — this floating button is the only way back */}
-        <button
-          onClick={() => setView("grid")}
-          aria-hidden={!freeform}
-          tabIndex={freeform ? 0 : -1}
-          className={`absolute left-5 top-5 z-30 flex cursor-pointer items-center gap-2 bg-white/85 px-3 py-2 text-xs font-medium text-zinc-900 backdrop-blur transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] hover:opacity-60 md:left-8 md:top-8 ${
-            freeform ? "translate-x-0 opacity-100 delay-150" : "pointer-events-none -translate-x-3 opacity-0 delay-0"
-          }`}
-        >
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
-            <rect x="1.5" y="1.5" width="5" height="5" />
-            <rect x="9.5" y="1.5" width="5" height="5" />
-            <rect x="1.5" y="9.5" width="5" height="5" />
-            <rect x="9.5" y="9.5" width="5" height="5" />
-          </svg>
-          Grid
-        </button>
-
+      {!freeform && (
         <main
-          className={`relative transition-opacity duration-700 ease-out ${
+          className={`relative mx-auto w-full max-w-5xl px-5 py-6 transition-opacity duration-700 ease-out sm:px-8 sm:py-8 ${
             mounted && !gridDimmed ? "opacity-100" : "opacity-0"
-          } ${view === "freeform" ? "min-h-0 flex-1" : "px-5 py-6 sm:px-8 sm:py-8"}`}
+          }`}
         >
           {items.length === 0 ? (
             <p className="pt-16 text-center text-xs text-zinc-400">
@@ -509,7 +466,7 @@ export default function Library({
             </p>
           ) : visible.length === 0 ? (
             <p className="pt-16 text-center text-xs text-zinc-400">No matches.</p>
-          ) : view === "grid" ? (
+          ) : (
             <>
               {showHero && (
                 <div className="mb-10">
@@ -533,27 +490,48 @@ export default function Library({
                 onOpen={openItem}
               />
             </>
-          ) : (
-            <>
-              {isOwner && (
-                <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
-                  <Hint id="freeform" className="pointer-events-auto">
-                    Drag your favorites anywhere — the layout is yours.
-                  </Hint>
-                </div>
-              )}
-              <Freeform
-                items={visible}
-                matches={inCategory}
-                hiddenId={open?.item.id ?? null}
-                tileW={freeformTileW}
-                onOpen={openItem}
-                onMove={moveItem}
-              />
-            </>
           )}
         </main>
-      </div>
+      )}
+
+      {/* freeform is a full-screen room laid over the page — the shell's
+          chrome has already slid away (collapsed) */}
+      {freeform && (
+        <div
+          className={`fixed inset-0 z-10 overflow-hidden bg-white transition-opacity duration-700 ease-out ${
+            mounted && !gridDimmed ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {isOwner && (
+            <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
+              <Hint id="freeform" className="pointer-events-auto">
+                Drag your favorites anywhere — the layout is yours.
+              </Hint>
+            </div>
+          )}
+          <Freeform
+            items={visible}
+            matches={inCategory}
+            hiddenId={open?.item.id ?? null}
+            tileW={freeformTileW}
+            onOpen={openItem}
+            onMove={moveItem}
+          />
+          {/* the floating button is the only way back */}
+          <button
+            onClick={() => setView("grid")}
+            className="absolute left-5 top-5 z-30 flex cursor-pointer items-center gap-2 bg-white/85 px-3 py-2 text-xs font-medium text-zinc-900 backdrop-blur transition-opacity hover:opacity-60 md:left-8 md:top-8"
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <rect x="1.5" y="1.5" width="5" height="5" />
+              <rect x="9.5" y="1.5" width="5" height="5" />
+              <rect x="1.5" y="9.5" width="5" height="5" />
+              <rect x="9.5" y="9.5" width="5" height="5" />
+            </svg>
+            Grid
+          </button>
+        </div>
+      )}
 
       {open && (
         <DetailOverlay
@@ -575,6 +553,6 @@ export default function Library({
           shareUrl={`/${profile.username}?item=${open.item.id}`}
         />
       )}
-    </div>
+    </AppShell>
   );
 }

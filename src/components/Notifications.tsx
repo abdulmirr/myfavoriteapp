@@ -30,10 +30,13 @@ function timeAgo(iso: string): string {
 export default function Notifications({
   viewer,
   align = "right",
+  label,
 }: {
   viewer: Profile;
   /** which edge the dropdown hangs from — "left" for the library sidebar */
   align?: "left" | "right";
+  /** optional text beside the bell — the nav rail renders it as a labelled row */
+  label?: string;
 }) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -93,17 +96,20 @@ export default function Notifications({
       <button
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={toggle}
-        className={`relative flex h-7 w-7 cursor-pointer items-center justify-center transition-colors ${
-          open ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-        }`}
+        className={`cursor-pointer transition-colors ${
+          label ? "flex w-full items-center gap-3" : "relative flex h-7 w-7 items-center justify-center"
+        } ${open ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"}`}
       >
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <path d="M8 2a4 4 0 0 0-4 4v2.5L2.5 11v.5h11V11L12 8.5V6a4 4 0 0 0-4-4z" />
-          <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
-        </svg>
-        {unread > 0 && (
-          <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-zinc-900" />
-        )}
+        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <path d="M8 2a4 4 0 0 0-4 4v2.5L2.5 11v.5h11V11L12 8.5V6a4 4 0 0 0-4-4z" />
+            <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
+          </svg>
+          {unread > 0 && (
+            <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-zinc-900" />
+          )}
+        </span>
+        {label && <span className="text-[13px]">{label}</span>}
       </button>
 
       {open && (
