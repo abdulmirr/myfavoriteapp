@@ -195,19 +195,39 @@ export default function Notifications({
 
       {open && (
         <div
-          className={`save-appear absolute top-full z-40 mt-2 w-[21.5rem] max-w-[calc(100vw-2rem)] border border-zinc-200 bg-white shadow-2xl ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
+          className={
+            label
+              ? // rail mode: a full-height panel sliding out beside the collapsed
+                // rail (IG-style). fixed escapes the rail's overflow-hidden;
+                // z-[60] keeps a hover-expanded rail underneath the open panel.
+                "save-appear fixed inset-y-0 left-16 z-[60] flex w-[22rem] max-w-[calc(100vw-4rem)] flex-col border-r border-zinc-200 bg-white shadow-2xl"
+              : `save-appear absolute top-full z-40 mt-2 w-[21.5rem] max-w-[calc(100vw-2rem)] border border-zinc-200 bg-white shadow-2xl ${
+                  align === "right" ? "right-0" : "left-0"
+                }`
+          }
         >
-          <div className="flex items-baseline justify-between border-b border-zinc-100 px-4 py-2.5">
+          <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2.5">
             <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
               Notifications
             </span>
-            {fresh.size > 0 && list !== null && (
-              <span className="text-[10px] text-[#e53935]">
-                {fresh.size} new
-              </span>
-            )}
+            <span className="flex items-center gap-3">
+              {fresh.size > 0 && list !== null && (
+                <span className="text-[10px] text-[#e53935]">
+                  {fresh.size} new
+                </span>
+              )}
+              {label && (
+                <button
+                  onClick={() => setOpen(false)}
+                  aria-label="Close"
+                  className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+                    <path d="M2 2l8 8M10 2L2 10" />
+                  </svg>
+                </button>
+              )}
+            </span>
           </div>
 
           {list === null ? (
@@ -228,7 +248,7 @@ export default function Notifications({
               <p className="mt-1 text-[11px] text-zinc-400">Share your page to be found.</p>
             </div>
           ) : (
-            <ul className="max-h-96 overflow-y-auto">
+            <ul className={label ? "flex-1 overflow-y-auto" : "max-h-96 overflow-y-auto"}>
               {list.map((n, i) => {
                 const who = n.actor?.display_name || (n.actor ? `@${n.actor.username}` : "Someone");
                 return (
