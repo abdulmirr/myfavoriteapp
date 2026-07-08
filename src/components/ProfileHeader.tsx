@@ -258,27 +258,13 @@ export default function ProfileHeader({
             </div>
           </div>
 
-          {/* stats + connection — the relationship strip */}
+          {/* stats — the relationship strip */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
             {stat(`favorite${itemCount === 1 ? "" : "s"}`, itemCount)}
             {stat(`follower${followers.length === 1 ? "" : "s"}`, followers.length, () => setPeople("followers"))}
             {stat("following", following.length, () => setPeople("following"))}
-            {/* the person-level stat — same sentence the notification uses */}
-            {tasteCount > 0 && (
-              <span className="whitespace-nowrap">
-                <span className="font-medium text-zinc-900">{tasteCount}</span> approve
-                {tasteCount === 1 ? "s" : ""} {isOwner ? "your" : "their"} taste
-              </span>
-            )}
           </div>
 
-          {/* the compatibility read — shared canonical favorites */}
-          {(tasteMatch?.shared ?? 0) > 0 && (
-            <p className="text-xs text-zinc-900">
-              ✦ You share {tasteMatch!.shared} favorite{tasteMatch!.shared === 1 ? "" : "s"}
-              {tasteMatch!.top_type ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}` : ""}
-            </p>
-          )}
           {socialError && (
             <p className="save-appear text-[11px] text-red-500">{socialError}</p>
           )}
@@ -290,26 +276,6 @@ export default function ProfileHeader({
 
           {profile.bio && (
             <p className="max-w-md text-xs leading-relaxed text-zinc-500">{profile.bio}</p>
-          )}
-
-          {/* the evergreen artifact — "what are your four favorites?" */}
-          {itemCount > 0 && (
-            <div className="flex flex-wrap gap-x-3">
-              <Link
-                href={`/${profile.username}/four`}
-                className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                Four favorites →
-              </Link>
-              {isOwner && (
-                <Link
-                  href="/recap"
-                  className="w-fit text-xs text-zinc-400 transition-colors hover:text-zinc-900"
-                >
-                  Recap →
-                </Link>
-              )}
-            </div>
           )}
 
           {(profile.socials?.length ?? 0) > 0 && (
@@ -327,6 +293,23 @@ export default function ProfileHeader({
                 </a>
               ))}
             </div>
+          )}
+
+          {/* taste stats — one quiet footnote, same sentence the notifications use */}
+          {(tasteCount > 0 || (tasteMatch?.shared ?? 0) > 0) && (
+            <p className="text-[11px] text-zinc-400">
+              {tasteCount > 0 &&
+                `${tasteCount} approve${tasteCount === 1 ? "s" : ""} ${isOwner ? "your" : "their"} taste`}
+              {tasteCount > 0 && (tasteMatch?.shared ?? 0) > 0 && " · "}
+              {(tasteMatch?.shared ?? 0) > 0 && (
+                <span className="text-zinc-900">
+                  {tasteMatch!.shared} shared favorite{tasteMatch!.shared === 1 ? "" : "s"}
+                  {tasteMatch!.top_type
+                    ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}`
+                    : ""}
+                </span>
+              )}
+            </p>
           )}
         </div>
       </div>

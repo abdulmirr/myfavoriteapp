@@ -20,7 +20,6 @@ import {
   fetchRadar,
   fetchSuggestions,
   itemKeys,
-  promoteRadar,
   removeFromRadar,
   type RadarItem,
 } from "@/lib/social";
@@ -274,7 +273,11 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
         if (!token) throw new Error("no session");
         const res = await fetch("/api/recommendations", {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            // lets the server roll the daily set over at OUR midnight, not UTC's
+            "x-tz-offset": String(new Date().getTimezoneOffset()),
+          },
         });
         if (res.status === 202) {
           // another request is generating today's picks — check back a few
@@ -347,22 +350,14 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
       {state === "gated" && (
         <div className="flex flex-col gap-2 pt-2">
           <p className="text-xs leading-relaxed text-zinc-400">
-            {total === 0
-              ? "Nothing to go on yet — picks are drawn from what you save. "
-              : `Picks land as soon as any section reaches ${REC_MIN_PER_CATEGORY} favorites — that's enough to read your taste there. `}
-            Add {total === 0 ? "a few" : "more"} favorites{" "}
-            {viewer ? (
-              <Link href={`/${viewer.username}`} className="text-zinc-900 hover:text-zinc-400">
-                in your library
-              </Link>
-            ) : (
-              "in your library"
-            )}
-            , or{" "}
-            <Link href="/profile" className="text-zinc-900 hover:text-zinc-400">
-              import from Goodreads or Letterboxd
+            <Link
+              href={viewer ? `/${viewer.username}` : "/add"}
+              className="text-zinc-900 hover:text-zinc-400"
+            >
+              Favorite more
             </Link>{" "}
-            to bring your history with you.
+            to get recommendations — picks unlock once any section reaches{" "}
+            {REC_MIN_PER_CATEGORY} favorites.
           </p>
           {total > 0 && (
             <p className="text-[11px] tracking-wide text-zinc-400">
@@ -407,9 +402,6 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
           {REC_SECTIONS.map((section) => {
             const picks = recs.filter((r) => section.types.includes(r.media_type));
             const have = counts[section.key] ?? 0;
-            // no picks despite enough favorites means the model skipped an
-            // asked-for category — hide the section rather than nudge wrongly
-            if (!picks.length && have >= REC_MIN_PER_CATEGORY) return null;
             const need = REC_MIN_PER_CATEGORY - have;
             return (
               <div key={section.label}>
@@ -434,10 +426,12 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs leading-relaxed text-zinc-400">
-                    {have === 0
-                      ? `Favorite ${REC_MIN_PER_CATEGORY} ${section.many} and picks land here — that's enough to read your taste.`
-                      : `${have} of ${REC_MIN_PER_CATEGORY} saved — favorite ${need} more ${need === 1 ? section.one : section.many} to unlock picks here.`}
+                  <p className="text-xs text-zinc-400">
+                    {need > 0
+                      ? // empty because they haven't favorited enough here yet
+                        `Favorite ${need}${have > 0 ? " more" : ""} ${need === 1 ? section.one : section.many} to get picks here.`
+                      : // unlocked after today's set was drawn — tomorrow pays it off
+                        "Fresh picks land here tomorrow."}
                   </p>
                 )}
               </div>
@@ -446,7 +440,7 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
         </div>
       )}
 
-      {viewer && state !== "loading" && <RadarStrip viewer={viewer} />}
+      {viewer && state !== "loading" && <SavedStrip viewer={viewer} />}
       {viewer && (state === "ready" || state === "budget" || state === "done") && (
         <Rediscover viewer={viewer} />
       )}
@@ -455,13 +449,34 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
 }
 
 
+/** A saved row shaped as a library Item so TileMedia frames it like the library. */
+function radarToItem(r: RadarItem): Item {
+  return {
+    id: r.id,
+    profile_id: "",
+    media_type: r.media_type,
+    title: r.title,
+    creator: r.creator,
+    description: "",
+    image_url: r.image_url,
+    view_url: r.view_url,
+    metadata: (r.metadata ?? {}) as Item["metadata"],
+    canonical_id: r.canonical_id,
+    pinned_order: null,
+    sort_order: 0,
+    pos_x: null,
+    pos_y: null,
+    pos_rot: null,
+    created_at: r.created_at,
+  };
+}
+
 /**
- * On your radar — the private shelf of things spotted but not yet claimed.
- * Deliberately unnumbered and quiet: a radar is curiosity, never a backlog.
- * Each row resolves one of two ways: loved it (promote to favorite, keeping
- * the via-credit) or let it go.
+ * Your saved items — the private shelf of things spotted but not yet claimed.
+ * Deliberately unnumbered and quiet: it's curiosity, never a backlog. The only
+ * action is letting one go; favoriting happens where the piece itself lives.
  */
-function RadarStrip({ viewer }: { viewer: Profile }) {
+function SavedStrip({ viewer }: { viewer: Profile }) {
   const [rows, setRows] = useState<RadarItem[] | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
@@ -493,49 +508,36 @@ function RadarStrip({ viewer }: { viewer: Profile }) {
   };
 
   return (
-    <div className="mt-14">
-      <h2 className="mb-5 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-        On your radar
-      </h2>
-      <div className="flex flex-col gap-4">
-        {rows.slice(0, 8).map((r) => (
-          <div key={r.id} className="flex items-center gap-4">
-            <div className="h-12 w-12 shrink-0 overflow-hidden bg-zinc-100">
-              {r.image_url && (
-                <img
-                  src={thumbCover(r.image_url)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              )}
+    <div className="mt-16">
+      {/* a section of its own — same voice as the "For you" header */}
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+          Your saved items
+        </h2>
+        <p className="text-xs text-zinc-400">Bookmarked to check out later.</p>
+      </div>
+      {/* three tight rows per line; each cover keeps its object-on-a-wall
+          frame (vinyl sleeve, fore-edge pages, snap frame) — never a bare square */}
+      <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-3">
+        {rows.slice(0, 9).map((r) => (
+          <div key={r.id} className="flex min-w-0 items-center gap-3">
+            <div className="w-14 shrink-0">
+              <TileMedia item={radarToItem(r)} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+              <p className="truncate text-xs leading-snug tracking-[-0.01em] text-zinc-900">
                 {r.title}
               </p>
-              {r.creator && <p className="truncate text-xs text-zinc-400">{r.creator}</p>}
+              {r.creator && <p className="truncate text-[11px] text-zinc-400">{r.creator}</p>}
             </div>
-            <button
-              onClick={() =>
-                act(r, async () => {
-                  await promoteRadar(r, viewer.id);
-                  playSfx(r.media_type);
-                })
-              }
-              disabled={busy.has(r.id)}
-              title="Loved it — move to your favorites"
-              className="shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
-            >
-              favorite
-            </button>
             <button
               onClick={() => act(r, () => removeFromRadar(r.id))}
               disabled={busy.has(r.id)}
-              aria-label="Remove from radar"
+              aria-label="Remove from saved"
               title="Let it go"
               className="shrink-0 cursor-pointer text-zinc-300 transition-colors hover:text-zinc-900 disabled:cursor-wait"
             >
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
                 <path d="M2 2l8 8M10 2l-8 8" />
               </svg>
             </button>
@@ -729,36 +731,52 @@ function FlipCard({
             flipped ? "text-zinc-900 hover:text-zinc-400" : "text-zinc-400 hover:text-zinc-900"
           }`}
         >
-          {flipped ? "← back" : "why?"}
+          {flipped ? "back" : "why?"}
         </button>
         {viewer &&
           (saved === "done" ? (
             <span className="save-appear text-[10px] uppercase tracking-[0.08em] text-zinc-900">
               favorited ✓
             </span>
+          ) : saved === "error" ? (
+            <button
+              onClick={favorite}
+              className="cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900"
+            >
+              retry?
+            </button>
           ) : (
             <button
               onClick={favorite}
               disabled={saved === "saving"}
-              className="cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+              aria-label="Favorite"
+              title="Favorite — add to your library"
+              className={`cursor-pointer transition-opacity disabled:cursor-wait ${
+                saved === "saving" ? "opacity-40" : "opacity-80 hover:opacity-100"
+              }`}
             >
-              {saved === "saving" ? "saving…" : saved === "error" ? "retry?" : "favorite"}
+              {/* the star mark — the same gesture it is everywhere else */}
+              <img src="/favicon.svg" alt="" className="h-3.5 w-auto" />
             </button>
           ))}
         {viewer && saved !== "done" && (
           <>
             {onRadar === "done" ? (
               <span className="save-appear text-[10px] uppercase tracking-[0.08em] text-zinc-900">
-                on radar ✓
+                saved ✓
               </span>
             ) : (
               <button
                 onClick={radar}
                 disabled={onRadar === "saving"}
-                title="Put on your radar (private)"
-                className="cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+                aria-label="Save for later"
+                title="Save for later (private)"
+                className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
               >
-                radar
+                {/* bookmark */}
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 2.5h8v11.5l-4-3.2-4 3.2z" />
+                </svg>
               </button>
             )}
             <button

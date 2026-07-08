@@ -8,10 +8,6 @@ import { supabase } from "@/lib/supabase";
 import {
   approveTaste,
   blockProfile,
-  createCollection,
-  deleteCollection,
-  fetchCollectionItemIds,
-  fetchCollections,
   fetchFollowers,
   fetchFollowing,
   fetchTasteMatch,
@@ -23,7 +19,6 @@ import {
   unapproveTaste,
   unblockProfile,
   PROFILE_COLS,
-  type Collection,
   type TasteMatch,
 } from "@/lib/social";
 import { playUi, preloadSfx } from "@/lib/sfx";
@@ -243,74 +238,6 @@ export default function Library({
     };
   }, [viewerProfile, profile.id]);
 
-  // curator shelves: public on the page, ?c=<id> makes a filtered view shareable
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
-  const [collectionItemIds, setCollectionItemIds] = useState<Set<string> | null>(null);
-
-  const collectionsLoaded = useRef(false);
-  const loadCollections = useCallback(() => {
-    fetchCollections(profile.id).then((c) => {
-      collectionsLoaded.current = true;
-      setCollections(c);
-    });
-  }, [profile.id]);
-
-  useEffect(() => {
-    loadCollections();
-    // a shared collection link opens pre-filtered (deferred a tick — the
-    // repo's hook rules ban synchronous setState inside effects)
-    const c = new URLSearchParams(window.location.search).get("c");
-    if (!c) return;
-    let stale = false;
-    queueMicrotask(() => {
-      if (!stale) setSelectedCollection(c);
-    });
-    return () => {
-      stale = true;
-    };
-  }, [loadCollections]);
-
-  useEffect(() => {
-    let stale = false;
-    if (!selectedCollection) {
-      queueMicrotask(() => {
-        if (!stale) setCollectionItemIds(null);
-      });
-    } else {
-      fetchCollectionItemIds(selectedCollection).then((ids) => {
-        if (!stale) setCollectionItemIds(ids);
-      });
-    }
-    return () => {
-      stale = true;
-    };
-  }, [selectedCollection]);
-
-  const selectCollection = useCallback((id: string | null) => {
-    setSelectedCollection(id);
-    // keep the URL shareable without adding history entries per tap
-    const url = new URL(window.location.href);
-    if (id) url.searchParams.set("c", id);
-    else url.searchParams.delete("c");
-    window.history.replaceState(null, "", url.pathname + url.search);
-  }, []);
-
-  // a stale/foreign ?c= (deleted shelf, mistyped link, other profile's id)
-  // would filter the wall to a dead "No matches." — drop it once collections
-  // have actually loaded and the id isn't among them
-  useEffect(() => {
-    if (!selectedCollection || !collectionsLoaded.current) return;
-    if (collections.some((c) => c.id === selectedCollection)) return;
-    let stale = false;
-    queueMicrotask(() => {
-      if (!stale) selectCollection(null);
-    });
-    return () => {
-      stale = true;
-    };
-  }, [collections, selectedCollection, selectCollection]);
-
   // shared favorites between the viewer and this library — the compatibility read
   const [tasteMatch, setTasteMatch] = useState<TasteMatch | null>(null);
   useEffect(() => {
@@ -415,17 +342,15 @@ export default function Library({
       const miss = list.filter((i) => !inCategory(i));
       list = [...hit, ...miss];
     }
-    // a collection is a subset, not an ordering — non-members leave entirely
-    if (collectionItemIds) list = list.filter((i) => collectionItemIds.has(i.id));
     return list;
-  }, [items, sort, search, category, inCategory, collectionItemIds]);
+  }, [items, sort, search, category, inCategory]);
 
   const openItem = useCallback(
     (item: Item, rect: DOMRect, pushUrl = true) => {
       setOpen({ item, rect });
       setGridDimmed(true); // NS: the grid stays on screen, slowly fading under the morph
       if (pushUrl) {
-        // merge, don't rebuild — a selected collection's ?c= must survive
+        // merge, don't rebuild — other query params must survive
         const url = new URL(window.location.href);
         url.searchParams.set("item", item.id);
         window.history.pushState({ favItem: item.id }, "", url.pathname + url.search);
@@ -444,7 +369,7 @@ export default function Library({
   const clearItemUrl = useCallback(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.has("item")) {
-      url.searchParams.delete("item"); // keep ?c= and friends intact
+      url.searchParams.delete("item"); // keep other params intact
       window.history.replaceState({}, "", url.pathname + url.search);
     }
   }, []);
@@ -547,7 +472,7 @@ export default function Library({
   );
   const showHero =
     view === "grid" && pinned.length > 0 && !search.trim() && category === "All" &&
-    sort === "default" && !selectedCollection;
+    sort === "default";
   const gridItems = useMemo(
     () => (showHero ? visible.filter((i) => !i.pinned_order) : visible),
     [showHero, visible]
@@ -567,7 +492,7 @@ export default function Library({
   }, []);
   const canReorder =
     isOwner && finePointer && sort === "default" && !search.trim() &&
-    category === "All" && !selectedCollection;
+    category === "All";
 
   const commitReorder = useCallback(
     (ids: string[]) => {
@@ -633,19 +558,6 @@ export default function Library({
         category={category}
         onCategory={setCategory}
         counts={counts}
-        isOwner={isOwner}
-        collections={collections}
-        selectedCollection={selectedCollection}
-        onSelectCollection={selectCollection}
-        onCreateCollection={async (name) => {
-          const c = await createCollection(profile.id, name);
-          setCollections((prev) => [...prev, c]);
-        }}
-        onDeleteCollection={async (id) => {
-          await deleteCollection(id);
-          setCollections((prev) => prev.filter((c) => c.id !== id));
-          if (selectedCollection === id) selectCollection(null);
-        }}
         sort={sort}
         onSort={setSort}
         view={view}
@@ -768,7 +680,6 @@ export default function Library({
           onDelete={deleteItem}
           onTogglePin={isOwner ? togglePin : undefined}
           shareUrl={`/${profile.username}?item=${open.item.id}`}
-          onCollectionsChanged={loadCollections}
         />
       )}
     </AppShell>

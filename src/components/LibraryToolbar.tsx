@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { CATEGORIES, type Category } from "@/lib/categories";
-import type { Collection } from "@/lib/social";
 
 export type SortMode = "default" | "latest" | "oldest";
 export type ViewMode = "grid" | "freeform";
@@ -55,191 +54,8 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
 }
 
 /**
- * Curator shelves behind one quiet control: closed, it's "Collections ▾" (or
- * the active shelf as a chip with a clearing ✕); open, it's a small menu of
- * shelves with counts, owner delete (confirm on second tap), and inline create.
- */
-function CollectionsMenu({
-  collections,
-  selected,
-  onSelect,
-  isOwner,
-  onCreate,
-  onDelete,
-}: {
-  collections: Collection[];
-  selected: string | null;
-  onSelect: (id: string | null) => void;
-  isOwner: boolean;
-  onCreate: (name: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  // click-away or escape closes
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const create = async () => {
-    const trimmed = name.trim();
-    if (!trimmed || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await onCreate(trimmed);
-      setName("");
-      setAdding(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't create that.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const active = selected ? collections.find((c) => c.id === selected) : null;
-
-  return (
-    <div ref={rootRef} className="relative shrink-0">
-      {active ? (
-        // the active shelf reads as a chip: name reopens the menu, ✕ clears
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <button
-            onClick={() => setOpen((o) => !o)}
-            className="cursor-pointer font-medium text-zinc-900"
-          >
-            {active.name}
-          </button>
-          <button
-            onClick={() => onSelect(null)}
-            aria-label="Clear collection filter"
-            className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900"
-          >
-            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
-              <path d="M2 2l8 8M10 2L2 10" />
-            </svg>
-          </button>
-        </span>
-      ) : (
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className={`cursor-pointer whitespace-nowrap transition-colors ${
-            open ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-          }`}
-        >
-          Collections ▾
-        </button>
-      )}
-
-      {open && (
-        <div className="save-appear absolute left-0 top-full z-30 mt-2 flex w-52 flex-col border border-zinc-200 bg-white py-1.5 shadow-xl">
-          {collections.length === 0 && !isOwner && (
-            <p className="px-3 py-1.5 text-xs text-zinc-400">No collections yet.</p>
-          )}
-          {collections.map((c) => (
-            <div key={c.id} className="group flex items-center gap-2 px-3">
-              <button
-                onClick={() => {
-                  onSelect(selected === c.id ? null : c.id);
-                  setOpen(false);
-                }}
-                className={`min-w-0 flex-1 cursor-pointer truncate py-1.5 text-left text-xs transition-colors ${
-                  selected === c.id ? "font-medium text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
-                }`}
-              >
-                {c.name}
-                <span className="ml-1.5 text-zinc-300">{c.count}</span>
-              </button>
-              {isOwner &&
-                (confirmDelete === c.id ? (
-                  <button
-                    onClick={async () => {
-                      setConfirmDelete(null);
-                      try {
-                        await onDelete(c.id);
-                      } catch {
-                        /* the row stays; another tap retries */
-                      }
-                    }}
-                    className="shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-red-500 hover:text-red-600"
-                  >
-                    delete?
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setConfirmDelete(c.id);
-                      setTimeout(() => setConfirmDelete((v) => (v === c.id ? null : v)), 2500);
-                    }}
-                    aria-label={`Delete collection ${c.name}`}
-                    className="shrink-0 cursor-pointer text-zinc-300 opacity-0 transition-opacity hover:text-zinc-900 group-hover:opacity-100"
-                  >
-                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-                      <path d="M2 2l8 8M10 2l-8 8" />
-                    </svg>
-                  </button>
-                ))}
-            </div>
-          ))}
-          {isOwner &&
-            (adding ? (
-              <div className="flex flex-col gap-1 px-3 pb-1 pt-1.5">
-                <input
-                  value={name}
-                  autoFocus
-                  maxLength={40}
-                  placeholder="e.g. 2026 canon"
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") create();
-                    if (e.key === "Escape") {
-                      setAdding(false);
-                      setName("");
-                      setError("");
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!name.trim()) setAdding(false);
-                  }}
-                  className="w-full border-b border-zinc-200 bg-transparent pb-0.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
-                />
-                {error && <span className="text-[11px] text-red-500">{error}</span>}
-              </div>
-            ) : (
-              <button
-                onClick={() => setAdding(true)}
-                className={`cursor-pointer px-3 py-1.5 text-left text-xs text-zinc-400 transition-colors hover:text-zinc-900 ${
-                  collections.length ? "border-t border-zinc-100" : ""
-                }`}
-              >
-                + New collection
-              </button>
-            ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
  * The library's controls in one sticky row under the profile header: search,
- * category buckets, collections, sort, grid ⇄ freeform, tile size. These
+ * category buckets, sort, grid ⇄ freeform, tile size. These
  * belong to the content they act on — app navigation lives in the shell's rail.
  */
 export default function LibraryToolbar({
@@ -248,12 +64,6 @@ export default function LibraryToolbar({
   category,
   onCategory,
   counts,
-  isOwner,
-  collections,
-  selectedCollection,
-  onSelectCollection,
-  onCreateCollection,
-  onDeleteCollection,
   sort,
   onSort,
   view,
@@ -266,13 +76,6 @@ export default function LibraryToolbar({
   category: Category;
   onCategory: (c: Category) => void;
   counts: Record<Category, number>;
-  isOwner: boolean;
-  /** curator shelves — tap to filter the grid, tap again to clear */
-  collections: Collection[];
-  selectedCollection: string | null;
-  onSelectCollection: (id: string | null) => void;
-  onCreateCollection: (name: string) => Promise<void>;
-  onDeleteCollection: (id: string) => Promise<void>;
   sort: SortMode;
   onSort: (s: SortMode) => void;
   view: ViewMode;
@@ -319,18 +122,6 @@ export default function LibraryToolbar({
             </button>
           ))}
         </nav>
-
-        {/* curator shelves, folded behind one control */}
-        {(collections.length > 0 || isOwner) && (
-          <CollectionsMenu
-            collections={collections}
-            selected={selectedCollection}
-            onSelect={onSelectCollection}
-            isOwner={isOwner}
-            onCreate={onCreateCollection}
-            onDelete={onDeleteCollection}
-          />
-        )}
 
         <div className="ml-auto flex shrink-0 items-center gap-4">
           {/* one word that cycles: my order → latest → oldest → my order */}

@@ -78,6 +78,19 @@ export default function AppShell({
             </span>
             Explore
           </Link>
+          {viewer && (
+            <Link href="/friends" className={rowClass(pathname.startsWith("/friends"))}>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                  <circle cx="6" cy="5.5" r="2.3" />
+                  <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
+                  <circle cx="11.6" cy="6.2" r="1.8" />
+                  <path d="M12.3 9.8c1.6.4 2.7 1.7 2.7 3.5" />
+                </svg>
+              </span>
+              Friends
+            </Link>
+          )}
           {signedIn && (
             <Link href="/add" className={rowClass(pathname.startsWith("/add"))}>
               <span className="flex h-7 w-7 shrink-0 items-center justify-center">
@@ -136,7 +149,23 @@ export default function AppShell({
           <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
         </Link>
         {viewer ? (
-          <Notifications viewer={viewer} />
+          <span className="flex items-center gap-3">
+            <Link
+              href="/friends"
+              aria-label="Friends"
+              className={`flex h-7 w-7 items-center justify-center transition-colors ${
+                pathname.startsWith("/friends") ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+              }`}
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden>
+                <circle cx="6" cy="5.5" r="2.3" />
+                <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
+                <circle cx="11.6" cy="6.2" r="1.8" />
+                <path d="M12.3 9.8c1.6.4 2.7 1.7 2.7 3.5" />
+              </svg>
+            </Link>
+            <Notifications viewer={viewer} />
+          </span>
         ) : (
           !signedIn && (
             <Link
