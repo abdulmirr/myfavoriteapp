@@ -173,9 +173,12 @@ export default function ProfileHeader({
   };
 
   return (
-    <header className="mx-auto w-full max-w-5xl px-5 pb-2 pt-8 sm:px-8 sm:pt-12">
-      <div className="flex items-start gap-5 sm:gap-8">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 sm:h-24 sm:w-24">
+    // a vertical placard: avatar, name, actions, stats, bio — the identity
+    // column beside the wall on desktop, the top of the stack on phones.
+    // width/centering belong to Library's layout wrapper, not here.
+    <header className="w-full">
+      <div className="flex flex-col items-start gap-2.5">
+        <div className="mb-1 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 sm:h-24 sm:w-24">
           {profile.avatar_url ? (
             <img
               src={profile.avatar_url}
@@ -189,15 +192,13 @@ export default function ProfileHeader({
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold leading-tight tracking-tight text-zinc-900">
-                {profile.display_name}
-              </h1>
-              <p className="truncate text-xs text-zinc-400">@{profile.username}</p>
-            </div>
-            <div className="flex items-center gap-3">
+          <div className="min-w-0 max-w-full">
+            <h1 className="truncate text-lg font-semibold leading-tight tracking-tight text-zinc-900">
+              {profile.display_name}
+            </h1>
+            <p className="truncate text-xs text-zinc-400">@{profile.username}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
               {isOwner ? (
                 <Link
                   href="/profile"
@@ -255,7 +256,6 @@ export default function ProfileHeader({
                   onToggleBlock={onToggleBlock}
                 />
               )}
-            </div>
           </div>
 
           {/* stats — the relationship strip */}
@@ -311,7 +311,6 @@ export default function ProfileHeader({
               )}
             </p>
           )}
-        </div>
       </div>
 
       {people && (

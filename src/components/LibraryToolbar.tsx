@@ -54,12 +54,12 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
 }
 
 /**
- * The library's controls in one sticky row under the profile header, grouped
- * by what they do: Filter (search + category buckets) on the left narrows
- * what you see; View (sort · grid ⇄ freeform · tile size) on the right changes
- * how you see it. On phones the clusters stack into two lines instead of
- * scrolling sideways. These belong to the content they act on — app
- * navigation lives in the shell's top bar.
+ * The library's controls, grouped by what they do: Filter (search + category
+ * buckets) narrows what you see; View (sort · grid ⇄ freeform · tile size)
+ * changes how you see it. On desktop they stack vertically inside the
+ * profile's placard column; on phones they become a sticky wrapped row above
+ * the grid. These belong to the content they act on — app navigation lives
+ * in the shell's top bar.
  */
 export default function LibraryToolbar({
   search,
@@ -87,11 +87,14 @@ export default function LibraryToolbar({
   onCols: (c: number) => void;
 }) {
   return (
-    <div className="sticky top-14 z-20 bg-white/85 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-10 gap-y-2.5 px-5 py-3 text-xs sm:px-8">
+    // sticky full-bleed bar on phones (the negative margins let the blur reach
+    // the screen edges past the layout wrapper's padding); a plain block in
+    // the placard column on md+, where the column itself is sticky
+    <div className="sticky top-14 z-20 -mx-5 bg-white/85 px-5 backdrop-blur sm:-mx-8 sm:px-8 md:static md:z-auto md:mx-0 md:mt-6 md:border-t md:border-zinc-100 md:bg-transparent md:px-0 md:pt-5 md:backdrop-blur-none">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2.5 py-3 text-xs md:flex-col md:items-stretch md:gap-5 md:py-0">
         {/* filter — what you're looking at */}
-        <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2.5">
-          <div className="group flex w-32 shrink-0 items-center gap-1.5 border-b border-zinc-400 pb-1 focus-within:border-zinc-900 sm:w-40">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2.5 md:flex-col md:items-stretch md:gap-3.5">
+          <div className="group flex w-32 shrink-0 items-center gap-1.5 border-b border-zinc-400 pb-1 focus-within:border-zinc-900 sm:w-40 md:w-full">
             <svg
               className="h-3 w-3 shrink-0 text-zinc-400 group-focus-within:text-zinc-900"
               viewBox="0 0 12 12"
@@ -110,8 +113,8 @@ export default function LibraryToolbar({
             />
           </div>
 
-          {/* categories with live counts */}
-          <nav className="flex items-center gap-4">
+          {/* categories with live counts — a row on phones, a list on desktop */}
+          <nav className="flex items-center gap-4 md:flex-col md:items-start md:gap-2">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
@@ -129,7 +132,7 @@ export default function LibraryToolbar({
         </div>
 
         {/* view — how you're looking at it */}
-        <div className="ml-auto flex shrink-0 items-center gap-4">
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-4 md:ml-0 md:border-t md:border-zinc-100 md:pt-4">
           {/* one word that cycles: my order → latest → oldest → my order */}
           <button
             onClick={() =>
@@ -156,7 +159,7 @@ export default function LibraryToolbar({
           ))}
           {/* on phones the grid is locked to two columns (globals.css) — the
               slider only shows where it still does something */}
-          <div className={view === "grid" ? "hidden md:block" : undefined}>
+          <div className="hidden md:block">
             <SizeSlider cols={cols} onCols={onCols} />
           </div>
         </div>

@@ -51,7 +51,10 @@ export default function Library({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortMode>("default");
   const [view, setView] = useState<ViewMode>("grid");
-  const [cols, setCols] = useState(5); // default density: 5 per row until the slider is touched
+  const [cols, setCols] = useState(5); // default density until the slider is touched
+  // a touched slider (now or on a past visit) is authoritative; until then the
+  // density follows the width of the column the grid actually lives in
+  const [colsTouched, setColsTouched] = useState(false);
   const [open, setOpen] = useState<{ item: Item; rect: DOMRect } | null>(null);
   const [gridDimmed, setGridDimmed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -65,7 +68,10 @@ export default function Library({
   useEffect(() => {
     setMounted(true);
     const stored = Number(localStorage.getItem("fav:cols"));
-    if (stored >= 3 && stored <= 20) setCols(stored);
+    if (stored >= 3 && stored <= 20) {
+      setCols(stored);
+      setColsTouched(true);
+    }
     const v = localStorage.getItem("fav:view"); // default view, set in /profile settings
     if (v === "grid" || v === "freeform") setView(v);
   }, []);
@@ -75,6 +81,7 @@ export default function Library({
   const colsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const changeCols = useCallback((c: number) => {
     setCols(c);
+    setColsTouched(true);
     if (colsSaveTimer.current) clearTimeout(colsSaveTimer.current);
     colsSaveTimer.current = setTimeout(() => localStorage.setItem("fav:cols", String(c)), 200);
   }, []);
@@ -530,107 +537,130 @@ export default function Library({
     return () => setCollapsed(false);
   }, [freeform, setCollapsed]);
 
+  // the gallery shares the row with the placard on desktop, so the default
+  // density is measured against the column's own width, not the viewport
+  const stageRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (colsTouched || freeform) return;
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      setCols(w > 1040 ? 6 : w > 800 ? 5 : w > 560 ? 4 : 3);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [colsTouched, freeform]);
+
   return (
     <>
       <IntroOverlay images={introImages} />
 
-      <ProfileHeader
-        profile={profile}
-        itemCount={items.length}
-        followers={followers}
-        following={following}
-        isOwner={isOwner}
-        signedIn={!!userId}
-        canFollow={canFollow}
-        isFollowing={isFollowing}
-        followBusy={followBusy}
-        onToggleFollow={toggleFollow}
-        tasteCount={tasteCount}
-        tasteMatch={tasteMatch}
-        socialError={socialError}
-        approved={approved}
-        approveBusy={approveBusy}
-        onToggleApprove={toggleApprove}
-        noteOpen={notePromptFor === profile.id}
-        onDismissNote={() => setNotePromptFor(null)}
-        onSendTasteNote={sendTasteNote}
-        blocked={blocked}
-        blockBusy={blockBusy}
-        onToggleBlock={toggleBlock}
-      />
+      {/* the placard + gallery row: identity and controls in a left column on
+          desktop (the way a gallery labels a wall), one vertical stack on
+          phones. the freeform overlay escapes this flow entirely. */}
+      <div className="mx-auto flex w-full max-w-6xl flex-col px-5 pt-6 sm:px-8 sm:pt-10 md:flex-row md:items-start md:gap-12">
+        <div className="md:sticky md:top-14 md:max-h-[calc(100dvh-3.5rem)] md:w-60 md:shrink-0 md:overflow-y-auto md:pb-10">
+          <ProfileHeader
+            profile={profile}
+            itemCount={items.length}
+            followers={followers}
+            following={following}
+            isOwner={isOwner}
+            signedIn={!!userId}
+            canFollow={canFollow}
+            isFollowing={isFollowing}
+            followBusy={followBusy}
+            onToggleFollow={toggleFollow}
+            tasteCount={tasteCount}
+            tasteMatch={tasteMatch}
+            socialError={socialError}
+            approved={approved}
+            approveBusy={approveBusy}
+            onToggleApprove={toggleApprove}
+            noteOpen={notePromptFor === profile.id}
+            onDismissNote={() => setNotePromptFor(null)}
+            onSendTasteNote={sendTasteNote}
+            blocked={blocked}
+            blockBusy={blockBusy}
+            onToggleBlock={toggleBlock}
+          />
 
-      {!freeform && (
-      <LibraryToolbar
-        search={search}
-        onSearch={setSearch}
-        category={category}
-        onCategory={setCategory}
-        counts={counts}
-        sort={sort}
-        onSort={setSort}
-        view={view}
-        onView={setView}
-        cols={cols}
-        onCols={changeCols}
-      />
-      )}
-
-      {!freeform && (
-        <main
-          className={`relative mx-auto w-full max-w-5xl px-5 py-6 transition-opacity duration-700 ease-out sm:px-8 sm:py-8 ${
-            mounted && !gridDimmed ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          {items.length === 0 ? (
-            <p className="pt-16 text-center text-xs text-zinc-400">
-              Nothing here yet
-              {isOwner ? (
-                <>
-                  {" — "}
-                  <Link href="/add" className="text-zinc-900 underline underline-offset-2 transition-colors hover:text-zinc-500">
-                    add your first favorite
-                  </Link>
-                  .
-                </>
-              ) : (
-                "."
-              )}
-            </p>
-          ) : visible.length === 0 ? (
-            <p className="pt-16 text-center text-xs text-zinc-400">No matches.</p>
-          ) : (
-            <>
-              {showHero && (
-                <div className="mb-10">
-                  <p className="mb-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    Top four
-                  </p>
-                  <Grid
-                    items={pinned}
-                    matches={inCategory}
-                    hiddenId={open?.item.id ?? null}
-                    cols={4}
-                    onOpen={openItem}
-                  />
-                </div>
-              )}
-              <Grid
-                items={gridItems}
-                matches={inCategory}
-                hiddenId={open?.item.id ?? null}
-                cols={cols}
-                onOpen={openItem}
-                onReorderCommit={canReorder ? commitReorder : undefined}
-              />
-              {canReorder && gridItems.length > 1 && (
-                <Hint id="reorder" className="mt-8">
-                  Drag a favorite to rearrange your wall — this order is yours.
-                </Hint>
-              )}
-            </>
+          {!freeform && (
+            <LibraryToolbar
+              search={search}
+              onSearch={setSearch}
+              category={category}
+              onCategory={setCategory}
+              counts={counts}
+              sort={sort}
+              onSort={setSort}
+              view={view}
+              onView={setView}
+              cols={cols}
+              onCols={changeCols}
+            />
           )}
-        </main>
-      )}
+        </div>
+
+        {!freeform && (
+          <main
+            ref={stageRef}
+            className={`relative min-w-0 flex-1 pb-16 pt-4 transition-opacity duration-700 ease-out md:pt-1 ${
+              mounted && !gridDimmed ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            {items.length === 0 ? (
+              <p className="pt-16 text-center text-xs text-zinc-400">
+                Nothing here yet
+                {isOwner ? (
+                  <>
+                    {" — "}
+                    <Link href="/add" className="text-zinc-900 underline underline-offset-2 transition-colors hover:text-zinc-500">
+                      add your first favorite
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  "."
+                )}
+              </p>
+            ) : visible.length === 0 ? (
+              <p className="pt-16 text-center text-xs text-zinc-400">No matches.</p>
+            ) : (
+              <>
+                {showHero && (
+                  <div className="mb-10">
+                    <p className="mb-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+                      Top four
+                    </p>
+                    <Grid
+                      items={pinned}
+                      matches={inCategory}
+                      hiddenId={open?.item.id ?? null}
+                      cols={4}
+                      onOpen={openItem}
+                    />
+                  </div>
+                )}
+                <Grid
+                  items={gridItems}
+                  matches={inCategory}
+                  hiddenId={open?.item.id ?? null}
+                  cols={cols}
+                  onOpen={openItem}
+                  onReorderCommit={canReorder ? commitReorder : undefined}
+                />
+                {canReorder && gridItems.length > 1 && (
+                  <Hint id="reorder" className="mt-8">
+                    Drag a favorite to rearrange your wall — this order is yours.
+                  </Hint>
+                )}
+              </>
+            )}
+          </main>
+        )}
+      </div>
 
       {/* freeform is a full-screen room laid over the page — the shell's
           chrome has already slid away (collapsed) */}
