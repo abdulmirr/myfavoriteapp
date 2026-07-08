@@ -238,19 +238,13 @@ export async function setItemInCollection(
 
 /* ── friends directory ─────────────────────────────────────────────────────── */
 
-/** A friend's showcase strip: their pinned Top 4, or latest saves when nothing is pinned. */
-export interface Showcase {
-  items: Item[];
-  pinned: boolean;
-}
-
 /**
- * Showcase strips for a set of profiles, keyed by profile id. Pins are the
- * person's chosen identity row, so any pin wins outright; only pinless
- * libraries fall back to recency.
+ * Four-item showcase strips for a set of profiles, keyed by profile id.
+ * Pins lead (they're the person's chosen identity row), latest saves fill the
+ * remaining slots — every card gets a full strip, no caption needed.
  */
-export async function fetchShowcases(profileIds: string[]): Promise<Map<string, Showcase>> {
-  const map = new Map<string, Showcase>();
+export async function fetchShowcases(profileIds: string[]): Promise<Map<string, Item[]>> {
+  const map = new Map<string, Item[]>();
   if (!profileIds.length) return map;
   const db = supabase();
   const { data: pins } = await db
@@ -261,23 +255,23 @@ export async function fetchShowcases(profileIds: string[]): Promise<Map<string, 
     .order("pinned_order", { ascending: true });
   for (const row of (pins ?? []) as Item[]) {
     const cur = map.get(row.profile_id);
-    if (cur) cur.items.push(row);
-    else map.set(row.profile_id, { items: [row], pinned: true });
+    if (cur) cur.push(row);
+    else map.set(row.profile_id, [row]);
   }
-  const bare = profileIds.filter((id) => !map.has(id));
-  if (bare.length) {
+  const short = profileIds.filter((id) => (map.get(id)?.length ?? 0) < 4);
+  if (short.length) {
     // newest-first slice big enough that one prolific library can't starve the
     // rest at present scale; grouped into per-person strips client-side
     const { data: recent } = await db
       .from("items")
       .select("*")
-      .in("profile_id", bare)
+      .in("profile_id", short)
       .order("created_at", { ascending: false })
       .limit(400);
     for (const row of (recent ?? []) as Item[]) {
-      const cur = map.get(row.profile_id);
-      if (!cur) map.set(row.profile_id, { items: [row], pinned: false });
-      else if (cur.items.length < 4) cur.items.push(row);
+      let cur = map.get(row.profile_id);
+      if (!cur) map.set(row.profile_id, (cur = []));
+      if (cur.length < 4 && !cur.some((i) => i.id === row.id)) cur.push(row);
     }
   }
   return map;
@@ -288,6 +282,8 @@ export interface DiscoverProfile extends Profile {
   count: number;
   /** distinct canonical favorites you both have */
   shared: number;
+  /** their newest saves — the card's cover strip */
+  preview: Item[];
 }
 
 /**
@@ -324,18 +320,24 @@ export async function fetchDiscover(
   const candidates = ((profs ?? []) as Profile[]).filter((p) => !skip.has(p.id));
   if (!candidates.length) return [];
   const myCanon = new Set((mine ?? []).map((r) => r.canonical_id as string));
+  // newest-first so the same scan yields each person's preview strip
   const { data: theirs } = await db
     .from("items")
-    .select("profile_id, canonical_id")
+    .select("id, profile_id, media_type, title, creator, image_url, canonical_id")
     .in(
       "profile_id",
       candidates.map((p) => p.id)
     )
+    .order("created_at", { ascending: false })
     .limit(8000);
   const counts = new Map<string, number>();
   const overlap = new Map<string, Set<string>>();
+  const previews = new Map<string, Item[]>();
   for (const r of theirs ?? []) {
     counts.set(r.profile_id, (counts.get(r.profile_id) ?? 0) + 1);
+    let pv = previews.get(r.profile_id);
+    if (!pv) previews.set(r.profile_id, (pv = []));
+    if (pv.length < 4) pv.push(r as unknown as Item);
     if (r.canonical_id && myCanon.has(r.canonical_id)) {
       let s = overlap.get(r.profile_id);
       if (!s) overlap.set(r.profile_id, (s = new Set()));
@@ -348,6 +350,7 @@ export async function fetchDiscover(
       ...p,
       count: counts.get(p.id) ?? 0,
       shared: overlap.get(p.id)?.size ?? 0,
+      preview: previews.get(p.id) ?? [],
     }))
     .sort((a, b) => b.shared - a.shared || b.count - a.count)
     .slice(0, 30);

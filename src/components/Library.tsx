@@ -10,7 +10,6 @@ import {
   blockProfile,
   fetchFollowers,
   fetchFollowing,
-  fetchTasteMatch,
   friendlyError,
   hasApprovedTaste,
   hasBlocked,
@@ -19,7 +18,6 @@ import {
   unapproveTaste,
   unblockProfile,
   PROFILE_COLS,
-  type TasteMatch,
 } from "@/lib/social";
 import { playUi, preloadSfx } from "@/lib/sfx";
 import Sidebar, { type SortMode, type ViewMode } from "./Sidebar";
@@ -233,24 +231,6 @@ export default function Library({
     hasApprovedTaste(viewerProfile.id, profile.id).then((v) => {
       if (!stale) setApproved(v);
     });
-    return () => {
-      stale = true;
-    };
-  }, [viewerProfile, profile.id]);
-
-  // shared favorites between the viewer and this library — the compatibility read
-  const [tasteMatch, setTasteMatch] = useState<TasteMatch | null>(null);
-  useEffect(() => {
-    let stale = false;
-    if (!viewerProfile || viewerProfile.id === profile.id) {
-      queueMicrotask(() => {
-        if (!stale) setTasteMatch(null);
-      });
-    } else {
-      fetchTasteMatch(viewerProfile.id, profile.id).then((m) => {
-        if (!stale) setTasteMatch(m);
-      });
-    }
     return () => {
       stale = true;
     };
@@ -542,7 +522,6 @@ export default function Library({
         followBusy={followBusy}
         onToggleFollow={toggleFollow}
         tasteCount={tasteCount}
-        tasteMatch={tasteMatch}
         socialError={socialError}
         approved={approved}
         approveBusy={approveBusy}

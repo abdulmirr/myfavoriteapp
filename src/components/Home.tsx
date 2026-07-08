@@ -30,13 +30,14 @@ import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
 import dynamic from "next/dynamic";
 import DetailOverlay from "./DetailOverlay";
+import FriendsView from "./Friends";
 import Notifications from "./Notifications";
 import { TileMedia } from "./Tile";
 
 // visitors-only (and framer-motion-heavy) — keep it out of the signed-in bundle
 const Landing = dynamic(() => import("./Landing"));
 
-type Tab = "foryou" | "following";
+type Tab = "foryou" | "friends" | "following";
 
 // stable identity so DetailOverlay's data effect doesn't re-fire every parent
 // render while `friends` is still loading (null)
@@ -254,7 +255,8 @@ export default function Home() {
             {(
               [
                 { key: "foryou", label: "For You" },
-                { key: "following", label: "Following" },
+                { key: "friends", label: "Friends" },
+                { key: "following", label: "Activity" },
               ] as { key: Tab; label: string }[]
             ).map((t) => (
               <button
@@ -270,22 +272,6 @@ export default function Home() {
           </nav>
 
           <div className="flex items-center justify-end gap-3">
-            {viewer && (
-              <Link
-                href="/friends"
-                title="Friends"
-                aria-label="Friends"
-                className="flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                {/* two people — drawn to match the bell's weight */}
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden>
-                  <circle cx="6" cy="5.5" r="2.3" />
-                  <path d="M2 13.5c0-2.5 1.8-4.1 4-4.1s4 1.6 4 4.1" />
-                  <circle cx="11.6" cy="6.2" r="1.8" />
-                  <path d="M12.3 9.8c1.6.4 2.7 1.7 2.7 3.5" />
-                </svg>
-              </Link>
-            )}
             {viewer && <Notifications viewer={viewer} />}
             <Link
               href="/profile"
@@ -306,13 +292,15 @@ export default function Home() {
       <main className="mx-auto max-w-4xl px-5 pb-24 pt-6 sm:px-8">
         {tab === "foryou" ? (
           <ForYou viewer={viewer} />
-        ) : (
+        ) : tab === "following" ? (
           <FollowingFeed
             viewer={viewer}
             friends={friends}
             onOpen={(item, rect, favoriting) => setQuick({ item, rect, favoriting })}
             overlaySaved={overlaySaved}
           />
+        ) : (
+          viewer && <FriendsView viewer={viewer} />
         )}
       </main>
 
@@ -1099,46 +1087,7 @@ function FlipCard({
   );
 }
 
-/* ── Following: latest saves from people you follow ────────────────────────── */
-
-/**
- * Hands the invite text to Messages on Apple devices (sms: opens
- * Messages.app on macOS too), the share sheet on other phones, and
- * falls back to copying the message elsewhere.
- */
-function InviteFriendButton() {
-  const [copied, setCopied] = useState(false);
-
-  const invite = async () => {
-    const text = `been putting all my favorite movies + music into this app. make yours, i'll show you mine ${window.location.origin}`;
-    if (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)) {
-      window.location.href = `sms:&body=${encodeURIComponent(text)}`;
-      return;
-    }
-    try {
-      if (navigator.share && matchMedia("(pointer: coarse)").matches) {
-        await navigator.share({ text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* user dismissed the share sheet */
-    }
-  };
-
-  return (
-    <button
-      onClick={invite}
-      className={`shrink-0 cursor-pointer text-xs transition-colors ${
-        copied ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-      }`}
-    >
-      {copied ? "Invite copied ✓" : "+ Invite a friend"}
-    </button>
-  );
-}
+/* ── Activity: latest saves from people you follow ─────────────────────────── */
 
 /** consecutive same-day saves by the same friend, rendered as one visit */
 type FeedGroup = { profile: Profile; day: string; items: FeedItem[] };
@@ -1267,14 +1216,11 @@ function FollowingFeed({
 
   return (
     <section>
-      <div className="mb-10 flex items-end justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-            Following
-          </h1>
-          <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
-        </div>
-        <InviteFriendButton />
+      <div className="mb-10 flex flex-col gap-1.5">
+        <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+          Activity
+        </h1>
+        <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
       </div>
 
       {error ? (
