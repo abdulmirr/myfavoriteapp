@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { isReservedUsername } from "@/lib/reserved-usernames";
 import type { Profile } from "@/lib/types";
