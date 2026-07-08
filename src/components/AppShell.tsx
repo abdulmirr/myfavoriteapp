@@ -71,8 +71,11 @@ export default function AppShell({
   return (
     <div className="min-h-dvh md:flex">
       {/* ── desktop rail: icons at rest, labels on hover ─────────────────── */}
+      {/* z-50 must sit on the aside itself: sticky elements form their own
+          stacking context, so an inner z-index can never beat the page's
+          sticky headers or transformed tiles from inside it */}
       <aside
-        className={`relative hidden shrink-0 transition-[margin,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:sticky md:top-0 md:block md:h-screen md:w-16 ${
+        className={`relative z-50 hidden shrink-0 transition-[margin,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:sticky md:top-0 md:block md:h-screen md:w-16 ${
           collapsed ? "md:invisible md:-ml-16" : "md:visible md:ml-0"
         }`}
       >
