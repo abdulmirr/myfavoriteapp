@@ -7,11 +7,15 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://myfavoriteapp.com";
-  const { data: profiles } = await supabaseServer()
-    .from("profiles")
-    .select("username, created_at")
-    .not("user_id", "is", null)
-    .limit(5000);
+  // an env-less build (Vercel preview without Preview env vars) still gets
+  // the static entries rather than dying in prerender
+  const { data: profiles } = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? await supabaseServer()
+        .from("profiles")
+        .select("username, created_at")
+        .not("user_id", "is", null)
+        .limit(5000)
+    : { data: [] };
 
   return [
     { url: base, changeFrequency: "daily", priority: 1 },
