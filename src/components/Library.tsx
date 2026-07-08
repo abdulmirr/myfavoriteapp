@@ -608,6 +608,7 @@ export default function Library({
         followers={followers}
         following={following}
         isOwner={isOwner}
+        signedIn={!!userId}
         canFollow={canFollow}
         isFollowing={isFollowing}
         followBusy={followBusy}

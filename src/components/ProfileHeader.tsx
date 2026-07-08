@@ -109,6 +109,7 @@ export default function ProfileHeader({
   followers,
   following,
   isOwner,
+  signedIn,
   canFollow,
   isFollowing,
   followBusy,
@@ -131,6 +132,8 @@ export default function ProfileHeader({
   followers: Profile[];
   following: Profile[];
   isOwner: boolean;
+  /** signed-out visitors still see Follow — it routes to sign-in (look-but-don't-touch) */
+  signedIn: boolean;
   canFollow: boolean;
   isFollowing: boolean;
   followBusy: boolean;
@@ -201,6 +204,14 @@ export default function ProfileHeader({
                   className="flex h-7 shrink-0 items-center whitespace-nowrap border border-zinc-200 px-3 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-900"
                 >
                   Edit profile
+                </Link>
+              ) : !signedIn ? (
+                // look-but-don't-touch: the button exists, tapping it routes to sign-in
+                <Link
+                  href={`/signin?next=${encodeURIComponent(`/${profile.username}`)}`}
+                  className="flex h-7 shrink-0 items-center whitespace-nowrap bg-zinc-900 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
+                >
+                  Follow
                 </Link>
               ) : (
                 canFollow &&
