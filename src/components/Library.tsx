@@ -552,6 +552,7 @@ export default function Library({
         onToggleBlock={toggleBlock}
       />
 
+      {!freeform && (
       <LibraryToolbar
         search={search}
         onSearch={setSearch}
@@ -565,6 +566,7 @@ export default function Library({
         cols={cols}
         onCols={changeCols}
       />
+      )}
 
       {!freeform && (
         <main
@@ -627,7 +629,7 @@ export default function Library({
           chrome has already slid away (collapsed) */}
       {freeform && (
         <div
-          className={`fixed inset-0 z-10 overflow-hidden bg-white transition-opacity duration-700 ease-out ${
+          className={`fixed inset-0 z-30 overflow-hidden bg-white transition-opacity duration-700 ease-out ${
             mounted && !gridDimmed ? "opacity-100" : "opacity-0"
           }`}
         >

@@ -185,7 +185,12 @@ export default function Notifications({
             </span>
           )}
         </span>
-        {label && <span className="text-[13px]">{label}</span>}
+        {label && (
+          // rides along hidden in the icons-only rail; the rail's hover reveals it
+          <span className="whitespace-nowrap text-[13px] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {label}
+          </span>
+        )}
       </button>
 
       {open && (
