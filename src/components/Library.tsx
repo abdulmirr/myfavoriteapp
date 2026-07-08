@@ -10,10 +10,10 @@ import {
   blockProfile,
   fetchFollowers,
   fetchFollowing,
-  fetchTasteMatch,
   friendlyError,
   hasApprovedTaste,
   hasBlocked,
+  fetchTasteMatch,
   setTasteNote,
   tasteApprovalCount,
   unapproveTaste,
@@ -238,19 +238,18 @@ export default function Library({
     };
   }, [viewerProfile, profile.id]);
 
-  // shared favorites between the viewer and this library — the compatibility read
+  // shared canonical favorites between the viewer and this library — the
+  // compatibility read shown in the header ("you share N favorites")
   const [tasteMatch, setTasteMatch] = useState<TasteMatch | null>(null);
   useEffect(() => {
-    let stale = false;
     if (!viewerProfile || viewerProfile.id === profile.id) {
-      queueMicrotask(() => {
-        if (!stale) setTasteMatch(null);
-      });
-    } else {
-      fetchTasteMatch(viewerProfile.id, profile.id).then((m) => {
-        if (!stale) setTasteMatch(m);
-      });
+      setTasteMatch(null);
+      return;
     }
+    let stale = false;
+    fetchTasteMatch(viewerProfile.id, profile.id).then((m) => {
+      if (!stale) setTasteMatch(m);
+    });
     return () => {
       stale = true;
     };

@@ -28,6 +28,7 @@ import dynamic from "next/dynamic";
 import AppShell from "./AppShell";
 import DetailOverlay from "./DetailOverlay";
 import { ExploreFeed } from "./Explore";
+import FriendsView from "./Friends";
 import Suggestions from "./Suggestions";
 import SearchBar, { resultToItem, TYPE_TAG, type FeedItem } from "./SearchBar";
 import { TileMedia } from "./Tile";
@@ -35,7 +36,7 @@ import { TileMedia } from "./Tile";
 // visitors-only (and framer-motion-heavy) — keep it out of the signed-in bundle
 const Landing = dynamic(() => import("./Landing"));
 
-type Tab = "foryou" | "following" | "explore";
+type Tab = "foryou" | "friends" | "following" | "explore";
 
 // stable identity so DetailOverlay's data effect doesn't re-fire every parent
 // render while `friends` is still loading (null)
@@ -200,7 +201,8 @@ export default function Home() {
               {(
                 [
                   { key: "foryou", label: "For You" },
-                  { key: "following", label: "Following" },
+                  { key: "friends", label: "Friends" },
+                  { key: "following", label: "Activity" },
                   { key: "explore", label: "Explore" },
                 ] as { key: Tab; label: string }[]
               ).map((t) => (
@@ -224,6 +226,8 @@ export default function Home() {
         <main className="mx-auto max-w-4xl px-5 pb-24 pt-6 sm:px-8">
           {tab === "foryou" ? (
             <ForYou viewer={viewer} />
+          ) : tab === "friends" ? (
+            viewer && <FriendsView viewer={viewer} />
           ) : tab === "following" ? (
             <FollowingFeed
               viewer={viewer}
@@ -476,7 +480,7 @@ function radarToItem(r: RadarItem): Item {
 }
 
 /**
- * Your saved items — the private shelf of things spotted but not yet claimed.
+ * Your saved stuff — the private shelf of things spotted but not yet claimed.
  * Deliberately unnumbered and quiet: it's curiosity, never a backlog. The only
  * action is letting one go; favoriting happens where the piece itself lives.
  */
@@ -514,12 +518,13 @@ function SavedStrip({ viewer }: { viewer: Profile }) {
   return (
     <div className="mt-16">
       {/* a section of its own — same voice as the "For you" header */}
-      <div className="mb-8 flex flex-col gap-1.5">
-        <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-          Your saved items
-        </h2>
-        <p className="text-xs text-zinc-400">Bookmarked to check out later.</p>
-      </div>
+      <h2 className="mb-8 flex items-center gap-2 text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+        {/* bookmark — the same mark as the save action */}
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
+          <path d="M4 2.5h8v11.5l-4-3.2-4 3.2z" />
+        </svg>
+        Your saved stuff
+      </h2>
       {/* three tight rows per line; each cover keeps its object-on-a-wall
           frame (vinyl sleeve, fore-edge pages, snap frame) — never a bare square */}
       <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-3">
@@ -797,46 +802,7 @@ function FlipCard({
   );
 }
 
-/* ── Following: latest saves from people you follow ────────────────────────── */
-
-/**
- * Hands the invite text to Messages on Apple devices (sms: opens
- * Messages.app on macOS too), the share sheet on other phones, and
- * falls back to copying the message elsewhere.
- */
-function InviteFriendButton() {
-  const [copied, setCopied] = useState(false);
-
-  const invite = async () => {
-    const text = `been putting all my favorite movies + music into this app. make yours, i'll show you mine ${window.location.origin}`;
-    if (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)) {
-      window.location.href = `sms:&body=${encodeURIComponent(text)}`;
-      return;
-    }
-    try {
-      if (navigator.share && matchMedia("(pointer: coarse)").matches) {
-        await navigator.share({ text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* user dismissed the share sheet */
-    }
-  };
-
-  return (
-    <button
-      onClick={invite}
-      className={`shrink-0 cursor-pointer text-xs transition-colors ${
-        copied ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-      }`}
-    >
-      {copied ? "Invite copied ✓" : "+ Invite a friend"}
-    </button>
-  );
-}
+/* ── Activity: latest saves from people you follow ─────────────────────────── */
 
 /** consecutive same-day saves by the same friend, rendered as one visit */
 type FeedGroup = { profile: Profile; day: string; items: FeedItem[] };
@@ -965,14 +931,11 @@ function FollowingFeed({
 
   return (
     <section>
-      <div className="mb-10 flex items-end justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-            Following
-          </h1>
-          <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
-        </div>
-        <InviteFriendButton />
+      <div className="mb-10 flex flex-col gap-1.5">
+        <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+          Activity
+        </h1>
+        <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
       </div>
 
       {error ? (

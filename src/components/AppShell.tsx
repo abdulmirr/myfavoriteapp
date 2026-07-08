@@ -86,7 +86,7 @@ export default function AppShell({
           collapsed ? "md:invisible md:-ml-16" : "md:visible md:ml-0"
         }`}
       >
-        <div className="group absolute inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden bg-white px-4 py-8 transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-56 hover:shadow-2xl">
+        <div className="group absolute inset-y-0 left-0 z-50 flex w-16 flex-col overflow-hidden bg-white px-4 py-8 transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-56 hover:shadow-2xl">
           <Link href="/" aria-label="Home" className="mb-8 flex h-8 w-8 shrink-0 items-center justify-center transition-opacity hover:opacity-70">
             <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
           </Link>

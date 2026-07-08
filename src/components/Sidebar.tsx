@@ -418,7 +418,6 @@ export default function Sidebar({
   followBusy,
   onToggleFollow,
   tasteCount,
-  tasteMatch,
   socialError,
   approved,
   approveBusy,
@@ -459,8 +458,6 @@ export default function Sidebar({
   followBusy: boolean;
   onToggleFollow: () => void;
   tasteCount: number;
-  /** shared favorites between viewer and this library (null while unknown/own page) */
-  tasteMatch: { shared: number; top_type: string | null } | null;
   /** transient failure from follow/block — cleared by the caller */
   socialError: string;
   approved: boolean;
@@ -652,22 +649,9 @@ export default function Sidebar({
           )}
           {/* taste stats — the footnote of the profile zone, below the actions
               and socials so the identity → actions → metadata order holds */}
-          {(tasteCount > 0 || (tasteMatch?.shared ?? 0) > 0) && (
+          {tasteCount > 0 && (
             <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400/90">
-              {[
-                tasteCount > 0
-                  ? `${tasteCount} approve${tasteCount === 1 ? "s" : ""} ${isOwner ? "your" : "their"} taste`
-                  : null,
-                (tasteMatch?.shared ?? 0) > 0
-                  ? `${tasteMatch!.shared} shared favorite${tasteMatch!.shared === 1 ? "" : "s"}${
-                      tasteMatch!.top_type
-                        ? ` — mostly ${MATCH_TYPE[tasteMatch!.top_type] ?? tasteMatch!.top_type}`
-                        : ""
-                    }`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+              {`${tasteCount} approve${tasteCount === 1 ? "s" : ""} ${isOwner ? "your" : "their"} taste`}
             </p>
           )}
         </div>

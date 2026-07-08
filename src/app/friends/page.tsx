@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Friends from "@/components/Friends";
+import FriendsPage from "@/components/FriendsPage";
 
 // signed-in directory — nothing here for crawlers
 export const metadata: Metadata = {
@@ -7,8 +7,6 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-// Auth lives client-side (localStorage), so this is a thin client shell —
-// same pattern as the root feed.
-export default function FriendsPage() {
-  return <Friends />;
+export default function Page() {
+  return <FriendsPage />;
 }
