@@ -44,10 +44,26 @@ export default function AppShell({
           collapsed ? "pointer-events-none -mt-14 opacity-0" : ""
         }`}
       >
-        {/* the mark goes home — the one nav convention nobody has to learn */}
-        <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-          <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-        </Link>
+        <div className="flex items-center gap-4 sm:gap-5">
+          {/* the mark goes home — the one nav convention nobody has to learn */}
+          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
+            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
+          </Link>
+          {signedIn && !minimal && (
+            <Link
+              href="/?feed=explore&search=1"
+              title="Search"
+              aria-label="Search"
+              className="hidden h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 sm:flex"
+            >
+              {/* a door, not a field — the real search bar lives on Explore */}
+              <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+                <circle cx="5" cy="5" r="4" />
+                <path d="M8 8l3 3" />
+              </svg>
+            </Link>
+          )}
+        </div>
 
         {/* the feed switcher holds the bar's center — where you are */}
         {showFeeds && (
@@ -60,20 +76,6 @@ export default function AppShell({
 
         {!minimal && (
           <div className="flex items-center gap-4 sm:gap-5">
-            {signedIn && (
-              <Link
-                href="/?feed=explore&search=1"
-                title="Search"
-                aria-label="Search"
-                className="hidden h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 sm:flex"
-              >
-                {/* a door, not a field — the real search bar lives on Explore */}
-                <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
-                  <circle cx="5" cy="5" r="4" />
-                  <path d="M8 8l3 3" />
-                </svg>
-              </Link>
-            )}
             {signedIn && (
               <Link
                 href="/add"
