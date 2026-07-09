@@ -18,9 +18,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (max-width: 1279.98px) { :root { --grid-cols: 5 !important; } }
-@media (max-width: 1023.98px) { :root { --grid-cols: 4 !important; } }
-@media (max-width: 767.98px)  { :root { --grid-cols: 3 !important; --grid-gap: 12px !important; } }
+/* note: the library grid's density is measured in JS against the column it
+   lives in (Library.tsx), not the viewport — the grid shares the row with the
+   profile placard on desktop, so viewport width is the wrong ruler there.
+   Phones are the exception: the .fav-grid two-column lock below. */
 
 html {
   color-scheme: light;
@@ -318,6 +319,13 @@ img { -webkit-touch-callout: none; }
   to { opacity: 1; transform: none; }
 }
 .notif-in { animation: notif-in 0.22s var(--ease-snap) both; }
+
+/* full-height sheet sliding out of the rail's edge (notifications) */
+@keyframes panel-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: none; }
+}
+.panel-in { animation: panel-in 0.26s var(--ease-snap); }
 
 /* sidebar people panel — slide up in, plain fade out */
 @keyframes people-in {

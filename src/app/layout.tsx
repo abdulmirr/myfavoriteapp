@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ShellProvider from "@/components/ShellProvider";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -28,8 +29,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // the supabase session storage key — lets the theme script spot signed-out visitors
-  const sbUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
+  // the supabase session storage key — lets the theme script spot signed-out
+  // visitors. The placeholder keeps env-less builds (e.g. a Vercel preview
+  // before env vars are enabled for Preview) from dying in prerender.
+  const sbUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co");
   const sbRef = sbUrl.hostname.split(".")[0];
   return (
     <html lang="en" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
@@ -51,7 +54,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <ShellProvider>{children}</ShellProvider>
+      </body>
     </html>
   );
 }

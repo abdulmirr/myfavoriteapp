@@ -7,20 +7,23 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://myfavoriteapp.com";
-  const db = supabaseServer();
-  const [{ data: profiles }, { data: canon }] = await Promise.all([
-    db
-      .from("profiles")
-      .select("username, created_at")
-      .not("user_id", "is", null)
-      .limit(5000),
-    // one page per canonical work anyone has favorited — the long-tail surface
-    db
-      .from("items")
-      .select("canonical_id")
-      .not("canonical_id", "is", null)
-      .limit(10000),
-  ]);
+  // an env-less build (Vercel preview without Preview env vars) still gets
+  // the static entries rather than dying in prerender
+  const [{ data: profiles }, { data: canon }] = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? await Promise.all([
+        supabaseServer()
+          .from("profiles")
+          .select("username, created_at")
+          .not("user_id", "is", null)
+          .limit(5000),
+        // one page per canonical work anyone has favorited — the long-tail surface
+        supabaseServer()
+          .from("items")
+          .select("canonical_id")
+          .not("canonical_id", "is", null)
+          .limit(10000),
+      ])
+    : [{ data: [] }, { data: [] }];
   const canonicals = [...new Set((canon ?? []).map((c) => c.canonical_id as string))];
 
   return [

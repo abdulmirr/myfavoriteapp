@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useFeed } from "./FeedTabs";
 import {
   REC_CATEGORIES,
   REC_MIN_PER_CATEGORY,
@@ -11,40 +12,25 @@ import {
   type RecCategoryKey,
   type RecCounts,
   type Recommendation,
-  type SearchResult,
 } from "@/lib/types";
-import { supabase, authHeaders } from "@/lib/supabase";
-import {
-  addToRadar,
-  copyItem,
-  escapeLike,
-  fetchFollowing,
-  fetchRadar,
-  fetchSuggestions,
-  itemKeys,
-  removeFromRadar,
-  type RadarItem,
-} from "@/lib/social";
-import { useLiveSearch } from "@/lib/use-live-search";
+import { supabase } from "@/lib/supabase";
+import { addToRadar, copyItem, fetchFollowing, itemKeys } from "@/lib/social";
 import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
 import dynamic from "next/dynamic";
 import DetailOverlay from "./DetailOverlay";
-import FriendsView from "./Friends";
-import Notifications from "./Notifications";
+import { ExploreFeed } from "./Explore";
+import { FriendsStrip, InviteFriendButton } from "./Friends";
+import Suggestions from "./Suggestions";
+import { TYPE_TAG, type FeedItem } from "./SearchBar";
 import { TileMedia } from "./Tile";
 
 // visitors-only (and framer-motion-heavy) — keep it out of the signed-in bundle
 const Landing = dynamic(() => import("./Landing"));
 
-type Tab = "foryou" | "friends" | "following";
-
 // stable identity so DetailOverlay's data effect doesn't re-fire every parent
 // render while `friends` is still loading (null)
 const NO_FOLLOWING: Profile[] = [];
-
-/** items joined with who saved them, for the Friends feed and search */
-type FeedItem = Item & { profile: Profile };
 
 function shortDate(iso: string): string {
   const d = new Date(iso);
@@ -59,34 +45,6 @@ const FAVORITED_PHRASE: Record<string, string> = {
   podcast: "a podcast", video: "a video", article: "an article",
   photo: "a photo", other: "something",
 };
-
-/**
- * A Discover search result shaped as a library Item so DetailOverlay can show
- * it full-screen. No id/owner/date — it isn't in anyone's library (yet).
- */
-function resultToItem(r: SearchResult): Item {
-  return {
-    id: `discover-${r.media_type}-${r.source_id}`,
-    profile_id: "",
-    media_type: r.media_type,
-    title: r.title,
-    creator: r.creator,
-    description: "",
-    image_url: r.image_url,
-    view_url: r.view_url,
-    metadata: {
-      ...(r.year ? { year: r.year } : {}),
-      ...(r.source_id ? { source_id: r.source_id } : {}),
-    },
-    canonical_id: r.canonical_id,
-    pinned_order: null,
-    sort_order: 0,
-    pos_x: null,
-    pos_y: null,
-    pos_rot: null,
-    created_at: "",
-  };
-}
 
 /** For You sections. Cards are square tiles like the library grid. */
 const SECTION_UI: Record<RecCategoryKey, { label: string; one: string; many: string }> = {
@@ -125,7 +83,10 @@ export default function Home() {
   const [viewer, setViewer] = useState<Profile | null>(null);
   // null = still checking; new owners are routed to /welcome before the feed shows
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<Tab>("foryou");
+  // which feed shows rides in the URL (?feed=…), set by the top bar's switcher;
+  // the bar's ⌕ adds &search=1 so Explore's search bar opens focused
+  const tab = useFeed();
+  const focusSearch = useSearchParams().get("search") === "1";
   const [mounted, setMounted] = useState(false);
   // null = still loading; [] = follows nobody (FollowingFeed needs the difference)
   const [friends, setFriends] = useState<Profile[] | null>(null);
@@ -211,340 +172,70 @@ export default function Home() {
   }
 
   return (
-    <div
-      className={`min-h-screen bg-white transition-opacity duration-700 ease-out ${
-        mounted ? "opacity-100" : "opacity-0"
-      }`}
-    >
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur">
-        <div className="mx-auto grid max-w-4xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-5 sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            {/* your library is a place, not a tab — the pfp navigates away */}
-            {viewer && (
-              <Link
-                href={`/${viewer.username}`}
-                title="Your library"
-                aria-label="Your library"
-                className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 transition-opacity hover:opacity-80"
-              >
-                {viewer.avatar_url ? (
-                  <img
-                    src={viewer.avatar_url}
-                    alt={viewer.display_name || viewer.username}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-[11px] font-semibold text-zinc-300">
-                    {(viewer.display_name || viewer.username).slice(0, 1)}
-                  </span>
-                )}
-              </Link>
-            )}
-            <div className="min-w-0 flex-1">
-              <SearchBar
-                onPick={(r, rect) => {
-                  const item = resultToItem(r);
-                  playSfx(item.media_type);
-                  setQuick({ item, rect });
-                }}
-              />
-            </div>
-          </div>
-
-          <nav className="flex gap-6 text-xs">
-            {(
-              [
-                { key: "foryou", label: "For You" },
-                { key: "friends", label: "Friends" },
-                { key: "following", label: "Activity" },
-              ] as { key: Tab; label: string }[]
-            ).map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`cursor-pointer transition-colors ${
-                  tab === t.key ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-
-          <div className="flex items-center justify-end gap-3">
-            {viewer && <Notifications viewer={viewer} />}
-            <Link
-              href="/profile"
-              title="Settings"
-              aria-label="Settings"
-              className="text-zinc-400 transition-colors hover:text-zinc-900"
-            >
-              {/* gear */}
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-5 pb-24 pt-6 sm:px-8">
-        {tab === "foryou" ? (
-          <ForYou viewer={viewer} />
-        ) : tab === "following" ? (
-          <FollowingFeed
-            viewer={viewer}
-            friends={friends}
-            onOpen={(item, rect, favoriting) => setQuick({ item, rect, favoriting })}
-            overlaySaved={overlaySaved}
-          />
-        ) : (
-          viewer && <FriendsView viewer={viewer} />
-        )}
-      </main>
-
-      {quick && (
-        <DetailOverlay
-          item={quick.item}
-          sourceRect={quick.rect}
-          getSourceRect={() => null}
-          isOwner={false}
-          viewerProfile={viewer}
-          viewerFollowing={friends ?? NO_FOLLOWING}
-          onCloseStart={() => {}}
-          onClose={() => setQuick(null)}
-          onSave={async () => {}}
-          onDelete={async () => {}}
-          onFavorited={(it) => setOverlaySaved((prev) => [...prev, ...itemKeys(it)])}
-          startFavoriting={quick.favoriting}
-        />
-      )}
-
-    </div>
-  );
-}
-
-/* ── search: people and media across the whole database ───────────────────── */
-
-type HomeSearchHits = { people: Profile[]; media: FeedItem[]; discover: SearchResult[] };
-
-function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: DOMRect) => void }) {
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // people + saved items + external catalogs in one debounced shot; the hook
-  // caches per session and drops stale responses, so results track keystrokes
-  const { results, searching } = useLiveSearch<HomeSearchHits>(
-    q,
-    async (query, signal) => {
-      const db = supabase();
-      // commas and parens are .or() tree syntax (a title like "Her (2013)"
-      // would 400 the request); escapeLike then neutralizes %/_ wildcards
-      const safe = escapeLike(query.replace(/[(),]/g, " "));
-      const [{ data: profiles }, { data: items }, external] = await Promise.all([
-        db
-          .from("profiles")
-          .select("id, user_id, username, display_name, bio, avatar_url, socials")
-          .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
-          .limit(3)
-          .abortSignal(signal),
-        db
-          .from("items")
-          // owner profile rides along as an embed — no second round trip
-          .select("*, profile:profiles!profile_id(id, user_id, username, display_name, bio, avatar_url, socials)")
-          .or(`title.ilike.%${safe}%,creator.ilike.%${safe}%`)
-          .order("created_at", { ascending: false })
-          .limit(4)
-          .abortSignal(signal),
-        authHeaders()
-          .then((h) => fetch(`/api/search?q=${encodeURIComponent(query)}&type=all`, { headers: h, signal }))
-          .then((r) => (r.ok ? r.json() : { results: [] }))
-          .then((j) => (j.results ?? []) as SearchResult[])
-          .catch(() => [] as SearchResult[]),
-      ]);
-      return {
-        people: (profiles ?? []) as Profile[],
-        media: ((items ?? []) as FeedItem[]).filter((i) => i.profile),
-        discover: external,
-      };
-    },
-    { minLength: 2, scope: "home" }
-  );
-  const people = results?.people ?? [];
-  const media = results?.media ?? [];
-  const discover = results?.discover ?? [];
-
-  const hasResults = people.length > 0 || media.length > 0 || discover.length > 0;
-
-  // icon-only until pressed: the underline and input reveal on focus and
-  // collapse back once the field is blurred and empty
-  const expanded = focused || q.trim().length > 0;
-
-  return (
-    <div className="relative max-w-56">
-      {/* pt-1 balances pb-1, and the transparent top border balances border-b, so the icon centers on the pfp beside it */}
+    <>
       <div
-        className={`flex items-center gap-1.5 border-b border-t border-t-transparent pb-1 pt-1 transition-colors duration-200 ${
-          focused ? "border-zinc-900" : expanded ? "border-zinc-400" : "border-transparent"
+        className={`bg-white transition-opacity duration-700 ease-out ${
+          mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <button
-          aria-label="Search"
-          onClick={() => inputRef.current?.focus()}
-          className={`shrink-0 transition-colors ${
-            expanded ? "text-zinc-900" : "cursor-pointer text-zinc-400 hover:text-zinc-900"
-          }`}
-        >
-          <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="5" cy="5" r="4" />
-            <path d="M8 8l3 3" />
-          </svg>
-        </button>
-        <input
-          ref={inputRef}
-          value={q}
-          placeholder="Search"
-          onChange={(e) => setQ(e.target.value)}
-          onFocus={() => {
-            setFocused(true);
-            setOpen(true);
-          }}
-          onBlur={() => {
-            setFocused(false);
-            setTimeout(() => setOpen(false), 150);
-          }}
-          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-          className={`bg-transparent text-xs leading-4 text-zinc-900 outline-none transition-all duration-200 placeholder:text-zinc-400 ${
-            expanded ? "w-full opacity-100" : "pointer-events-none w-0 opacity-0"
-          }`}
-        />
-      </div>
-
-      {open && q.trim().length >= 2 && (
-        <div className="absolute left-0 top-full z-40 mt-2 max-h-[70vh] w-72 overflow-y-auto border border-zinc-200 bg-white shadow-2xl save-appear">
-          {results === null || (searching && !hasResults) ? (
-            // first response for this query still in flight — "No matches."
-            // here would flash a false negative on every keystroke
-            <p className="px-4 py-3 text-xs text-zinc-400 [animation:smart-search-wave_1.6s_ease-in-out_infinite]">
-              Searching…
-            </p>
-          ) : !hasResults ? (
-            <p className="px-4 py-3 text-xs text-zinc-400">No matches.</p>
+        <main className="mx-auto max-w-4xl px-5 pb-24 pt-8 sm:px-8">
+          {tab === "foryou" ? (
+            <ForYou viewer={viewer} />
+          ) : tab === "following" ? (
+            <section>
+              <div className="mb-8 flex items-end justify-between gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+                    Following
+                  </h1>
+                  <p className="text-xs text-zinc-400">
+                    People you follow — and what they’ve been favoriting.
+                  </p>
+                </div>
+                <InviteFriendButton />
+              </div>
+              {friends && friends.length > 0 && (
+                <div className="mb-12">
+                  <FriendsStrip friends={friends} />
+                </div>
+              )}
+              <FollowingFeed
+                viewer={viewer}
+                friends={friends}
+                onOpen={(item, rect, favoriting) => setQuick({ item, rect, favoriting })}
+                overlaySaved={overlaySaved}
+                heading={false}
+              />
+            </section>
           ) : (
-            <>
-              {people.length > 0 && (
-                <div className="py-1.5">
-                  <p className="px-4 pb-1 pt-1 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    People
-                  </p>
-                  {people.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/${p.username}`}
-                      className="flex items-center gap-2.5 px-4 py-1.5 transition-colors hover:bg-zinc-50"
-                    >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
-                        {p.avatar_url ? (
-                          <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="text-[10px] font-semibold text-zinc-300">
-                            {(p.display_name || p.username).slice(0, 1)}
-                          </span>
-                        )}
-                      </div>
-                      <span className="truncate text-xs text-zinc-900">{p.display_name}</span>
-                      <span className="truncate text-[11px] text-zinc-400">@{p.username}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-              {media.length > 0 && (
-                <div className="border-t border-zinc-100 py-1.5">
-                  <p className="px-4 pb-1 pt-1 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    Saved by people
-                  </p>
-                  {media.map((m) => (
-                    <Link
-                      key={m.id}
-                      href={`/${m.profile.username}`}
-                      className="flex items-center gap-2.5 px-4 py-1.5 transition-colors hover:bg-zinc-50"
-                    >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
-                        {m.image_url ? (
-                          <img
-                            src={thumbCover(m.image_url, 100)}
-                            alt=""
-                            decoding="async"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-[10px] font-semibold text-zinc-300">
-                            {m.title.slice(0, 1)}
-                          </span>
-                        )}
-                      </div>
-                      <span className="min-w-0 flex-1 truncate text-xs text-zinc-900">
-                        {m.title}
-                        {m.creator && <span className="text-zinc-400"> — {m.creator}</span>}
-                      </span>
-                      <span className="shrink-0 text-[11px] text-zinc-400">@{m.profile.username}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-              {discover.length > 0 && (
-                <div className="border-t border-zinc-100 py-1.5">
-                  <p className="px-4 pb-1 pt-1 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    Discover
-                  </p>
-                  {discover.map((r) => (
-                    <button
-                      key={`${r.media_type}-${r.source_id}`}
-                      // mousedown fires before the input's blur closes the dropdown
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        // the row's thumbnail is the morph origin for the detail view
-                        const thumb = e.currentTarget.querySelector("div");
-                        onPick(r, (thumb ?? e.currentTarget).getBoundingClientRect());
-                        setOpen(false);
-                      }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-1.5 text-left transition-colors hover:bg-zinc-50"
-                    >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
-                        {r.image_url ? (
-                          <img src={r.thumb_url ?? r.image_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="text-[10px] font-semibold text-zinc-300">
-                            {r.title.slice(0, 1)}
-                          </span>
-                        )}
-                      </div>
-                      <span className="min-w-0 flex-1 truncate text-xs text-zinc-900">
-                        {r.title}
-                        {r.creator && <span className="text-zinc-400"> — {r.creator}</span>}
-                      </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                        {TYPE_TAG[r.media_type] ?? r.media_type}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
+            <ExploreFeed
+              viewer={viewer}
+              focusSearch={focusSearch}
+              onOpen={(item, rect) => setQuick({ item, rect })}
+            />
           )}
-        </div>
-      )}
-    </div>
+        </main>
+
+        {quick && (
+          <DetailOverlay
+            item={quick.item}
+            sourceRect={quick.rect}
+            getSourceRect={() => null}
+            isOwner={false}
+            viewerProfile={viewer}
+            viewerFollowing={friends ?? NO_FOLLOWING}
+            onCloseStart={() => {}}
+            onClose={() => setQuick(null)}
+            onSave={async () => {}}
+            onDelete={async () => {}}
+            onFavorited={(it) => setOverlaySaved((prev) => [...prev, ...itemKeys(it)])}
+            startFavoriting={quick.favoriting}
+          />
+        )}
+      </div>
+    </>
   );
 }
-
-/** short type tags for the Discover group */
-const TYPE_TAG: Record<string, string> = {
-  book: "Book", movie: "Film", tv: "TV", music: "Music", podcast: "Pod", article: "Read",
-};
 
 /* ── For You: daily AI picks, one section per category ─────────────────────── */
 
@@ -733,112 +424,10 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
         </div>
       )}
 
-      {viewer && state !== "loading" && <SavedStrip viewer={viewer} />}
       {viewer && (state === "ready" || state === "budget" || state === "done") && (
         <Rediscover viewer={viewer} />
       )}
     </section>
-  );
-}
-
-
-/** A saved row shaped as a library Item so TileMedia frames it like the library. */
-function radarToItem(r: RadarItem): Item {
-  return {
-    id: r.id,
-    profile_id: "",
-    media_type: r.media_type,
-    title: r.title,
-    creator: r.creator,
-    description: "",
-    image_url: r.image_url,
-    view_url: r.view_url,
-    metadata: (r.metadata ?? {}) as Item["metadata"],
-    canonical_id: r.canonical_id,
-    pinned_order: null,
-    sort_order: 0,
-    pos_x: null,
-    pos_y: null,
-    pos_rot: null,
-    created_at: r.created_at,
-  };
-}
-
-/**
- * Your saved stuff — the private shelf of things spotted but not yet claimed.
- * Deliberately unnumbered and quiet: it's curiosity, never a backlog. The only
- * action is letting one go; favoriting happens where the piece itself lives.
- */
-function SavedStrip({ viewer }: { viewer: Profile }) {
-  const [rows, setRows] = useState<RadarItem[] | null>(null);
-  const [busy, setBusy] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchRadar(viewer.id).then((r) => !cancelled && setRows(r));
-    return () => {
-      cancelled = true;
-    };
-  }, [viewer.id]);
-
-  if (!rows?.length) return null;
-
-  const act = async (r: RadarItem, fn: () => Promise<void>) => {
-    if (busy.has(r.id)) return;
-    setBusy((s) => new Set(s).add(r.id));
-    try {
-      await fn();
-      setRows((prev) => (prev ?? []).filter((x) => x.id !== r.id));
-    } catch {
-      /* leave the row; a retry is one tap away */
-    } finally {
-      setBusy((s) => {
-        const next = new Set(s);
-        next.delete(r.id);
-        return next;
-      });
-    }
-  };
-
-  return (
-    <div className="mt-16">
-      {/* a section of its own — same voice as the "For you" header */}
-      <h2 className="mb-8 flex items-center gap-2 text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-        {/* bookmark — the same mark as the save action */}
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
-          <path d="M4 2.5h8v11.5l-4-3.2-4 3.2z" />
-        </svg>
-        Your saved stuff
-      </h2>
-      {/* three tight rows per line; each cover keeps its object-on-a-wall
-          frame (vinyl sleeve, fore-edge pages, snap frame) — never a bare square */}
-      <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-3">
-        {rows.slice(0, 9).map((r) => (
-          <div key={r.id} className="flex min-w-0 items-center gap-3">
-            <div className="w-14 shrink-0">
-              <TileMedia item={radarToItem(r)} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs leading-snug tracking-[-0.01em] text-zinc-900">
-                {r.title}
-              </p>
-              {r.creator && <p className="truncate text-[11px] text-zinc-400">{r.creator}</p>}
-            </div>
-            <button
-              onClick={() => act(r, () => removeFromRadar(r.id))}
-              disabled={busy.has(r.id)}
-              aria-label="Remove from saved"
-              title="Let it go"
-              className="shrink-0 cursor-pointer text-zinc-300 transition-colors hover:text-zinc-900 disabled:cursor-wait"
-            >
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-                <path d="M2 2l8 8M10 2l-8 8" />
-              </svg>
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -1099,11 +688,14 @@ function FollowingFeed({
   friends,
   onOpen,
   overlaySaved,
+  heading = true,
 }: {
   viewer: Profile | null;
   friends: Profile[] | null;
   onOpen: (item: Item, rect: DOMRect, favoriting?: boolean) => void;
   overlaySaved: string[];
+  /** false when a parent (the Friends tab) already provides the header */
+  heading?: boolean;
 }) {
   const [feed, setFeed] = useState<FeedItem[] | null>(null);
   const [followCount, setFollowCount] = useState<number | null>(null);
@@ -1216,12 +808,14 @@ function FollowingFeed({
 
   return (
     <section>
-      <div className="mb-10 flex flex-col gap-1.5">
-        <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-          Activity
-        </h1>
-        <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
-      </div>
+      {heading && (
+        <div className="mb-10 flex flex-col gap-1.5">
+          <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+            Activity
+          </h1>
+          <p className="text-xs text-zinc-400">What the people you follow are favoriting.</p>
+        </div>
+      )}
 
       {error ? (
         <div className="pt-12 text-center">
@@ -1356,82 +950,3 @@ function FollowingFeed({
   );
 }
 
-/* ── cold start: libraries worth following ─────────────────────────────────── */
-
-function Suggestions({ viewer, lead }: { viewer: Profile | null; lead?: string }) {
-  const [people, setPeople] = useState<Profile[] | null>(null);
-  const [followed, setFollowed] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchSuggestions(viewer?.id ?? null).then(setPeople);
-  }, [viewer]);
-
-  const follow = async (p: Profile) => {
-    if (!viewer) return;
-    const { error } = await supabase()
-      .from("follows")
-      .insert({ follower_id: viewer.id, followee_id: p.id });
-    if (!error) {
-      playUi("confirm");
-      setFollowed((prev) => new Set(prev).add(p.id));
-    }
-  };
-
-  if (people === null) {
-    return lead ? null : <p className="pt-12 text-center text-xs text-zinc-400">Loading…</p>;
-  }
-  if (people.length === 0) {
-    // with a custom lead this is an add-on section, so vanish quietly
-    return lead ? null : (
-      <p className="pt-12 text-center text-xs text-zinc-400">
-        You aren’t following anyone yet — find people with the search above.
-      </p>
-    );
-  }
-  return (
-    <div className="pt-4">
-      <p className="text-xs text-zinc-400">
-        {lead ?? "You aren’t following anyone yet. Some libraries worth a look:"}
-      </p>
-      <ul className="mt-6 flex flex-col gap-4">
-        {people.map((p) => (
-          <li key={p.id} className="flex items-center gap-3">
-            <Link
-              href={`/${p.username}`}
-              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 transition-opacity hover:opacity-80"
-            >
-              {p.avatar_url ? (
-                <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-xs font-semibold text-zinc-300">
-                  {(p.display_name || p.username).slice(0, 1)}
-                </span>
-              )}
-            </Link>
-            <div className="min-w-0 flex-1">
-              <Link
-                href={`/${p.username}`}
-                className="text-[13px] font-medium text-zinc-900 transition-colors hover:text-zinc-400"
-              >
-                {p.display_name || `@${p.username}`}
-              </Link>
-              {p.bio && <p className="truncate text-xs text-zinc-400">{p.bio}</p>}
-            </div>
-            {followed.has(p.id) ? (
-              <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                Following ✓
-              </span>
-            ) : (
-              <button
-                onClick={() => follow(p)}
-                className="shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900"
-              >
-                + Follow
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}

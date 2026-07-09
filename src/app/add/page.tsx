@@ -110,7 +110,7 @@ export default function AddPage() {
 
   return (
     <div
-      className="min-h-screen bg-white"
+      className="min-h-full bg-white"
       onClick={(e) => {
         if (reviewOpen) return; // the review pass has its own scrim
         // anywhere outside the content column (palette + header controls)

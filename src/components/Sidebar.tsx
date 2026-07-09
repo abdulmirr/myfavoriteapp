@@ -9,6 +9,12 @@ import { REPORT_EMAIL, socialHref } from "@/lib/social";
 export type SortMode = "default" | "latest" | "oldest";
 export type ViewMode = "grid" | "freeform";
 
+/** media_type → the word the taste-match line uses */
+export const MATCH_TYPE: Record<string, string> = {
+  book: "books", movie: "films", tv: "shows", music: "music",
+  podcast: "podcasts", video: "videos", article: "reads", photo: "photos", other: "pieces",
+};
+
 export const MIN_COLS = 3;
 export const MAX_COLS = 20;
 
@@ -62,7 +68,7 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
 }
 
 /** Share this page — native share sheet on touch, clipboard everywhere else. */
-function ShareButton({ username }: { username: string }) {
+export function ShareButton({ username }: { username: string }) {
   const [done, setDone] = useState(false);
 
   const share = async () => {
@@ -105,7 +111,7 @@ function ShareButton({ username }: { username: string }) {
 }
 
 /** Minimal line icons for known social platforms; falls back to a text label. */
-function SocialIcon({ label }: { label: string }) {
+export function SocialIcon({ label }: { label: string }) {
   const key = label.trim().toLowerCase();
   if (key === "x" || key.includes("twitter")) {
     return (
@@ -161,7 +167,7 @@ function SocialIcon({ label }: { label: string }) {
 }
 
 /** "⋯" — block/report tucked behind one quiet icon; the menu makes you choose. */
-function MoreButton({
+export function MoreButton({
   username,
   blocked,
   blockBusy,
@@ -241,7 +247,7 @@ function MoreButton({
  * note — the ice-breaker the receiver reads in their notifications. Optional
  * by design (nudge, don't gate); dismissing it loses nothing.
  */
-function TasteNoteNudge({
+export function TasteNoteNudge({
   onSend,
   onDismiss,
 }: {
@@ -327,7 +333,7 @@ function PeoplePanel({
 
   return (
     <div
-      className={`absolute inset-0 z-10 flex flex-col bg-white px-5 pb-4 pt-6 md:px-8 md:py-8 ${
+      className={`fixed inset-0 z-50 flex flex-col bg-white px-5 pb-4 pt-6 md:absolute md:z-10 md:px-8 md:py-8 ${
         closing ? "people-out" : "people-in"
       }`}
     >
@@ -400,11 +406,6 @@ function PeoplePanel({
 export default function Sidebar({
   profile,
   counts,
-  followerCount,
-  followingCount,
-  onPeople,
-  peopleOpen,
-  onClosePeople,
   followers,
   following,
   canFollow,
@@ -434,17 +435,10 @@ export default function Sidebar({
   onView,
   cols,
   onCols,
-  collapsed,
-  mobileOpen,
-  onCloseMobile,
+  savedShelf = false,
 }: {
   profile: Profile;
   counts: Record<Category, number>;
-  followerCount: number;
-  followingCount: number;
-  onPeople: () => void;
-  peopleOpen: boolean;
-  onClosePeople: () => void;
   followers: Profile[];
   following: Profile[];
   canFollow: boolean;
@@ -476,13 +470,15 @@ export default function Sidebar({
   onView: (v: ViewMode) => void;
   cols: number;
   onCols: (c: number) => void;
-  /** freeform full-screen — slides the whole sidebar off-canvas */
-  collapsed: boolean;
-  mobileOpen: boolean;
-  onCloseMobile: () => void;
+  /** the Saved queue is showing — the wall's instruments step aside */
+  savedShelf?: boolean;
 }) {
   const [searchFocused, setSearchFocused] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const onClosePeople = useCallback(() => setPeopleOpen(false), []);
   const asideRef = useRef<HTMLElement>(null);
+  const followerCount = followers.length;
+  const followingCount = following.length;
 
   // people panel stays mounted through its fade-out, then unmounts
   const [peopleShown, setPeopleShown] = useState(peopleOpen);
@@ -513,29 +509,12 @@ export default function Sidebar({
 
   return (
     <>
-      {mobileOpen && (
-        <button
-          aria-label="Close menu"
-          onClick={onCloseMobile}
-          className="fixed inset-0 z-40 cursor-default bg-zinc-900/20 backdrop-blur-[1px] md:hidden"
-        />
-      )}
       <aside
         ref={asideRef}
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-60 max-w-[72vw] shrink-0 flex-col gap-6 overscroll-contain bg-white px-5 pb-4 pt-6 shadow-xl transition-[transform,margin,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:relative md:z-auto md:w-64 md:max-w-none md:translate-x-0 md:px-8 md:py-8 md:shadow-none ${
-          peopleShown ? "overflow-hidden" : "overflow-y-auto"
-        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"} ${
-          collapsed ? "md:invisible md:-ml-64" : "md:visible md:ml-0"
+        className={`relative flex w-full flex-col gap-6 overscroll-contain px-5 pb-4 pt-6 md:h-full md:px-8 md:py-8 ${
+          peopleShown ? "md:overflow-hidden" : "md:overflow-y-auto"
         }`}
       >
-        {/* the mark goes home — the one nav convention nobody has to learn */}
-        <div className="flex items-center justify-between">
-          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-          </Link>
-          <ShareButton username={profile.username} />
-        </div>
-
         {/* profile */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
@@ -563,7 +542,7 @@ export default function Sidebar({
             <p className="text-xs leading-relaxed text-zinc-500">{profile.bio}</p>
           )}
           <button
-            onClick={onPeople}
+            onClick={() => setPeopleOpen(true)}
             className="w-fit cursor-pointer text-left text-xs text-zinc-400 transition-colors hover:text-zinc-900"
           >
             <span className="whitespace-nowrap">
@@ -579,47 +558,57 @@ export default function Sidebar({
               action row: follow (solid, same language as Favorite) + approve
               taste (quiet sibling) + ⋯ (block/report); socials get their own
               line below, on the same rhythm. */}
-          {(canFollow || (profile.socials?.length ?? 0) > 0) && (
           <div className="mt-1.5 flex flex-col gap-3">
-            {canFollow && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                {!blocked && (
-                  <>
-                    <button
-                      onClick={onToggleFollow}
-                      disabled={followBusy}
-                      className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
-                        isFollowing
-                          ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
-                          : "bg-zinc-900 text-white hover:bg-zinc-700"
-                      }`}
-                    >
-                      {isFollowing ? "Following ✓" : "Follow"}
-                    </button>
-                    <button
-                      onClick={onToggleApprove}
-                      disabled={approveBusy}
-                      aria-label={approved ? "Approved — tap to undo" : "Approve taste"}
-                      title={approved ? "Approved" : "Approve taste"}
-                      className={`flex h-7 shrink-0 cursor-pointer items-center transition-colors disabled:cursor-wait ${
-                        approved ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill={approved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
-                        <path d="M2.5 7.5h2v6h-2z" />
-                        <path d="M4.5 12.7c.4.5 1 .8 1.7.8h4.7c.6 0 1.1-.4 1.2-1l.9-4.2c.1-.7-.4-1.3-1.1-1.3H8.7l.6-2.6c.1-.6-.2-1.2-.8-1.4-.5-.2-1 0-1.2.5L4.5 7.5" />
-                      </svg>
-                    </button>
-                  </>
-                )}
+            {/* one action row: your page → edit; theirs → follow + approve +
+                block/report; copy-link rides along in both */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              {isOwner && (
+                <Link
+                  href="/profile"
+                  className="flex h-7 shrink-0 items-center whitespace-nowrap border border-zinc-200 px-3 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-900"
+                >
+                  Edit profile
+                </Link>
+              )}
+              {canFollow && !blocked && (
+                <>
+                  <button
+                    onClick={onToggleFollow}
+                    disabled={followBusy}
+                    className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                      isFollowing
+                        ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
+                        : "bg-zinc-900 text-white hover:bg-zinc-700"
+                    }`}
+                  >
+                    {isFollowing ? "Following ✓" : "Follow"}
+                  </button>
+                  <button
+                    onClick={onToggleApprove}
+                    disabled={approveBusy}
+                    aria-label={approved ? "Approved — tap to undo" : "Approve taste"}
+                    title={approved ? "Approved" : "Approve taste"}
+                    className={`flex h-7 shrink-0 cursor-pointer items-center transition-colors disabled:cursor-wait ${
+                      approved ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                    }`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill={approved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+                      <path d="M2.5 7.5h2v6h-2z" />
+                      <path d="M4.5 12.7c.4.5 1 .8 1.7.8h4.7c.6 0 1.1-.4 1.2-1l.9-4.2c.1-.7-.4-1.3-1.1-1.3H8.7l.6-2.6c.1-.6-.2-1.2-.8-1.4-.5-.2-1 0-1.2.5L4.5 7.5" />
+                    </svg>
+                  </button>
+                </>
+              )}
+              <ShareButton username={profile.username} />
+              {canFollow && (
                 <MoreButton
                   username={profile.username}
                   blocked={blocked}
                   blockBusy={blockBusy}
                   onToggleBlock={onToggleBlock}
                 />
-              </div>
-            )}
+              )}
+            </div>
             {canFollow && !blocked && noteOpen && (
               <TasteNoteNudge onSend={onSendTasteNote} onDismiss={onDismissNote} />
             )}
@@ -640,7 +629,6 @@ export default function Sidebar({
               </div>
             )}
           </div>
-          )}
           {/* taste stats — the footnote of the profile zone, below the actions
               and socials so the identity → actions → metadata order holds */}
           {tasteCount > 0 && (
@@ -650,8 +638,14 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* library controls — separated from the profile zone by extra whitespace */}
-        <div className="flex flex-col gap-6 pt-6">
+        {/* library controls — separated from the profile zone by extra
+            whitespace. phones get the visitor's essentials only: search and
+            the category row; sort, grid ⇄ freeform and the size slider are
+            desktop instruments (the phone grid is locked to two columns and
+            custom order is already the best default). all of it acts on the
+            wall, so the whole block steps aside while the Saved queue shows. */}
+        {!savedShelf && (
+        <div className="flex flex-col gap-5 pt-2 md:gap-6 md:pt-6">
         {/* search */}
         <div>
           <div className="group flex items-start gap-1.5 border-b border-zinc-400 pb-1.5 focus-within:border-zinc-900">
@@ -686,13 +680,14 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* categories with live counts */}
-        <nav className="flex flex-col gap-1 text-xs">
+        {/* categories with live counts — a sticky tab row on phones (re-filter
+            from anywhere in the wall), a vertical list on desktop */}
+        <nav className="sticky top-14 z-20 -mx-5 flex gap-x-5 overflow-x-auto bg-white/85 px-5 py-2.5 text-xs backdrop-blur [scrollbar-width:none] md:static md:z-auto md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:bg-transparent md:p-0 md:backdrop-blur-none">
           {CATEGORIES.map((c) => (
             <button
               key={c}
               onClick={() => onCategory(c)}
-              className={`w-fit cursor-pointer text-left transition-colors ${
+              className={`w-fit cursor-pointer whitespace-nowrap text-left transition-colors ${
                 category === c
                   ? "font-medium text-zinc-900"
                   : "text-zinc-400 hover:text-zinc-900"
@@ -703,9 +698,10 @@ export default function Sidebar({
           ))}
         </nav>
 
-        {/* sort + view — one tight group, matching row rhythm */}
-        <div className="flex flex-col gap-1 text-xs">
-          {/* one word that cycles: my order → latest → oldest → my order */}
+        {/* sort + view — one tight group, matching row rhythm. desktop-only:
+            phones are for visiting, not curating */}
+        <div className="hidden flex-col gap-1 text-xs md:flex">
+          {/* one word that cycles: custom (your order) → latest → oldest */}
           <button
             onClick={() =>
               onSort(sort === "default" ? "latest" : sort === "latest" ? "oldest" : "default")
@@ -716,7 +712,7 @@ export default function Sidebar({
                 : "font-medium text-zinc-900"
             }`}
           >
-            {sort === "oldest" ? "Oldest" : "Latest"}
+            {sort === "default" ? "Custom" : sort === "latest" ? "Latest" : "Oldest"}
           </button>
           <div className="flex gap-3">
             {(["grid", "freeform"] as const).map((v) => (
@@ -739,12 +735,14 @@ export default function Sidebar({
           <SizeSlider cols={cols} onCols={onCols} />
         </div>
         </div>
+        )}
 
-        {/* favorite — pinned to the bottom edge, its own action zone */}
+        {/* favorite — pinned to the bottom edge, its own action zone. desktop
+            only: on phones the top bar's ＋ carries adding */}
         {isOwner && (
           <Link
             href="/add"
-            className="mt-auto flex h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+            className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
           >
             <img src="/favicon.svg" alt="" className="h-4 w-auto" />
             Favorite
@@ -767,7 +765,7 @@ export default function Sidebar({
         {!signedIn && (
           <Link
             href={`/signin?next=/${profile.username}`}
-            className="mt-auto flex h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+            className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
           >
             Start curating
           </Link>

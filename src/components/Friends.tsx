@@ -6,7 +6,6 @@ import type { Item, Profile } from "@/lib/types";
 import {
   fetchDiscover,
   fetchFollowing,
-  fetchShowcases,
   type DiscoverProfile,
 } from "@/lib/social";
 import { TileMedia } from "./Tile";
@@ -53,7 +52,7 @@ function Avatar({ p }: { p: Profile }) {
  * Messages.app on macOS too), the share sheet on other phones, and
  * falls back to copying the message elsewhere.
  */
-function InviteFriendButton() {
+export function InviteFriendButton() {
   const [copied, setCopied] = useState(false);
 
   const invite = async () => {
@@ -155,15 +154,36 @@ function PersonCard({
 }
 
 /**
- * The Friends view — lives inside the home shell, entered from the header's
- * people icon (a sibling of For You / Following, not its own page). Two
- * shelves: the people you follow, and everyone else ranked by how much of
- * your library they share.
+ * Your circle at a glance: a horizontal strip of the people you follow —
+ * avatar (with the bio speech-bubble), name below, each a door to their
+ * library. Sits at the top of the Friends tab; the activity feed follows.
  */
-export default function FriendsView({ viewer }: { viewer: Profile }) {
-  // null = loading; [] = follows nobody (the two states render differently)
-  const [friends, setFriends] = useState<Profile[] | null>(null);
-  const [showcases, setShowcases] = useState<Map<string, Item[]>>(new Map());
+export function FriendsStrip({ friends }: { friends: Profile[] }) {
+  if (friends.length === 0) return null;
+  // a strip, not a feed — stable alphabetical order
+  const sorted = [...friends].sort((a, b) =>
+    (a.display_name || a.username).localeCompare(b.display_name || b.username)
+  );
+  return (
+    <div className="flex gap-5 overflow-x-auto pb-2 [scrollbar-width:none]">
+      {sorted.map((f) => (
+        <Link key={f.id} href={`/${f.username}`} className="flex w-14 shrink-0 flex-col items-center gap-1.5 transition-opacity hover:opacity-80">
+          <Avatar p={f} />
+          <span className="w-full truncate text-center text-[10px] text-zinc-500">
+            {f.display_name || f.username}
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * People you don't know yet, ranked by how much of your library they share —
+ * the discovery half of the old directory, now living on Explore. Cards keep
+ * the Top-4 cover strips and the shared/favorites footer.
+ */
+export function DiscoverPeople({ viewer }: { viewer: Profile }) {
   const [others, setOthers] = useState<DiscoverProfile[] | null>(null);
 
   useEffect(() => {
@@ -171,85 +191,38 @@ export default function FriendsView({ viewer }: { viewer: Profile }) {
     (async () => {
       const flw = await fetchFollowing(viewer.id);
       if (cancelled) return;
-      // a directory, not a feed — stable alphabetical order
-      flw.sort((a, b) =>
-        (a.display_name || a.username).localeCompare(b.display_name || b.username)
-      );
-      setFriends(flw);
-      const ids = flw.map((f) => f.id);
-      const [sc, disc] = await Promise.all([
-        fetchShowcases(ids),
-        fetchDiscover(viewer.id, ids),
-      ]);
-      if (cancelled) return;
-      setShowcases(sc);
-      setOthers(disc);
+      const disc = await fetchDiscover(viewer.id, flw.map((f) => f.id));
+      if (!cancelled) setOthers(disc);
     })();
     return () => {
       cancelled = true;
     };
   }, [viewer]);
 
+  if (others === null) return null;
+  if (others.length === 0) {
+    return <p className="text-xs text-zinc-400">No one new right now — you already know everyone here.</p>;
+  }
   return (
-    <div>
-      <section>
-        {/* same voice as the "For you" header, with the invite as its action */}
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-              Friends
-            </h1>
-            <p className="text-xs text-zinc-400">Everyone you follow, at a glance.</p>
-          </div>
-          <InviteFriendButton />
-        </div>
-        {friends === null ? null : friends.length === 0 ? (
-          <p className="text-xs leading-relaxed text-zinc-400">
-            You&apos;re not following anyone yet — the people below are a good place to start.
-          </p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {friends.map((f) => (
-              <PersonCard key={f.id} p={f} strip={showcases.get(f.id) ?? []} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-16">
-        <div className="mb-8 flex flex-col gap-1.5">
-          <h2 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-            Other users
-          </h2>
-          <p className="text-xs text-zinc-400">People with similar taste to you.</p>
-        </div>
-        {others === null ? null : others.length === 0 ? (
-          <p className="text-xs text-zinc-400">
-            No one new right now — you already know everyone here.
-          </p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {others.map((p) => (
-              <PersonCard
-                key={p.id}
-                p={p}
-                strip={p.preview}
-                footer={
-                  <p className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    {p.shared > 0 && (
-                      <>
-                        <span className="font-medium text-zinc-900">{p.shared} shared</span>
-                        <span> · </span>
-                      </>
-                    )}
-                    {p.count} favorite{p.count === 1 ? "" : "s"}
-                  </p>
-                }
-              />
-            ))}
-          </div>
-        )}
-      </section>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {others.map((p) => (
+        <PersonCard
+          key={p.id}
+          p={p}
+          strip={p.preview}
+          footer={
+            <p className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+              {p.shared > 0 && (
+                <>
+                  <span className="font-medium text-zinc-900">{p.shared} shared</span>
+                  <span> · </span>
+                </>
+              )}
+              {p.count} favorite{p.count === 1 ? "" : "s"}
+            </p>
+          }
+        />
+      ))}
     </div>
   );
 }

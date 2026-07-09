@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { isReservedUsername } from "@/lib/reserved-usernames";
 import type { Profile } from "@/lib/types";
@@ -476,15 +475,8 @@ export default function ProfileSettingsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <nav className="flex items-center px-5 pt-6 md:px-8 md:pt-8">
-        {/* the mark goes home — the one nav convention nobody has to learn */}
-        <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-          <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-        </Link>
-      </nav>
-
-      <div className="flex flex-1 justify-center px-5 pb-24 pt-14">
+    <div className="flex min-h-full flex-col bg-white">
+      <div className="flex flex-1 justify-center px-5 pb-24 pt-10 md:pt-14">
         <div className="w-full max-w-sm">
           {loading ? (
             <p className="text-xs text-zinc-400">Loading…</p>

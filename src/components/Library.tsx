@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Item, Profile } from "@/lib/types";
 import { categoryOf, type Category } from "@/lib/categories";
 import { supabase } from "@/lib/supabase";
@@ -10,22 +11,52 @@ import {
   blockProfile,
   fetchFollowers,
   fetchFollowing,
+  fetchRadar,
   friendlyError,
   hasApprovedTaste,
   hasBlocked,
+  promoteRadar,
+  removeFromRadar,
   setTasteNote,
   tasteApprovalCount,
   unapproveTaste,
   unblockProfile,
   PROFILE_COLS,
+  type RadarItem,
 } from "@/lib/social";
-import { playUi, preloadSfx } from "@/lib/sfx";
+import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
+import { useShell } from "./ShellProvider";
+import { shelfFromParam } from "./ShelfTabs";
 import Sidebar, { type SortMode, type ViewMode } from "./Sidebar";
 import Grid from "./Grid";
 import Freeform from "./Freeform";
 import DetailOverlay from "./DetailOverlay";
 import IntroOverlay from "./IntroOverlay";
 import Hint, { markHintSeen } from "./Hint";
+import { TileMedia } from "./Tile";
+
+/** A saved row shaped as a library Item, so tiles and the detail view frame
+    it exactly like a favorite. */
+function radarToItem(r: RadarItem): Item {
+  return {
+    id: r.id,
+    profile_id: "",
+    media_type: r.media_type,
+    title: r.title,
+    creator: r.creator,
+    description: "",
+    image_url: r.image_url,
+    view_url: r.view_url,
+    metadata: (r.metadata ?? {}) as Item["metadata"],
+    canonical_id: r.canonical_id,
+    pinned_order: null,
+    sort_order: 0,
+    pos_x: null,
+    pos_y: null,
+    pos_rot: null,
+    created_at: r.created_at,
+  };
+}
 
 export default function Library({
   profile: initialProfile,
@@ -47,15 +78,18 @@ export default function Library({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortMode>("default");
   const [view, setView] = useState<ViewMode>("grid");
-  const [cols, setCols] = useState(5); // default density: 5 per row until the slider is touched
-  const [open, setOpen] = useState<{ item: Item; rect: DOMRect } | null>(null);
+  const [cols, setCols] = useState(5); // default density until the slider is touched
+  // a touched slider (now or on a past visit) is authoritative; until then the
+  // density follows the width of the column the grid actually lives in
+  const [colsTouched, setColsTouched] = useState(false);
+  // `saved: true` marks a queue item — the detail view then hides the
+  // owner instruments (edit, delete, pin) that act on the items table
+  const [open, setOpen] = useState<{ item: Item; rect: DOMRect; saved?: boolean } | null>(null);
   const [gridDimmed, setGridDimmed] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [followers, setFollowers] = useState<Profile[]>([]);
   const [following, setFollowing] = useState<Profile[]>([]);
   const [viewerFollowing, setViewerFollowing] = useState<Profile[]>([]);
-  const [peopleOpen, setPeopleOpen] = useState(false);
   const [viewerProfile, setViewerProfile] = useState<Profile | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
   const refetchedClaim = useRef(false);
@@ -63,7 +97,10 @@ export default function Library({
   useEffect(() => {
     setMounted(true);
     const stored = Number(localStorage.getItem("fav:cols"));
-    if (stored >= 3 && stored <= 20) setCols(stored);
+    if (stored >= 3 && stored <= 20) {
+      setCols(stored);
+      setColsTouched(true);
+    }
     const v = localStorage.getItem("fav:view"); // default view, set in /profile settings
     if (v === "grid" || v === "freeform") setView(v);
   }, []);
@@ -73,6 +110,7 @@ export default function Library({
   const colsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const changeCols = useCallback((c: number) => {
     setCols(c);
+    setColsTouched(true);
     if (colsSaveTimer.current) clearTimeout(colsSaveTimer.current);
     colsSaveTimer.current = setTimeout(() => localStorage.setItem("fav:cols", String(c)), 200);
   }, []);
@@ -101,6 +139,65 @@ export default function Library({
   }, [userId, profile.user_id, profile.id]);
 
   const isOwner = !!userId && userId === profile.user_id;
+
+  // tell the persistent top bar whose wall it's sitting over: your own page
+  // gets the Favorites · Saved switcher, someone else's shows their handle
+  const { setProfileBar } = useShell();
+  useEffect(() => {
+    setProfileBar({ handle: profile.username, own: isOwner });
+    return () => setProfileBar(null);
+  }, [profile.username, isOwner, setProfileBar]);
+
+  // which shelf — the wall or the private queue. URL-driven (the top bar's
+  // switcher writes ?shelf=saved); only ever honored on your own page.
+  const shelf = shelfFromParam(useSearchParams().get("shelf"));
+  const savedShelf = isOwner && shelf === "saved";
+
+  // the queue itself, fetched when the shelf opens
+  const [savedRows, setSavedRows] = useState<RadarItem[] | null>(null);
+  const [savedBusy, setSavedBusy] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!savedShelf) return;
+    let cancelled = false;
+    fetchRadar(profile.id).then((r) => !cancelled && setSavedRows(r));
+    return () => {
+      cancelled = true;
+    };
+  }, [savedShelf, profile.id]);
+
+  // favorite-or-remove, straight off the queue tile. favoriting also puts the
+  // piece on the wall, so the wall refetches to include it.
+  const actOnSaved = useCallback(
+    async (r: RadarItem, action: "favorite" | "remove") => {
+      if (savedBusy.has(r.id)) return;
+      setSavedBusy((s) => new Set(s).add(r.id));
+      try {
+        if (action === "favorite") {
+          await promoteRadar(r, profile.id);
+          playUi("confirm");
+          const { data } = await supabase()
+            .from("items")
+            .select("*")
+            .eq("profile_id", profile.id)
+            .order("sort_order", { ascending: true });
+          if (data) setItems(data as Item[]);
+        } else {
+          await removeFromRadar(r.id);
+        }
+        setSavedRows((prev) => (prev ?? []).filter((x) => x.id !== r.id));
+        setOpen((o) => (o?.item.id === r.id ? null : o));
+      } catch {
+        /* leave the row; a retry is one tap away */
+      } finally {
+        setSavedBusy((s) => {
+          const next = new Set(s);
+          next.delete(r.id);
+          return next;
+        });
+      }
+    },
+    [savedBusy, profile.id]
+  );
 
   // the displayed profile's circles
   useEffect(() => {
@@ -501,200 +598,239 @@ export default function Library({
 
   // freeform is a full-screen mode: the sidebar and mobile header slide away,
   // leaving a lone floating "Grid" button as the way back
-  const freeform = view === "freeform";
+  // the queue is always a plain grid — freeform is a wall instrument
+  const freeform = view === "freeform" && !savedShelf;
+
+  // ask the persistent shell to slide its chrome away in freeform, and restore
+  // it when leaving the view or the page
+  const { setCollapsed } = useShell();
+  useEffect(() => {
+    setCollapsed(freeform);
+    return () => setCollapsed(false);
+  }, [freeform, setCollapsed]);
+
+  // the gallery shares the row with the placard on desktop, so the default
+  // density is measured against the column's own width, not the viewport
+  const stageRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (colsTouched || freeform) return;
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      setCols(w > 1040 ? 6 : w > 800 ? 5 : w > 560 ? 4 : 3);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [colsTouched, freeform]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <>
       <IntroOverlay images={introImages} />
 
-      <Sidebar
-        profile={profile}
-        counts={counts}
-        followerCount={followers.length}
-        followingCount={following.length}
-        onPeople={() => setPeopleOpen(true)}
-        peopleOpen={peopleOpen}
-        onClosePeople={() => setPeopleOpen(false)}
-        followers={followers}
-        following={following}
-        canFollow={canFollow}
-        isFollowing={isFollowing}
-        followBusy={followBusy}
-        onToggleFollow={toggleFollow}
-        tasteCount={tasteCount}
-        socialError={socialError}
-        approved={approved}
-        approveBusy={approveBusy}
-        onToggleApprove={toggleApprove}
-        noteOpen={notePromptFor === profile.id}
-        onDismissNote={() => setNotePromptFor(null)}
-        onSendTasteNote={sendTasteNote}
-        blocked={blocked}
-        blockBusy={blockBusy}
-        onToggleBlock={toggleBlock}
-        isOwner={isOwner}
-        signedIn={!!userId}
-        search={search}
-        onSearch={setSearch}
-        category={category}
-        onCategory={setCategory}
-        sort={sort}
-        onSort={setSort}
-        view={view}
-        onView={(v) => {
-          setView(v);
-          setMobileMenu(false);
-        }}
-        cols={cols}
-        onCols={changeCols}
-        collapsed={freeform}
-        mobileOpen={mobileMenu}
-        onCloseMobile={() => setMobileMenu(false)}
-      />
+      {/* full-bleed: the sidebar sits flush to the screen's left edge (below the
+          top bar), the gallery fills the rest. one vertical stack on phones;
+          the freeform overlay escapes this flow entirely. */}
+      <div className="flex w-full flex-col md:flex-row md:items-stretch">
+        <div className="md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-64 md:shrink-0">
+          <Sidebar
+            profile={profile}
+            counts={counts}
+            followers={followers}
+            following={following}
+            canFollow={canFollow}
+            isFollowing={isFollowing}
+            followBusy={followBusy}
+            onToggleFollow={toggleFollow}
+            tasteCount={tasteCount}
+            socialError={socialError}
+            approved={approved}
+            approveBusy={approveBusy}
+            onToggleApprove={toggleApprove}
+            noteOpen={notePromptFor === profile.id}
+            onDismissNote={() => setNotePromptFor(null)}
+            onSendTasteNote={sendTasteNote}
+            blocked={blocked}
+            blockBusy={blockBusy}
+            onToggleBlock={toggleBlock}
+            isOwner={isOwner}
+            signedIn={!!userId}
+            search={search}
+            onSearch={setSearch}
+            category={category}
+            onCategory={setCategory}
+            sort={sort}
+            onSort={setSort}
+            view={view}
+            onView={setView}
+            cols={cols}
+            onCols={changeCols}
+            savedShelf={savedShelf}
+          />
+        </div>
 
-      <div
-        className={`relative flex flex-1 flex-col ${
-          freeform ? "overflow-hidden" : "overflow-y-auto overscroll-contain"
-        }`}
-      >
-        {/* mobile header — slides up and out in freeform */}
-        <header
-          className={`z-30 flex min-h-[4.5rem] shrink-0 items-center justify-between bg-white/85 px-5 py-4 backdrop-blur transition-[margin,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:hidden ${
-            freeform ? "pointer-events-none relative -mt-[4.5rem] opacity-0" : "sticky top-0"
-          }`}
-        >
-          {/* the mark goes home, same as the sidebar's */}
-          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-          </Link>
-          <button
-            aria-label="Menu"
-            onClick={() => setMobileMenu((m) => !m)}
-            className="-mr-3 flex h-10 w-10 cursor-pointer items-center justify-center"
+        {!freeform && (
+          <main
+            ref={stageRef}
+            className={`relative min-w-0 flex-1 px-5 pb-16 pt-4 transition-opacity duration-700 ease-out sm:px-8 md:pt-8 ${
+              mounted && !gridDimmed ? "opacity-100" : "opacity-0"
+            }`}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" stroke="#18181b" strokeWidth="1.5" strokeLinecap="round">
-              <line
-                x1="1" y1="8" x2="15" y2="8"
-                style={{
-                  transform: mobileMenu ? "rotate(45deg)" : "translateY(-4px)",
-                  transformOrigin: "center",
-                  transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              />
-              <line
-                x1="1" y1="8" x2="15" y2="8"
-                style={{ opacity: mobileMenu ? 0 : 1, transition: "opacity 200ms ease" }}
-              />
-              <line
-                x1="1" y1="8" x2="15" y2="8"
-                style={{
-                  transform: mobileMenu ? "rotate(-45deg)" : "translateY(4px)",
-                  transformOrigin: "center",
-                  transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              />
-            </svg>
-          </button>
-        </header>
+            {savedShelf ? (
+              /* the queue: things spotted but not yet claimed, newest first.
+                 same tiles, same detail view as the wall — plus the two calls
+                 each row asks for: favorite it, or let it go. */
+              savedRows === null ? (
+                <p className="pt-16 text-center text-xs text-zinc-400 [animation:smart-search-wave_1.6s_ease-in-out_infinite]">
+                  Loading…
+                </p>
+              ) : savedRows.length === 0 ? (
+                <p className="pt-16 text-center text-xs text-zinc-400">
+                  Nothing saved yet — tap the bookmark on anything you spot in the feeds.
+                </p>
+              ) : (
+                <div className="hover-fx grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
+                  {savedRows.map((r) => {
+                    const item = radarToItem(r);
+                    return (
+                      <article key={r.id} className="item-tile">
+                        <button
+                          onClick={(e) => {
+                            const thumb =
+                              e.currentTarget.querySelector(".item-media") ?? e.currentTarget;
+                            playSfx(item.media_type);
+                            setOpen({ item, rect: thumb.getBoundingClientRect(), saved: true });
+                          }}
+                          aria-label={item.title}
+                          className="block w-full cursor-pointer"
+                        >
+                          <TileMedia item={item} />
+                        </button>
+                        <h3 className="mt-3 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+                          {item.title}
+                        </h3>
+                        {item.creator && (
+                          <p className="truncate text-xs text-zinc-400">{item.creator}</p>
+                        )}
+                        <div className="mt-1.5 flex items-center gap-3 text-xs">
+                          <button
+                            onClick={() => actOnSaved(r, "favorite")}
+                            disabled={savedBusy.has(r.id)}
+                            className="cursor-pointer font-medium text-zinc-900 transition-colors hover:text-zinc-500 disabled:cursor-wait"
+                          >
+                            Favorite
+                          </button>
+                          <button
+                            onClick={() => actOnSaved(r, "remove")}
+                            disabled={savedBusy.has(r.id)}
+                            className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )
+            ) : items.length === 0 ? (
+              <p className="pt-16 text-center text-xs text-zinc-400">
+                Nothing here yet
+                {isOwner ? (
+                  <>
+                    {" — "}
+                    <Link href="/add" className="text-zinc-900 underline underline-offset-2 transition-colors hover:text-zinc-500">
+                      add your first favorite
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  "."
+                )}
+              </p>
+            ) : visible.length === 0 ? (
+              <p className="pt-16 text-center text-xs text-zinc-400">No matches.</p>
+            ) : (
+              <>
+                {showHero && (
+                  <div className="mb-10">
+                    <p className="mb-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+                      Top four
+                    </p>
+                    <Grid
+                      items={pinned}
+                      matches={inCategory}
+                      hiddenId={open?.item.id ?? null}
+                      cols={4}
+                      onOpen={openItem}
+                    />
+                  </div>
+                )}
+                <Grid
+                  items={gridItems}
+                  matches={inCategory}
+                  hiddenId={open?.item.id ?? null}
+                  cols={cols}
+                  onOpen={openItem}
+                  onReorderCommit={canReorder ? commitReorder : undefined}
+                />
+                {canReorder && gridItems.length > 1 && (
+                  <Hint id="reorder" className="mt-8">
+                    Drag a favorite to rearrange your wall — this order is yours.
+                  </Hint>
+                )}
+              </>
+            )}
+          </main>
+        )}
+      </div>
 
-        {/* freeform is full-screen — this floating button is the only way back */}
-        <button
-          onClick={() => setView("grid")}
-          aria-hidden={!freeform}
-          tabIndex={freeform ? 0 : -1}
-          className={`absolute left-5 top-5 z-30 flex cursor-pointer items-center gap-2 bg-white/85 px-3 py-2 text-xs font-medium text-zinc-900 backdrop-blur transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] hover:opacity-60 md:left-8 md:top-8 ${
-            freeform ? "translate-x-0 opacity-100 delay-150" : "pointer-events-none -translate-x-3 opacity-0 delay-0"
+      {/* freeform is a full-screen room laid over the page — the shell's
+          chrome has already slid away (collapsed) */}
+      {freeform && (
+        <div
+          className={`fixed inset-0 z-30 overflow-hidden bg-white transition-opacity duration-700 ease-out ${
+            mounted && !gridDimmed ? "opacity-100" : "opacity-0"
           }`}
         >
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
-            <rect x="1.5" y="1.5" width="5" height="5" />
-            <rect x="9.5" y="1.5" width="5" height="5" />
-            <rect x="1.5" y="9.5" width="5" height="5" />
-            <rect x="9.5" y="9.5" width="5" height="5" />
-          </svg>
-          Grid
-        </button>
-
-        <main
-          className={`relative transition-opacity duration-700 ease-out ${
-            mounted && !gridDimmed ? "opacity-100" : "opacity-0"
-          } ${view === "freeform" ? "min-h-0 flex-1" : "px-5 py-6 sm:px-8 sm:py-8"}`}
-        >
-          {items.length === 0 ? (
-            <p className="pt-16 text-center text-xs text-zinc-400">
-              Nothing here yet
-              {isOwner ? (
-                <>
-                  {" — "}
-                  <Link href="/add" className="text-zinc-900 underline underline-offset-2 transition-colors hover:text-zinc-500">
-                    add your first favorite
-                  </Link>
-                  .
-                </>
-              ) : (
-                "."
-              )}
-            </p>
-          ) : visible.length === 0 ? (
-            <p className="pt-16 text-center text-xs text-zinc-400">No matches.</p>
-          ) : view === "grid" ? (
-            <>
-              {showHero && (
-                <div className="mb-10">
-                  <p className="mb-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                    Top four
-                  </p>
-                  <Grid
-                    items={pinned}
-                    matches={inCategory}
-                    hiddenId={open?.item.id ?? null}
-                    cols={4}
-                    onOpen={openItem}
-                  />
-                </div>
-              )}
-              <Grid
-                items={gridItems}
-                matches={inCategory}
-                hiddenId={open?.item.id ?? null}
-                cols={cols}
-                onOpen={openItem}
-                onReorderCommit={canReorder ? commitReorder : undefined}
-              />
-              {canReorder && gridItems.length > 1 && (
-                <Hint id="reorder" className="mt-8">
-                  Drag a favorite to rearrange your wall — this order is yours.
-                </Hint>
-              )}
-            </>
-          ) : (
-            <>
-              {isOwner && (
-                <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
-                  <Hint id="freeform" className="pointer-events-auto">
-                    Drag your favorites anywhere — the layout is yours.
-                  </Hint>
-                </div>
-              )}
-              <Freeform
-                items={visible}
-                matches={inCategory}
-                hiddenId={open?.item.id ?? null}
-                tileW={freeformTileW}
-                onOpen={openItem}
-                onMove={moveItem}
-              />
-            </>
+          {isOwner && (
+            <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
+              <Hint id="freeform" className="pointer-events-auto">
+                Drag your favorites anywhere — the layout is yours.
+              </Hint>
+            </div>
           )}
-        </main>
-      </div>
+          <Freeform
+            items={visible}
+            matches={inCategory}
+            hiddenId={open?.item.id ?? null}
+            tileW={freeformTileW}
+            onOpen={openItem}
+            onMove={moveItem}
+          />
+          {/* the floating button is the only way back */}
+          <button
+            onClick={() => setView("grid")}
+            className="absolute left-5 top-5 z-30 flex cursor-pointer items-center gap-2 bg-white/85 px-3 py-2 text-xs font-medium text-zinc-900 backdrop-blur transition-opacity hover:opacity-60 md:left-8 md:top-8"
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <rect x="1.5" y="1.5" width="5" height="5" />
+              <rect x="9.5" y="1.5" width="5" height="5" />
+              <rect x="1.5" y="9.5" width="5" height="5" />
+              <rect x="9.5" y="9.5" width="5" height="5" />
+            </svg>
+            Grid
+          </button>
+        </div>
+      )}
 
       {open && (
         <DetailOverlay
           item={open.item}
           sourceRect={open.rect}
           getSourceRect={getSourceRect}
-          isOwner={isOwner}
+          /* a saved item isn't on the wall yet — no edit/delete/pin/share */
+          isOwner={open.saved ? false : isOwner}
           viewerProfile={viewerProfile}
           viewerFollowing={viewerFollowing}
           onCloseStart={() => setGridDimmed(false)}
@@ -703,12 +839,12 @@ export default function Library({
             setGridDimmed(false);
             clearItemUrl();
           }}
-          onSave={saveItem}
-          onDelete={deleteItem}
-          onTogglePin={isOwner ? togglePin : undefined}
-          shareUrl={`/${profile.username}?item=${open.item.id}`}
+          onSave={open.saved ? async () => {} : saveItem}
+          onDelete={open.saved ? async () => {} : deleteItem}
+          onTogglePin={!open.saved && isOwner ? togglePin : undefined}
+          shareUrl={open.saved ? undefined : `/${profile.username}?item=${open.item.id}`}
         />
       )}
-    </div>
+    </>
   );
 }

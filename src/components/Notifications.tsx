@@ -36,7 +36,7 @@ export default function Notifications({
   align = "right",
 }: {
   viewer: Profile;
-  /** which edge the dropdown hangs from — "left" for the library sidebar */
+  /** which edge the dropdown hangs from */
   align?: "left" | "right";
 }) {
   const [unread, setUnread] = useState(0);
@@ -171,21 +171,23 @@ export default function Notifications({
           open || unread > 0 ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
         }`}
       >
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <path d="M8 2a4 4 0 0 0-4 4v2.5L2.5 11v.5h11V11L12 8.5V6a4 4 0 0 0-4-4z" />
-          <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
-        </svg>
-        {unread > 0 && (
-          <span className="notif-badge save-appear absolute -right-1 -top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#e53935] px-1 text-[9px] font-medium leading-none text-white tabular-nums">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
+        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <path d="M8 2a4 4 0 0 0-4 4v2.5L2.5 11v.5h11V11L12 8.5V6a4 4 0 0 0-4-4z" />
+            <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" />
+          </svg>
+          {unread > 0 && (
+            <span className="notif-badge save-appear absolute -right-1 -top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#e53935] px-1 text-[9px] font-medium leading-none text-white tabular-nums">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </span>
       </button>
 
       {open && (
         <div
-          className={`save-appear absolute top-full z-40 mt-2 w-[21.5rem] max-w-[calc(100vw-2rem)] border border-zinc-200 bg-white shadow-2xl ${
-            align === "right" ? "right-0" : "left-0"
+          className={`save-appear fixed inset-x-4 top-16 z-40 border border-zinc-200 bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-[21.5rem] sm:max-w-[calc(100vw-2rem)] ${
+            align === "right" ? "sm:right-0" : "sm:left-0"
           }`}
         >
           <div className="flex items-baseline justify-between border-b border-zinc-100 px-4 py-2.5">
