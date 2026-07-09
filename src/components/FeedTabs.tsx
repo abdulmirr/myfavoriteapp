@@ -16,8 +16,10 @@ import { useEffect, useRef, useState } from "react";
  */
 export type Feed = "foryou" | "following" | "explore";
 
+// every tab is an explicit param change — a bare "/" for For You made
+// switching back a same-URL-ish navigation the router cache could swallow
 export const FEEDS: { key: Feed; label: string; href: string }[] = [
-  { key: "foryou", label: "For You", href: "/" },
+  { key: "foryou", label: "For You", href: "/?feed=foryou" },
   { key: "following", label: "Following", href: "/?feed=following" },
   { key: "explore", label: "Explore", href: "/?feed=explore" },
 ];

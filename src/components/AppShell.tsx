@@ -49,6 +49,15 @@ export default function AppShell({
           <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
             <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
           </Link>
+          {/* on phones the switcher reads as the page's title, beside the mark
+              (FeedTabs shows only its dropdown skin below sm) */}
+          {showFeeds && (
+            <div className="sm:hidden">
+              <Suspense fallback={null}>
+                <FeedTabs />
+              </Suspense>
+            </div>
+          )}
           {signedIn && !minimal && (
             <Link
               href="/?feed=explore&search=1"
@@ -65,9 +74,10 @@ export default function AppShell({
           )}
         </div>
 
-        {/* the feed switcher holds the bar's center — where you are */}
+        {/* on wide screens the switcher holds the bar's center — where you are
+            (FeedTabs shows only its inline-tabs skin at sm and up) */}
         {showFeeds && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
             <Suspense fallback={null}>
               <FeedTabs />
             </Suspense>
