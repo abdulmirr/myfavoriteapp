@@ -8,8 +8,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * A URL from env, or the fallback — never a throw. `??` only catches
+ * undefined, so a var that's present-but-empty or malformed (exactly what a
+ * misconfigured Vercel env looks like) used to crash prerender. This must
+ * survive any env state so the build never dies in `new URL()`.
+ */
+function envUrl(raw: string | undefined, fallback: string): URL {
+  try {
+    return new URL(raw && raw.trim() ? raw.trim() : fallback);
+  } catch {
+    return new URL(fallback);
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://myfavoriteapp.com"),
+  metadataBase: envUrl(process.env.NEXT_PUBLIC_SITE_URL, "https://myfavoriteapp.com"),
   title: {
     default: "Favorites",
     template: "%s — Favorites",
@@ -30,9 +44,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // the supabase session storage key — lets the theme script spot signed-out
-  // visitors. The placeholder keeps env-less builds (e.g. a Vercel preview
-  // before env vars are enabled for Preview) from dying in prerender.
-  const sbUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co");
+  // visitors. envUrl keeps env-less/misconfigured builds (e.g. a Vercel preview
+  // whose Supabase var is unset or blank) from dying in prerender.
+  const sbUrl = envUrl(process.env.NEXT_PUBLIC_SUPABASE_URL, "https://placeholder.supabase.co");
   const sbRef = sbUrl.hostname.split(".")[0];
   return (
     <html lang="en" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
