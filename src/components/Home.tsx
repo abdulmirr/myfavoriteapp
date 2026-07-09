@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useFeed } from "./FeedTabs";
 import {
   REC_CATEGORIES,
   REC_MIN_PER_CATEGORY,
@@ -34,8 +35,6 @@ import { TileMedia } from "./Tile";
 
 // visitors-only (and framer-motion-heavy) — keep it out of the signed-in bundle
 const Landing = dynamic(() => import("./Landing"));
-
-type Tab = "foryou" | "friends" | "explore";
 
 // stable identity so DetailOverlay's data effect doesn't re-fire every parent
 // render while `friends` is still loading (null)
@@ -92,7 +91,8 @@ export default function Home() {
   const [viewer, setViewer] = useState<Profile | null>(null);
   // null = still checking; new owners are routed to /welcome before the feed shows
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<Tab>("foryou");
+  // which feed shows rides in the URL (?feed=…), set by the top bar's switcher
+  const tab = useFeed();
   const [mounted, setMounted] = useState(false);
   // null = still loading; [] = follows nobody (FollowingFeed needs the difference)
   const [friends, setFriends] = useState<Profile[] | null>(null);
@@ -184,42 +184,18 @@ export default function Home() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <header className="sticky top-14 z-20 bg-white/85 backdrop-blur">
-          <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-5 py-5 sm:px-8">
-            <nav className="flex gap-6 text-xs">
-              {(
-                [
-                  { key: "foryou", label: "For You" },
-                  { key: "friends", label: "Friends" },
-                  { key: "explore", label: "Explore" },
-                ] as { key: Tab; label: string }[]
-              ).map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  className={`cursor-pointer transition-colors ${
-                    tab === t.key ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-4xl px-5 pb-24 pt-6 sm:px-8">
+        <main className="mx-auto max-w-4xl px-5 pb-24 pt-8 sm:px-8">
           {tab === "foryou" ? (
             <ForYou viewer={viewer} />
-          ) : tab === "friends" ? (
+          ) : tab === "following" ? (
             <section>
               <div className="mb-8 flex items-end justify-between gap-4">
                 <div className="flex flex-col gap-1.5">
                   <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-                    Friends
+                    Following
                   </h1>
                   <p className="text-xs text-zinc-400">
-                    Your people — and what they’ve been favoriting.
+                    People you follow — and what they’ve been favoriting.
                   </p>
                 </div>
                 <InviteFriendButton />

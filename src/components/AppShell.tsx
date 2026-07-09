@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import type { Profile } from "@/lib/types";
 import Notifications from "./Notifications";
+import FeedTabs from "./FeedTabs";
 
 /**
  * The persistent chrome — one top bar, the same on desktop and phones,
- * mounted once by ShellProvider so navigation never remounts it. The app has
- * two destinations (Home, You) and a few actions (add, notifications), which
- * is exactly a top bar's capacity: star → home on the left; add / bell / your
- * avatar on the right. Pages own their own centers (Home renders its tabs).
+ * mounted once by ShellProvider so navigation never remounts it. Star → home
+ * on the left, with Home's feed switcher (For You / Following / Explore) beside
+ * it so signed-in Home is one band of chrome, not two; add / bell / your avatar
+ * on the right.
  *
  * `minimal` strips the actions for focused tasks (/add) — just the way home.
  * `collapsed` slides the bar away entirely (freeform view is full-screen).
@@ -32,6 +34,8 @@ export default function AppShell({
   const pathname = usePathname();
   const isYou = !!viewer && pathname === `/${viewer.username}`;
   const isExplore = pathname.startsWith("/explore");
+  // the feed switcher belongs to Home, and only to a signed-in viewer
+  const showFeeds = signedIn && !minimal && pathname === "/";
 
   return (
     <div className="min-h-dvh">
@@ -40,10 +44,17 @@ export default function AppShell({
           collapsed ? "pointer-events-none -mt-14 opacity-0" : ""
         }`}
       >
-        {/* the mark goes home — the one nav convention nobody has to learn */}
-        <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-          <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-        </Link>
+        <div className="flex items-center gap-5 sm:gap-7">
+          {/* the mark goes home — the one nav convention nobody has to learn */}
+          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
+            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
+          </Link>
+          {showFeeds && (
+            <Suspense fallback={null}>
+              <FeedTabs />
+            </Suspense>
+          )}
+        </div>
 
         {!minimal && (
           <div className="flex items-center gap-4 sm:gap-5">
