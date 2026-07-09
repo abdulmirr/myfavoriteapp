@@ -422,6 +422,33 @@ export default function Library({
     return list;
   }, [items, sort, search, category, inCategory]);
 
+  // the queue reuses the wall's two *narrowing* controls — search and
+  // categories — but nothing that arranges (a queue has no curated order):
+  // it stays newest-first, and category hard-filters rather than dimming,
+  // since "show me just the books to read" is the whole point.
+  const savedCounts = useMemo(() => {
+    const c: Record<Category, number> = {
+      All: savedRows?.length ?? 0, Books: 0, Movies: 0, Music: 0, Other: 0,
+    };
+    for (const r of savedRows ?? []) c[categoryOf(r.media_type)] += 1;
+    return c;
+  }, [savedRows]);
+
+  const visibleSaved = useMemo(() => {
+    let list = savedRows ?? [];
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          (r.creator ?? "").toLowerCase().includes(q) ||
+          r.media_type.includes(q)
+      );
+    }
+    if (category !== "All") list = list.filter((r) => categoryOf(r.media_type) === category);
+    return list;
+  }, [savedRows, search, category]);
+
   const openItem = useCallback(
     (item: Item, rect: DOMRect, pushUrl = true) => {
       setOpen({ item, rect });
@@ -635,7 +662,7 @@ export default function Library({
         <div className="md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-64 md:shrink-0">
           <Sidebar
             profile={profile}
-            counts={counts}
+            counts={savedShelf ? savedCounts : counts}
             followers={followers}
             following={following}
             canFollow={canFollow}
@@ -688,9 +715,11 @@ export default function Library({
                 <p className="pt-16 text-center text-xs text-zinc-400">
                   Nothing saved yet — tap the bookmark on anything you spot in the feeds.
                 </p>
+              ) : visibleSaved.length === 0 ? (
+                <p className="pt-16 text-center text-xs text-zinc-400">No matches.</p>
               ) : (
                 <div className="hover-fx grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
-                  {savedRows.map((r) => {
+                  {visibleSaved.map((r) => {
                     const item = radarToItem(r);
                     return (
                       <article key={r.id} className="item-tile">

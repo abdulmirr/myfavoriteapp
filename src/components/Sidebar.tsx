@@ -642,9 +642,9 @@ export default function Sidebar({
             whitespace. phones get the visitor's essentials only: search and
             the category row; sort, grid ⇄ freeform and the size slider are
             desktop instruments (the phone grid is locked to two columns and
-            custom order is already the best default). all of it acts on the
-            wall, so the whole block steps aside while the Saved queue shows. */}
-        {!savedShelf && (
+            custom order is already the best default). the Saved queue keeps
+            the two *narrowing* controls (search + categories) but drops the
+            *arranging* ones — a queue has no curated order to sort or shape. */}
         <div className="flex flex-col gap-5 pt-2 md:gap-6 md:pt-6">
         {/* search */}
         <div>
@@ -699,7 +699,10 @@ export default function Sidebar({
         </nav>
 
         {/* sort + view — one tight group, matching row rhythm. desktop-only:
-            phones are for visiting, not curating */}
+            phones are for visiting, not curating. gone on the Saved queue —
+            these arrange the wall, and a queue isn't arranged. */}
+        {!savedShelf && (
+        <>
         <div className="hidden flex-col gap-1 text-xs md:flex">
           {/* one word that cycles: custom (your order) → latest → oldest */}
           <button
@@ -734,8 +737,9 @@ export default function Sidebar({
         <div className={view === "grid" ? "hidden md:block" : undefined}>
           <SizeSlider cols={cols} onCols={onCols} />
         </div>
-        </div>
+        </>
         )}
+        </div>
 
         {/* favorite — pinned to the bottom edge, its own action zone. desktop
             only: on phones the top bar's ＋ carries adding */}
