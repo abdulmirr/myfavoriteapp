@@ -512,11 +512,6 @@ export default function Sidebar({
           peopleShown ? "md:overflow-hidden" : "md:overflow-y-auto"
         }`}
       >
-        {/* copy-link, alone in its corner — the way home is the top bar's mark */}
-        <div className="flex items-center justify-end">
-          <ShareButton username={profile.username} />
-        </div>
-
         {/* profile */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
@@ -560,58 +555,57 @@ export default function Sidebar({
               action row: follow (solid, same language as Favorite) + approve
               taste (quiet sibling) + ⋯ (block/report); socials get their own
               line below, on the same rhythm. */}
-          {(canFollow || isOwner || (profile.socials?.length ?? 0) > 0) && (
           <div className="mt-1.5 flex flex-col gap-3">
-            {/* on your own page the relationship row is with yourself: edit */}
-            {isOwner && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {/* one action row: your page → edit; theirs → follow + approve +
+                block/report; copy-link rides along in both */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              {isOwner && (
                 <Link
                   href="/profile"
                   className="flex h-7 shrink-0 items-center whitespace-nowrap border border-zinc-200 px-3 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-900"
                 >
                   Edit profile
                 </Link>
-              </div>
-            )}
-            {canFollow && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                {!blocked && (
-                  <>
-                    <button
-                      onClick={onToggleFollow}
-                      disabled={followBusy}
-                      className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
-                        isFollowing
-                          ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
-                          : "bg-zinc-900 text-white hover:bg-zinc-700"
-                      }`}
-                    >
-                      {isFollowing ? "Following ✓" : "Follow"}
-                    </button>
-                    <button
-                      onClick={onToggleApprove}
-                      disabled={approveBusy}
-                      aria-label={approved ? "Approved — tap to undo" : "Approve taste"}
-                      title={approved ? "Approved" : "Approve taste"}
-                      className={`flex h-7 shrink-0 cursor-pointer items-center transition-colors disabled:cursor-wait ${
-                        approved ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill={approved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
-                        <path d="M2.5 7.5h2v6h-2z" />
-                        <path d="M4.5 12.7c.4.5 1 .8 1.7.8h4.7c.6 0 1.1-.4 1.2-1l.9-4.2c.1-.7-.4-1.3-1.1-1.3H8.7l.6-2.6c.1-.6-.2-1.2-.8-1.4-.5-.2-1 0-1.2.5L4.5 7.5" />
-                      </svg>
-                    </button>
-                  </>
-                )}
+              )}
+              {canFollow && !blocked && (
+                <>
+                  <button
+                    onClick={onToggleFollow}
+                    disabled={followBusy}
+                    className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                      isFollowing
+                        ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
+                        : "bg-zinc-900 text-white hover:bg-zinc-700"
+                    }`}
+                  >
+                    {isFollowing ? "Following ✓" : "Follow"}
+                  </button>
+                  <button
+                    onClick={onToggleApprove}
+                    disabled={approveBusy}
+                    aria-label={approved ? "Approved — tap to undo" : "Approve taste"}
+                    title={approved ? "Approved" : "Approve taste"}
+                    className={`flex h-7 shrink-0 cursor-pointer items-center transition-colors disabled:cursor-wait ${
+                      approved ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                    }`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill={approved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+                      <path d="M2.5 7.5h2v6h-2z" />
+                      <path d="M4.5 12.7c.4.5 1 .8 1.7.8h4.7c.6 0 1.1-.4 1.2-1l.9-4.2c.1-.7-.4-1.3-1.1-1.3H8.7l.6-2.6c.1-.6-.2-1.2-.8-1.4-.5-.2-1 0-1.2.5L4.5 7.5" />
+                    </svg>
+                  </button>
+                </>
+              )}
+              <ShareButton username={profile.username} />
+              {canFollow && (
                 <MoreButton
                   username={profile.username}
                   blocked={blocked}
                   blockBusy={blockBusy}
                   onToggleBlock={onToggleBlock}
                 />
-              </div>
-            )}
+              )}
+            </div>
             {canFollow && !blocked && noteOpen && (
               <TasteNoteNudge onSend={onSendTasteNote} onDismiss={onDismissNote} />
             )}
@@ -632,7 +626,6 @@ export default function Sidebar({
               </div>
             )}
           </div>
-          )}
           {/* taste stats — the footnote of the profile zone, below the actions
               and socials so the identity → actions → metadata order holds */}
           {tasteCount > 0 && (
