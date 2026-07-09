@@ -635,8 +635,12 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* library controls — separated from the profile zone by extra whitespace */}
-        <div className="flex flex-col gap-6 pt-6">
+        {/* library controls — separated from the profile zone by extra
+            whitespace. phones get the visitor's essentials only: search and
+            the category row; sort, grid ⇄ freeform and the size slider are
+            desktop instruments (the phone grid is locked to two columns and
+            custom order is already the best default). */}
+        <div className="flex flex-col gap-5 pt-2 md:gap-6 md:pt-6">
         {/* search */}
         <div>
           <div className="group flex items-start gap-1.5 border-b border-zinc-400 pb-1.5 focus-within:border-zinc-900">
@@ -671,13 +675,14 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* categories with live counts */}
-        <nav className="flex flex-col gap-1 text-xs">
+        {/* categories with live counts — a sticky tab row on phones (re-filter
+            from anywhere in the wall), a vertical list on desktop */}
+        <nav className="sticky top-14 z-20 -mx-5 flex gap-x-5 overflow-x-auto bg-white/85 px-5 py-2.5 text-xs backdrop-blur [scrollbar-width:none] md:static md:z-auto md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:bg-transparent md:p-0 md:backdrop-blur-none">
           {CATEGORIES.map((c) => (
             <button
               key={c}
               onClick={() => onCategory(c)}
-              className={`w-fit cursor-pointer text-left transition-colors ${
+              className={`w-fit cursor-pointer whitespace-nowrap text-left transition-colors ${
                 category === c
                   ? "font-medium text-zinc-900"
                   : "text-zinc-400 hover:text-zinc-900"
@@ -688,8 +693,9 @@ export default function Sidebar({
           ))}
         </nav>
 
-        {/* sort + view — one tight group, matching row rhythm */}
-        <div className="flex flex-col gap-1 text-xs">
+        {/* sort + view — one tight group, matching row rhythm. desktop-only:
+            phones are for visiting, not curating */}
+        <div className="hidden flex-col gap-1 text-xs md:flex">
           {/* one word that cycles: custom (your order) → latest → oldest */}
           <button
             onClick={() =>
