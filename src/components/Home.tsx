@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFeed } from "./FeedTabs";
 import {
   REC_CATEGORIES,
@@ -91,8 +91,10 @@ export default function Home() {
   const [viewer, setViewer] = useState<Profile | null>(null);
   // null = still checking; new owners are routed to /welcome before the feed shows
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
-  // which feed shows rides in the URL (?feed=…), set by the top bar's switcher
+  // which feed shows rides in the URL (?feed=…), set by the top bar's switcher;
+  // the bar's ⌕ adds &search=1 so Explore's search bar opens focused
   const tab = useFeed();
+  const focusSearch = useSearchParams().get("search") === "1";
   const [mounted, setMounted] = useState(false);
   // null = still loading; [] = follows nobody (FollowingFeed needs the difference)
   const [friends, setFriends] = useState<Profile[] | null>(null);
@@ -214,7 +216,11 @@ export default function Home() {
               />
             </section>
           ) : (
-            <ExploreFeed viewer={viewer} onOpen={(item, rect) => setQuick({ item, rect })} />
+            <ExploreFeed
+              viewer={viewer}
+              focusSearch={focusSearch}
+              onOpen={(item, rect) => setQuick({ item, rect })}
+            />
           )}
         </main>
 

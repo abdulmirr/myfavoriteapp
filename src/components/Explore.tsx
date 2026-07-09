@@ -24,9 +24,12 @@ const PAGE = 24;
 export function ExploreFeed({
   viewer,
   onOpen,
+  focusSearch = false,
 }: {
   viewer: Profile | null;
   onOpen: (item: Item, rect: DOMRect) => void;
+  /** the top bar's ⌕ lands here with the search bar already focused */
+  focusSearch?: boolean;
 }) {
   const [recent, setRecent] = useState<FeedItem[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -75,18 +78,21 @@ export function ExploreFeed({
 
   return (
     <section>
-      <div className="mb-10 flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-            Explore
-          </h1>
-          <p className="text-xs text-zinc-400">
-            Everyone on the app — people worth following, and what they’re saving.
-          </p>
-        </div>
-        {/* the app-wide search — people, saved items, and the catalog — lives
-            here on Explore, the one place you go looking outward */}
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+          Explore
+        </h1>
+        <p className="text-xs text-zinc-400">
+          Everyone on the app — people worth following, and what they’re saving.
+        </p>
+      </div>
+
+      {/* the one true search — people, saved items, and the catalog in one
+          bar. searching is the point of this page, so it opens the page. */}
+      <div className="mb-12">
         <SearchBar
+          wide
+          autoFocus={focusSearch}
           onPick={(r, rect) => {
             const item = resultToItem(r);
             playSfx(item.media_type);

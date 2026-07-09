@@ -46,8 +46,21 @@ export function resultToItem(r: SearchResult): Item {
 
 type SearchHits = { people: Profile[]; media: FeedItem[]; discover: SearchResult[] };
 
-/** People, saved items and external catalogs in one dropdown — the app-wide search. */
-export default function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: DOMRect) => void }) {
+/**
+ * People, saved items and external catalogs in one dropdown — the app-wide
+ * search. Two skins: the compact icon that expands on focus (default), and
+ * `wide` — a full-width bar that's always open, for Explore, where search is
+ * the point of the page.
+ */
+export default function SearchBar({
+  onPick,
+  wide = false,
+  autoFocus = false,
+}: {
+  onPick: (r: SearchResult, rect: DOMRect) => void;
+  wide?: boolean;
+  autoFocus?: boolean;
+}) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -98,16 +111,16 @@ export default function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: 
   const hasResults = people.length > 0 || media.length > 0 || discover.length > 0;
 
   // icon-only until pressed: the underline and input reveal on focus and
-  // collapse back once the field is blurred and empty
-  const expanded = focused || q.trim().length > 0;
+  // collapse back once the field is blurred and empty. the wide bar never collapses.
+  const expanded = wide || focused || q.trim().length > 0;
 
   return (
-    <div className="relative max-w-56">
+    <div className={`relative ${wide ? "w-full" : "max-w-56"}`}>
       {/* pt-1 balances pb-1, and the transparent top border balances border-b, so the icon centers on the pfp beside it */}
       <div
-        className={`flex items-center gap-1.5 border-b border-t border-t-transparent pb-1 pt-1 transition-colors duration-200 ${
-          focused ? "border-zinc-900" : expanded ? "border-zinc-400" : "border-transparent"
-        }`}
+        className={`flex items-center border-b border-t border-t-transparent transition-colors duration-200 ${
+          wide ? "gap-2.5 pb-2 pt-2" : "gap-1.5 pb-1 pt-1"
+        } ${focused ? "border-zinc-900" : expanded ? "border-zinc-400" : "border-transparent"}`}
       >
         <button
           aria-label="Search"
@@ -116,7 +129,7 @@ export default function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: 
             expanded ? "text-zinc-900" : "cursor-pointer text-zinc-400 hover:text-zinc-900"
           }`}
         >
-          <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg className={wide ? "h-4 w-4" : "h-3 w-3"} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
             <circle cx="5" cy="5" r="4" />
             <path d="M8 8l3 3" />
           </svg>
@@ -124,7 +137,8 @@ export default function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: 
         <input
           ref={inputRef}
           value={q}
-          placeholder="Search"
+          autoFocus={autoFocus}
+          placeholder={wide ? "Search people, favorites, and everything else…" : "Search"}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => {
             setFocused(true);
@@ -135,14 +149,18 @@ export default function SearchBar({ onPick }: { onPick: (r: SearchResult, rect: 
             setTimeout(() => setOpen(false), 150);
           }}
           onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-          className={`bg-transparent text-xs leading-4 text-zinc-900 outline-none transition-all duration-200 placeholder:text-zinc-400 ${
-            expanded ? "w-full opacity-100" : "pointer-events-none w-0 opacity-0"
-          }`}
+          className={`bg-transparent text-zinc-900 outline-none transition-all duration-200 placeholder:text-zinc-400 ${
+            wide ? "text-sm leading-5" : "text-xs leading-4"
+          } ${expanded ? "w-full opacity-100" : "pointer-events-none w-0 opacity-0"}`}
         />
       </div>
 
       {open && q.trim().length >= 2 && (
-        <div className="absolute left-0 top-full z-40 mt-2 max-h-[70vh] w-72 overflow-y-auto border border-zinc-200 bg-white shadow-2xl save-appear">
+        <div
+          className={`absolute left-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto border border-zinc-200 bg-white shadow-2xl save-appear ${
+            wide ? "w-full" : "w-72"
+          }`}
+        >
           {results === null || (searching && !hasResults) ? (
             // first response for this query still in flight — "No matches."
             // here would flash a false negative on every keystroke
