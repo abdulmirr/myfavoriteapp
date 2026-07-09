@@ -9,13 +9,6 @@ export type ViewMode = "grid" | "freeform";
 export const MIN_COLS = 3;
 export const MAX_COLS = 20;
 
-/** media_type / sort labels for the sort row */
-const SORTS: { key: SortMode; label: string }[] = [
-  { key: "default", label: "Custom" },
-  { key: "latest", label: "Latest" },
-  { key: "oldest", label: "Oldest" },
-];
-
 /**
  * Hairline slider (NS price-slider visuals): 1px track, 8×8 square handle.
  * Full-width — same span as the search field — with Small/Large end labels.
@@ -107,9 +100,9 @@ export default function LibraryToolbar({
     // the screen edges past the layout wrapper's padding); a plain block in
     // the placard column on md+, where the column itself is sticky
     <div className="sticky top-14 z-20 -mx-5 bg-white/85 px-5 backdrop-blur sm:-mx-8 sm:px-8 md:static md:z-auto md:mx-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-2.5 py-3 text-xs md:flex-col md:items-stretch md:gap-5 md:py-0">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2.5 py-3 text-xs md:flex-col md:items-stretch md:gap-6 md:py-0">
         {/* filter — what you're looking at */}
-        <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2.5 md:flex-col md:items-stretch md:gap-3.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2.5 md:flex-col md:items-stretch md:gap-6">
           <div className="group flex w-32 shrink-0 items-center gap-1.5 border-b border-zinc-400 pb-1 focus-within:border-zinc-900 sm:w-40 md:w-full">
             <svg
               className="h-3 w-3 shrink-0 text-zinc-400 group-focus-within:text-zinc-900"
@@ -130,7 +123,7 @@ export default function LibraryToolbar({
           </div>
 
           {/* categories with live counts — a row on phones, a list on desktop */}
-          <nav className="flex items-center gap-4 md:flex-col md:items-start md:gap-2">
+          <nav className="flex items-center gap-4 md:flex-col md:items-start md:gap-1">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
@@ -148,38 +141,39 @@ export default function LibraryToolbar({
         </div>
 
         {/* view — how you're looking at it */}
-        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 md:ml-0 md:flex-col md:items-stretch md:gap-4 md:border-t md:border-zinc-100 md:pt-4">
-          {/* sort — its own row: Custom (the user's order) / Latest / Oldest */}
-          <div className="flex items-center gap-3">
-            {SORTS.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => onSort(s.key)}
-                className={`cursor-pointer whitespace-nowrap transition-colors ${
-                  sort === s.key ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-          {/* grid ⇄ freeform — its own row */}
-          <div className="flex items-center gap-3">
-            {(["grid", "freeform"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => onView(v)}
-                className={`cursor-pointer transition-colors ${
-                  view === v ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-                }`}
-              >
-                {v === "grid" ? "Grid" : "Freeform"}
-              </button>
-            ))}
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 md:ml-0 md:flex-col md:items-stretch md:gap-6">
+          {/* sort + view — one tight group, matching Abdul's rhythm */}
+          <div className="flex items-center gap-x-4 gap-y-1 md:flex-col md:items-start md:gap-1">
+            {/* one word that cycles: Custom (your own order) → Latest → Oldest */}
+            <button
+              onClick={() =>
+                onSort(sort === "default" ? "latest" : sort === "latest" ? "oldest" : "default")
+              }
+              className={`cursor-pointer whitespace-nowrap transition-colors ${
+                sort === "default"
+                  ? "text-zinc-400 hover:text-zinc-900"
+                  : "font-medium text-zinc-900"
+              }`}
+            >
+              {sort === "default" ? "Custom" : sort === "latest" ? "Latest" : "Oldest"}
+            </button>
+            <div className="flex gap-3">
+              {(["grid", "freeform"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => onView(v)}
+                  className={`cursor-pointer transition-colors ${
+                    view === v ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                  }`}
+                >
+                  {v === "grid" ? "Grid" : "Freeform"}
+                </button>
+              ))}
+            </div>
           </div>
           {/* size — full-width slider; on phones the grid is locked to two
               columns (globals.css), so it only shows where it still does something */}
-          <div className="hidden md:block md:pt-1">
+          <div className="hidden md:block">
             <SizeSlider cols={cols} onCols={onCols} />
           </div>
         </div>
