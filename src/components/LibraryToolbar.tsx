@@ -9,7 +9,17 @@ export type ViewMode = "grid" | "freeform";
 export const MIN_COLS = 3;
 export const MAX_COLS = 20;
 
-/** Hairline slider (NS price-slider visuals): 1px track, 8×8 square handle. */
+/** media_type / sort labels for the sort row */
+const SORTS: { key: SortMode; label: string }[] = [
+  { key: "default", label: "Custom" },
+  { key: "latest", label: "Latest" },
+  { key: "oldest", label: "Oldest" },
+];
+
+/**
+ * Hairline slider (NS price-slider visuals): 1px track, 8×8 square handle.
+ * Full-width — same span as the search field — with Small/Large end labels.
+ */
 function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -28,27 +38,33 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
   );
 
   return (
-    <div
-      ref={trackRef}
-      title="Tile size"
-      className="relative mx-1 flex h-5 w-20 cursor-pointer touch-none items-center select-none"
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        setDragging(true);
-        set(e.clientX);
-      }}
-      onPointerMove={(e) => dragging && set(e.clientX)}
-      onPointerUp={(e) => {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-        setDragging(false);
-      }}
-    >
-      <div className="absolute inset-x-0 h-px bg-zinc-400" />
-      <div className="absolute h-px bg-zinc-900" style={{ left: 0, right: `${100 - pct}%` }} />
+    <div>
       <div
-        className="absolute h-2 w-2 -translate-x-1/2 cursor-grab bg-zinc-900 active:cursor-grabbing"
-        style={{ left: `${pct}%` }}
-      />
+        ref={trackRef}
+        title="Tile size"
+        className="relative flex h-5 w-full cursor-pointer touch-none items-center select-none"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setDragging(true);
+          set(e.clientX);
+        }}
+        onPointerMove={(e) => dragging && set(e.clientX)}
+        onPointerUp={(e) => {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+          setDragging(false);
+        }}
+      >
+        <div className="absolute inset-x-0 h-px bg-zinc-400" />
+        <div className="absolute h-px bg-zinc-900" style={{ left: 0, right: `${100 - pct}%` }} />
+        <div
+          className="absolute h-2 w-2 -translate-x-1/2 cursor-grab bg-zinc-900 active:cursor-grabbing"
+          style={{ left: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-xs text-zinc-400">
+        <span>Small</span>
+        <span>Large</span>
+      </div>
     </div>
   );
 }
@@ -90,7 +106,7 @@ export default function LibraryToolbar({
     // sticky full-bleed bar on phones (the negative margins let the blur reach
     // the screen edges past the layout wrapper's padding); a plain block in
     // the placard column on md+, where the column itself is sticky
-    <div className="sticky top-14 z-20 -mx-5 bg-white/85 px-5 backdrop-blur sm:-mx-8 sm:px-8 md:static md:z-auto md:mx-0 md:mt-6 md:border-t md:border-zinc-100 md:bg-transparent md:px-0 md:pt-5 md:backdrop-blur-none">
+    <div className="sticky top-14 z-20 -mx-5 bg-white/85 px-5 backdrop-blur sm:-mx-8 sm:px-8 md:static md:z-auto md:mx-0 md:bg-transparent md:px-0 md:backdrop-blur-none">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-2.5 py-3 text-xs md:flex-col md:items-stretch md:gap-5 md:py-0">
         {/* filter — what you're looking at */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2.5 md:flex-col md:items-stretch md:gap-3.5">
@@ -132,34 +148,38 @@ export default function LibraryToolbar({
         </div>
 
         {/* view — how you're looking at it */}
-        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-4 md:ml-0 md:border-t md:border-zinc-100 md:pt-4">
-          {/* one word that cycles: my order → latest → oldest → my order */}
-          <button
-            onClick={() =>
-              onSort(sort === "default" ? "latest" : sort === "latest" ? "oldest" : "default")
-            }
-            className={`cursor-pointer whitespace-nowrap transition-colors ${
-              sort === "default"
-                ? "text-zinc-400 hover:text-zinc-900"
-                : "font-medium text-zinc-900"
-            }`}
-          >
-            {sort === "oldest" ? "Oldest" : "Latest"}
-          </button>
-          {(["grid", "freeform"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => onView(v)}
-              className={`cursor-pointer transition-colors ${
-                view === v ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-              }`}
-            >
-              {v === "grid" ? "Grid" : "Freeform"}
-            </button>
-          ))}
-          {/* on phones the grid is locked to two columns (globals.css) — the
-              slider only shows where it still does something */}
-          <div className="hidden md:block">
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 md:ml-0 md:flex-col md:items-stretch md:gap-4 md:border-t md:border-zinc-100 md:pt-4">
+          {/* sort — its own row: Custom (the user's order) / Latest / Oldest */}
+          <div className="flex items-center gap-3">
+            {SORTS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => onSort(s.key)}
+                className={`cursor-pointer whitespace-nowrap transition-colors ${
+                  sort === s.key ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {/* grid ⇄ freeform — its own row */}
+          <div className="flex items-center gap-3">
+            {(["grid", "freeform"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => onView(v)}
+                className={`cursor-pointer transition-colors ${
+                  view === v ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+                }`}
+              >
+                {v === "grid" ? "Grid" : "Freeform"}
+              </button>
+            ))}
+          </div>
+          {/* size — full-width slider; on phones the grid is locked to two
+              columns (globals.css), so it only shows where it still does something */}
+          <div className="hidden md:block md:pt-1">
             <SizeSlider cols={cols} onCols={onCols} />
           </div>
         </div>

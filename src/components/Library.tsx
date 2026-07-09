@@ -556,14 +556,13 @@ export default function Library({
     <>
       <IntroOverlay images={introImages} />
 
-      {/* the placard + gallery row: identity and controls in a left column on
-          desktop (the way a gallery labels a wall), one vertical stack on
-          phones. the freeform overlay escapes this flow entirely. */}
-      <div className="mx-auto flex w-full max-w-6xl flex-col px-5 pt-6 sm:px-8 sm:pt-10 md:flex-row md:items-start md:gap-12">
-        <div className="md:sticky md:top-14 md:max-h-[calc(100dvh-3.5rem)] md:w-60 md:shrink-0 md:overflow-y-auto md:pb-10">
+      {/* full-bleed: the sidebar sits flush to the screen's left edge (below the
+          top bar), the gallery fills the rest. one vertical stack on phones;
+          the freeform overlay escapes this flow entirely. */}
+      <div className="flex w-full flex-col md:flex-row md:items-stretch">
+        <div className="flex flex-col gap-6 px-5 pt-6 sm:px-8 md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-64 md:shrink-0 md:gap-8 md:overflow-y-auto md:px-8 md:pb-6 md:pt-8">
           <ProfileHeader
             profile={profile}
-            itemCount={items.length}
             followers={followers}
             following={following}
             isOwner={isOwner}
@@ -601,12 +600,31 @@ export default function Library({
               onCols={changeCols}
             />
           )}
+
+          {/* the primary action, pinned to the sidebar's bottom edge on desktop
+              (on phones the top bar's ＋ carries it, so this is desktop-only) */}
+          {isOwner ? (
+            <Link
+              href="/add"
+              className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
+            >
+              <img src="/favicon.svg" alt="" className="h-4 w-auto" />
+              Favorite
+            </Link>
+          ) : !userId ? (
+            <Link
+              href={`/signin?next=/${profile.username}`}
+              className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
+            >
+              Start curating
+            </Link>
+          ) : null}
         </div>
 
         {!freeform && (
           <main
             ref={stageRef}
-            className={`relative min-w-0 flex-1 pb-16 pt-4 transition-opacity duration-700 ease-out md:pt-1 ${
+            className={`relative min-w-0 flex-1 px-5 pb-16 pt-4 transition-opacity duration-700 ease-out sm:px-8 md:pt-8 ${
               mounted && !gridDimmed ? "opacity-100" : "opacity-0"
             }`}
           >

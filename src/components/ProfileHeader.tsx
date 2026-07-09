@@ -105,7 +105,6 @@ function PeopleModal({
  */
 export default function ProfileHeader({
   profile,
-  itemCount,
   followers,
   following,
   isOwner,
@@ -128,7 +127,6 @@ export default function ProfileHeader({
   onToggleBlock,
 }: {
   profile: Profile;
-  itemCount: number;
   followers: Profile[];
   following: Profile[];
   isOwner: boolean;
@@ -258,11 +256,12 @@ export default function ProfileHeader({
               )}
           </div>
 
-          {/* stats — the relationship strip */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
-            {stat(`favorite${itemCount === 1 ? "" : "s"}`, itemCount)}
-            {stat(`follower${followers.length === 1 ? "" : "s"}`, followers.length, () => setPeople("followers"))}
-            {stat("following", following.length, () => setPeople("following"))}
+          {/* the relationship strip — followers and following only, no piece
+              count (the wall itself is the count) */}
+          <div className="text-xs text-zinc-400">
+            {stat(`Follower${followers.length === 1 ? "" : "s"}`, followers.length, () => setPeople("followers"))}
+            {" · "}
+            {stat("Following", following.length, () => setPeople("following"))}
           </div>
 
           {socialError && (
