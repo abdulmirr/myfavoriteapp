@@ -176,26 +176,28 @@ export default function ProfileHeader({
     // width/centering belong to Library's layout wrapper, not here.
     <header className="w-full">
       <div className="flex flex-col items-start gap-2.5">
-        <div className="mb-1 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 sm:h-24 sm:w-24">
-          {profile.avatar_url ? (
-            <img
-              src={profile.avatar_url}
-              alt={profile.display_name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span className="text-xl font-semibold text-zinc-300">
-              {(profile.display_name || profile.username).slice(0, 1)}
-            </span>
-          )}
-        </div>
-
-          <div className="min-w-0 max-w-full">
-            <h1 className="truncate text-lg font-semibold leading-tight tracking-tight text-zinc-900">
+        {/* compact identity: small avatar with the name beside it (Abdul's) */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.display_name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-sm font-semibold text-zinc-300">
+                {(profile.display_name || profile.username).slice(0, 1)}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold leading-tight tracking-tight text-zinc-900">
               {profile.display_name}
             </h1>
             <p className="truncate text-xs text-zinc-400">@{profile.username}</p>
           </div>
+        </div>
           <div className="flex flex-wrap items-center gap-3">
               {isOwner ? (
                 <Link
