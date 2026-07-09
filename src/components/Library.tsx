@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Item, Profile } from "@/lib/types";
 import { categoryOf, type Category } from "@/lib/categories";
 import { supabase } from "@/lib/supabase";
@@ -10,23 +11,52 @@ import {
   blockProfile,
   fetchFollowers,
   fetchFollowing,
+  fetchRadar,
   friendlyError,
   hasApprovedTaste,
   hasBlocked,
+  promoteRadar,
+  removeFromRadar,
   setTasteNote,
   tasteApprovalCount,
   unapproveTaste,
   unblockProfile,
   PROFILE_COLS,
+  type RadarItem,
 } from "@/lib/social";
-import { playUi, preloadSfx } from "@/lib/sfx";
+import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
 import { useShell } from "./ShellProvider";
+import { shelfFromParam } from "./ShelfTabs";
 import Sidebar, { type SortMode, type ViewMode } from "./Sidebar";
 import Grid from "./Grid";
 import Freeform from "./Freeform";
 import DetailOverlay from "./DetailOverlay";
 import IntroOverlay from "./IntroOverlay";
 import Hint, { markHintSeen } from "./Hint";
+import { TileMedia } from "./Tile";
+
+/** A saved row shaped as a library Item, so tiles and the detail view frame
+    it exactly like a favorite. */
+function radarToItem(r: RadarItem): Item {
+  return {
+    id: r.id,
+    profile_id: "",
+    media_type: r.media_type,
+    title: r.title,
+    creator: r.creator,
+    description: "",
+    image_url: r.image_url,
+    view_url: r.view_url,
+    metadata: (r.metadata ?? {}) as Item["metadata"],
+    canonical_id: r.canonical_id,
+    pinned_order: null,
+    sort_order: 0,
+    pos_x: null,
+    pos_y: null,
+    pos_rot: null,
+    created_at: r.created_at,
+  };
+}
 
 export default function Library({
   profile: initialProfile,
@@ -52,7 +82,9 @@ export default function Library({
   // a touched slider (now or on a past visit) is authoritative; until then the
   // density follows the width of the column the grid actually lives in
   const [colsTouched, setColsTouched] = useState(false);
-  const [open, setOpen] = useState<{ item: Item; rect: DOMRect } | null>(null);
+  // `saved: true` marks a queue item — the detail view then hides the
+  // owner instruments (edit, delete, pin) that act on the items table
+  const [open, setOpen] = useState<{ item: Item; rect: DOMRect; saved?: boolean } | null>(null);
   const [gridDimmed, setGridDimmed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [followers, setFollowers] = useState<Profile[]>([]);
@@ -107,6 +139,65 @@ export default function Library({
   }, [userId, profile.user_id, profile.id]);
 
   const isOwner = !!userId && userId === profile.user_id;
+
+  // tell the persistent top bar whose wall it's sitting over: your own page
+  // gets the Favorites · Saved switcher, someone else's shows their handle
+  const { setProfileBar } = useShell();
+  useEffect(() => {
+    setProfileBar({ handle: profile.username, own: isOwner });
+    return () => setProfileBar(null);
+  }, [profile.username, isOwner, setProfileBar]);
+
+  // which shelf — the wall or the private queue. URL-driven (the top bar's
+  // switcher writes ?shelf=saved); only ever honored on your own page.
+  const shelf = shelfFromParam(useSearchParams().get("shelf"));
+  const savedShelf = isOwner && shelf === "saved";
+
+  // the queue itself, fetched when the shelf opens
+  const [savedRows, setSavedRows] = useState<RadarItem[] | null>(null);
+  const [savedBusy, setSavedBusy] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!savedShelf) return;
+    let cancelled = false;
+    fetchRadar(profile.id).then((r) => !cancelled && setSavedRows(r));
+    return () => {
+      cancelled = true;
+    };
+  }, [savedShelf, profile.id]);
+
+  // favorite-or-remove, straight off the queue tile. favoriting also puts the
+  // piece on the wall, so the wall refetches to include it.
+  const actOnSaved = useCallback(
+    async (r: RadarItem, action: "favorite" | "remove") => {
+      if (savedBusy.has(r.id)) return;
+      setSavedBusy((s) => new Set(s).add(r.id));
+      try {
+        if (action === "favorite") {
+          await promoteRadar(r, profile.id);
+          playUi("confirm");
+          const { data } = await supabase()
+            .from("items")
+            .select("*")
+            .eq("profile_id", profile.id)
+            .order("sort_order", { ascending: true });
+          if (data) setItems(data as Item[]);
+        } else {
+          await removeFromRadar(r.id);
+        }
+        setSavedRows((prev) => (prev ?? []).filter((x) => x.id !== r.id));
+        setOpen((o) => (o?.item.id === r.id ? null : o));
+      } catch {
+        /* leave the row; a retry is one tap away */
+      } finally {
+        setSavedBusy((s) => {
+          const next = new Set(s);
+          next.delete(r.id);
+          return next;
+        });
+      }
+    },
+    [savedBusy, profile.id]
+  );
 
   // the displayed profile's circles
   useEffect(() => {
@@ -507,7 +598,8 @@ export default function Library({
 
   // freeform is a full-screen mode: the sidebar and mobile header slide away,
   // leaving a lone floating "Grid" button as the way back
-  const freeform = view === "freeform";
+  // the queue is always a plain grid — freeform is a wall instrument
+  const freeform = view === "freeform" && !savedShelf;
 
   // ask the persistent shell to slide its chrome away in freeform, and restore
   // it when leaving the view or the page
@@ -573,6 +665,7 @@ export default function Library({
             onView={setView}
             cols={cols}
             onCols={changeCols}
+            savedShelf={savedShelf}
           />
         </div>
 
@@ -583,7 +676,64 @@ export default function Library({
               mounted && !gridDimmed ? "opacity-100" : "opacity-0"
             }`}
           >
-            {items.length === 0 ? (
+            {savedShelf ? (
+              /* the queue: things spotted but not yet claimed, newest first.
+                 same tiles, same detail view as the wall — plus the two calls
+                 each row asks for: favorite it, or let it go. */
+              savedRows === null ? (
+                <p className="pt-16 text-center text-xs text-zinc-400 [animation:smart-search-wave_1.6s_ease-in-out_infinite]">
+                  Loading…
+                </p>
+              ) : savedRows.length === 0 ? (
+                <p className="pt-16 text-center text-xs text-zinc-400">
+                  Nothing saved yet — tap the bookmark on anything you spot in the feeds.
+                </p>
+              ) : (
+                <div className="hover-fx grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
+                  {savedRows.map((r) => {
+                    const item = radarToItem(r);
+                    return (
+                      <article key={r.id} className="item-tile">
+                        <button
+                          onClick={(e) => {
+                            const thumb =
+                              e.currentTarget.querySelector(".item-media") ?? e.currentTarget;
+                            playSfx(item.media_type);
+                            setOpen({ item, rect: thumb.getBoundingClientRect(), saved: true });
+                          }}
+                          aria-label={item.title}
+                          className="block w-full cursor-pointer"
+                        >
+                          <TileMedia item={item} />
+                        </button>
+                        <h3 className="mt-3 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+                          {item.title}
+                        </h3>
+                        {item.creator && (
+                          <p className="truncate text-xs text-zinc-400">{item.creator}</p>
+                        )}
+                        <div className="mt-1.5 flex items-center gap-3 text-xs">
+                          <button
+                            onClick={() => actOnSaved(r, "favorite")}
+                            disabled={savedBusy.has(r.id)}
+                            className="cursor-pointer font-medium text-zinc-900 transition-colors hover:text-zinc-500 disabled:cursor-wait"
+                          >
+                            Favorite
+                          </button>
+                          <button
+                            onClick={() => actOnSaved(r, "remove")}
+                            disabled={savedBusy.has(r.id)}
+                            className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )
+            ) : items.length === 0 ? (
               <p className="pt-16 text-center text-xs text-zinc-400">
                 Nothing here yet
                 {isOwner ? (
@@ -679,7 +829,8 @@ export default function Library({
           item={open.item}
           sourceRect={open.rect}
           getSourceRect={getSourceRect}
-          isOwner={isOwner}
+          /* a saved item isn't on the wall yet — no edit/delete/pin/share */
+          isOwner={open.saved ? false : isOwner}
           viewerProfile={viewerProfile}
           viewerFollowing={viewerFollowing}
           onCloseStart={() => setGridDimmed(false)}
@@ -688,10 +839,10 @@ export default function Library({
             setGridDimmed(false);
             clearItemUrl();
           }}
-          onSave={saveItem}
-          onDelete={deleteItem}
-          onTogglePin={isOwner ? togglePin : undefined}
-          shareUrl={`/${profile.username}?item=${open.item.id}`}
+          onSave={open.saved ? async () => {} : saveItem}
+          onDelete={open.saved ? async () => {} : deleteItem}
+          onTogglePin={!open.saved && isOwner ? togglePin : undefined}
+          shareUrl={open.saved ? undefined : `/${profile.username}?item=${open.item.id}`}
         />
       )}
     </>

@@ -435,6 +435,7 @@ export default function Sidebar({
   onView,
   cols,
   onCols,
+  savedShelf = false,
 }: {
   profile: Profile;
   counts: Record<Category, number>;
@@ -469,6 +470,8 @@ export default function Sidebar({
   onView: (v: ViewMode) => void;
   cols: number;
   onCols: (c: number) => void;
+  /** the Saved queue is showing — the wall's instruments step aside */
+  savedShelf?: boolean;
 }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
@@ -639,7 +642,9 @@ export default function Sidebar({
             whitespace. phones get the visitor's essentials only: search and
             the category row; sort, grid ⇄ freeform and the size slider are
             desktop instruments (the phone grid is locked to two columns and
-            custom order is already the best default). */}
+            custom order is already the best default). all of it acts on the
+            wall, so the whole block steps aside while the Saved queue shows. */}
+        {!savedShelf && (
         <div className="flex flex-col gap-5 pt-2 md:gap-6 md:pt-6">
         {/* search */}
         <div>
@@ -730,6 +735,7 @@ export default function Sidebar({
           <SizeSlider cols={cols} onCols={onCols} />
         </div>
         </div>
+        )}
 
         {/* favorite — pinned to the bottom edge, its own action zone. desktop
             only: on phones the top bar's ＋ carries adding */}

@@ -16,16 +16,22 @@ import AppShell from "./AppShell";
  * It loads the signed-in viewer once and exposes `setCollapsed` so a page can
  * ask the shell to slide its chrome away (Library's freeform view).
  */
+/** what the top bar should say about the profile page it's sitting over */
+export type ProfileBar = { handle: string; own: boolean } | null;
+
 type ShellCtx = {
   viewer: Profile | null;
   signedIn: boolean;
   setCollapsed: (v: boolean) => void;
+  /** profile pages tell the bar whose wall this is (own → shelf tabs, theirs → @handle) */
+  setProfileBar: (v: ProfileBar) => void;
 };
 
 const Ctx = createContext<ShellCtx>({
   viewer: null,
   signedIn: false,
   setCollapsed: () => {},
+  setProfileBar: () => {},
 });
 
 export const useShell = () => useContext(Ctx);
@@ -39,6 +45,7 @@ export default function ShellProvider({ children }: { children: React.ReactNode 
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const [viewer, setViewer] = useState<Profile | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [profileBar, setProfileBar] = useState<ProfileBar>(null);
 
   // load the viewer once; this component persists across navigation, so the
   // avatar resolves a single time for the whole session
@@ -65,6 +72,7 @@ export default function ShellProvider({ children }: { children: React.ReactNode 
   }, [userId]);
 
   const setCollapsedCb = useCallback((v: boolean) => setCollapsed(v), []);
+  const setProfileBarCb = useCallback((v: ProfileBar) => setProfileBar(v), []);
 
   const signedIn = !!userId;
   const chromeless =
@@ -72,7 +80,12 @@ export default function ShellProvider({ children }: { children: React.ReactNode 
     // the signed-out landing (/ before auth) stays full-bleed
     (pathname === "/" && !signedIn);
 
-  const ctx: ShellCtx = { viewer, signedIn, setCollapsed: setCollapsedCb };
+  const ctx: ShellCtx = {
+    viewer,
+    signedIn,
+    setCollapsed: setCollapsedCb,
+    setProfileBar: setProfileBarCb,
+  };
 
   if (chromeless) {
     return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>;
@@ -83,7 +96,13 @@ export default function ShellProvider({ children }: { children: React.ReactNode 
 
   return (
     <Ctx.Provider value={ctx}>
-      <AppShell viewer={viewer} signedIn={signedIn} collapsed={collapsed} minimal={minimal}>
+      <AppShell
+        viewer={viewer}
+        signedIn={signedIn}
+        collapsed={collapsed}
+        minimal={minimal}
+        profileBar={profileBar}
+      >
         {children}
       </AppShell>
     </Ctx.Provider>

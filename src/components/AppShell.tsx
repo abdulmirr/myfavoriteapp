@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import type { Profile } from "@/lib/types";
+import type { ProfileBar } from "./ShellProvider";
 import Notifications from "./Notifications";
 import FeedTabs from "./FeedTabs";
+import ShelfTabs from "./ShelfTabs";
 
 /**
  * The persistent chrome — one top bar, the same on desktop and phones,
@@ -22,6 +24,7 @@ export default function AppShell({
   signedIn,
   collapsed = false,
   minimal = false,
+  profileBar = null,
   children,
 }: {
   /** the signed-in viewer's profile — null while loading or signed out */
@@ -29,6 +32,8 @@ export default function AppShell({
   signedIn: boolean;
   collapsed?: boolean;
   minimal?: boolean;
+  /** set by profile pages: whose wall the bar is sitting over */
+  profileBar?: ProfileBar;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -36,6 +41,11 @@ export default function AppShell({
   const isExplore = pathname.startsWith("/explore");
   // the feed switcher belongs to Home, and only to a signed-in viewer
   const showFeeds = signedIn && !minimal && pathname === "/";
+  // the profile-page slot: your own wall gets the shelf switcher, someone
+  // else's gets their handle (only trust it while actually on that page)
+  const onProfile = !!profileBar && pathname === `/${profileBar.handle}`;
+  const showShelves = onProfile && profileBar!.own && !minimal;
+  const showHandle = onProfile && !profileBar!.own && !minimal;
 
   return (
     <div className="min-h-dvh">
@@ -49,14 +59,27 @@ export default function AppShell({
           <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
             <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
           </Link>
-          {/* on phones the switcher reads as the page's title, beside the mark
-              (FeedTabs shows only its dropdown skin below sm) */}
+          {/* on phones the slot beside the mark is the page's title: Home's
+              feed dropdown, your profile's shelf dropdown, or their handle
+              (the switchers show only their dropdown skins below sm) */}
           {showFeeds && (
             <div className="sm:hidden">
               <Suspense fallback={null}>
                 <FeedTabs />
               </Suspense>
             </div>
+          )}
+          {showShelves && (
+            <div className="sm:hidden">
+              <Suspense fallback={null}>
+                <ShelfTabs base={`/${profileBar!.handle}`} />
+              </Suspense>
+            </div>
+          )}
+          {showHandle && (
+            <span className="truncate text-xs font-medium text-zinc-900 sm:hidden">
+              @{profileBar!.handle}
+            </span>
           )}
           {signedIn && !minimal && (
             <Link
@@ -74,12 +97,20 @@ export default function AppShell({
           )}
         </div>
 
-        {/* on wide screens the switcher holds the bar's center — where you are
-            (FeedTabs shows only its inline-tabs skin at sm and up) */}
+        {/* on wide screens the bar's center answers "where are you within this
+            place": Home's feeds, or your library's shelves (someone else's
+            profile keeps it empty — their identity is already on the page) */}
         {showFeeds && (
           <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
             <Suspense fallback={null}>
               <FeedTabs />
+            </Suspense>
+          </div>
+        )}
+        {showShelves && (
+          <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
+            <Suspense fallback={null}>
+              <ShelfTabs base={`/${profileBar!.handle}`} />
             </Suspense>
           </div>
         )}
