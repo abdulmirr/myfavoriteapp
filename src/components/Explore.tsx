@@ -75,13 +75,24 @@ export function ExploreFeed({
 
   return (
     <section>
-      <div className="mb-10 flex flex-col gap-1.5">
-        <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-          Explore
-        </h1>
-        <p className="text-xs text-zinc-400">
-          Everyone on the app — people worth following, and what they’re saving.
-        </p>
+      <div className="mb-10 flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
+            Explore
+          </h1>
+          <p className="text-xs text-zinc-400">
+            Everyone on the app — people worth following, and what they’re saving.
+          </p>
+        </div>
+        {/* the app-wide search — people, saved items, and the catalog — lives
+            here on Explore, the one place you go looking outward */}
+        <SearchBar
+          onPick={(r, rect) => {
+            const item = resultToItem(r);
+            playSfx(item.media_type);
+            onOpen(item, rect);
+          }}
+        />
       </div>
 
       <div>
@@ -193,19 +204,7 @@ export default function Explore() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <header className="sticky top-14 z-20 bg-white/85 backdrop-blur">
-          <div className="mx-auto flex max-w-4xl items-center justify-end px-5 py-5 sm:px-8">
-            <SearchBar
-              onPick={(r, rect) => {
-                const item = resultToItem(r);
-                playSfx(item.media_type);
-                setQuick({ item, rect });
-              }}
-            />
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-4xl px-5 pb-24 pt-2 sm:px-8">
+        <main className="mx-auto max-w-4xl px-5 pb-24 pt-8 sm:px-8">
           <ExploreFeed viewer={viewer} onOpen={(item, rect) => setQuick({ item, rect })} />
         </main>
 
