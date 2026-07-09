@@ -13,18 +13,15 @@ import {
   friendlyError,
   hasApprovedTaste,
   hasBlocked,
-  fetchTasteMatch,
   setTasteNote,
   tasteApprovalCount,
   unapproveTaste,
   unblockProfile,
   PROFILE_COLS,
-  type TasteMatch,
 } from "@/lib/social";
 import { playUi, preloadSfx } from "@/lib/sfx";
 import { useShell } from "./ShellProvider";
-import ProfileHeader from "./ProfileHeader";
-import LibraryToolbar, { type SortMode, type ViewMode } from "./LibraryToolbar";
+import Sidebar, { type SortMode, type ViewMode } from "./Sidebar";
 import Grid from "./Grid";
 import Freeform from "./Freeform";
 import DetailOverlay from "./DetailOverlay";
@@ -239,23 +236,6 @@ export default function Library({
     let stale = false;
     hasApprovedTaste(viewerProfile.id, profile.id).then((v) => {
       if (!stale) setApproved(v);
-    });
-    return () => {
-      stale = true;
-    };
-  }, [viewerProfile, profile.id]);
-
-  // shared canonical favorites between the viewer and this library — the
-  // compatibility read shown in the header ("you share N favorites")
-  const [tasteMatch, setTasteMatch] = useState<TasteMatch | null>(null);
-  useEffect(() => {
-    if (!viewerProfile || viewerProfile.id === profile.id) {
-      setTasteMatch(null);
-      return;
-    }
-    let stale = false;
-    fetchTasteMatch(viewerProfile.id, profile.id).then((m) => {
-      if (!stale) setTasteMatch(m);
     });
     return () => {
       stale = true;
@@ -560,19 +540,17 @@ export default function Library({
           top bar), the gallery fills the rest. one vertical stack on phones;
           the freeform overlay escapes this flow entirely. */}
       <div className="flex w-full flex-col md:flex-row md:items-stretch">
-        <div className="flex flex-col gap-6 px-5 pt-6 sm:px-8 md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-64 md:shrink-0 md:gap-8 md:overflow-y-auto md:px-8 md:pb-6 md:pt-8">
-          <ProfileHeader
+        <div className="md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-64 md:shrink-0">
+          <Sidebar
             profile={profile}
+            counts={counts}
             followers={followers}
             following={following}
-            isOwner={isOwner}
-            signedIn={!!userId}
             canFollow={canFollow}
             isFollowing={isFollowing}
             followBusy={followBusy}
             onToggleFollow={toggleFollow}
             tasteCount={tasteCount}
-            tasteMatch={tasteMatch}
             socialError={socialError}
             approved={approved}
             approveBusy={approveBusy}
@@ -583,42 +561,19 @@ export default function Library({
             blocked={blocked}
             blockBusy={blockBusy}
             onToggleBlock={toggleBlock}
+            isOwner={isOwner}
+            signedIn={!!userId}
+            search={search}
+            onSearch={setSearch}
+            category={category}
+            onCategory={setCategory}
+            sort={sort}
+            onSort={setSort}
+            view={view}
+            onView={setView}
+            cols={cols}
+            onCols={changeCols}
           />
-
-          {!freeform && (
-            <LibraryToolbar
-              search={search}
-              onSearch={setSearch}
-              category={category}
-              onCategory={setCategory}
-              counts={counts}
-              sort={sort}
-              onSort={setSort}
-              view={view}
-              onView={setView}
-              cols={cols}
-              onCols={changeCols}
-            />
-          )}
-
-          {/* the primary action, pinned to the sidebar's bottom edge on desktop
-              (on phones the top bar's ＋ carries it, so this is desktop-only) */}
-          {isOwner ? (
-            <Link
-              href="/add"
-              className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
-            >
-              <img src="/favicon.svg" alt="" className="h-4 w-auto" />
-              Favorite
-            </Link>
-          ) : !userId ? (
-            <Link
-              href={`/signin?next=/${profile.username}`}
-              className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
-            >
-              Start curating
-            </Link>
-          ) : null}
         </div>
 
         {!freeform && (

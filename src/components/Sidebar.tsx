@@ -333,7 +333,7 @@ function PeoplePanel({
 
   return (
     <div
-      className={`absolute inset-0 z-10 flex flex-col bg-white px-5 pb-4 pt-6 md:px-8 md:py-8 ${
+      className={`fixed inset-0 z-50 flex flex-col bg-white px-5 pb-4 pt-6 md:absolute md:z-10 md:px-8 md:py-8 ${
         closing ? "people-out" : "people-in"
       }`}
     >
@@ -406,11 +406,6 @@ function PeoplePanel({
 export default function Sidebar({
   profile,
   counts,
-  followerCount,
-  followingCount,
-  onPeople,
-  peopleOpen,
-  onClosePeople,
   followers,
   following,
   canFollow,
@@ -440,17 +435,9 @@ export default function Sidebar({
   onView,
   cols,
   onCols,
-  collapsed,
-  mobileOpen,
-  onCloseMobile,
 }: {
   profile: Profile;
   counts: Record<Category, number>;
-  followerCount: number;
-  followingCount: number;
-  onPeople: () => void;
-  peopleOpen: boolean;
-  onClosePeople: () => void;
   followers: Profile[];
   following: Profile[];
   canFollow: boolean;
@@ -482,13 +469,13 @@ export default function Sidebar({
   onView: (v: ViewMode) => void;
   cols: number;
   onCols: (c: number) => void;
-  /** freeform full-screen — slides the whole sidebar off-canvas */
-  collapsed: boolean;
-  mobileOpen: boolean;
-  onCloseMobile: () => void;
 }) {
   const [searchFocused, setSearchFocused] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const onClosePeople = useCallback(() => setPeopleOpen(false), []);
   const asideRef = useRef<HTMLElement>(null);
+  const followerCount = followers.length;
+  const followingCount = following.length;
 
   // people panel stays mounted through its fade-out, then unmounts
   const [peopleShown, setPeopleShown] = useState(peopleOpen);
@@ -519,26 +506,14 @@ export default function Sidebar({
 
   return (
     <>
-      {mobileOpen && (
-        <button
-          aria-label="Close menu"
-          onClick={onCloseMobile}
-          className="fixed inset-0 z-40 cursor-default bg-zinc-900/20 backdrop-blur-[1px] md:hidden"
-        />
-      )}
       <aside
         ref={asideRef}
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-60 max-w-[72vw] shrink-0 flex-col gap-6 overscroll-contain bg-white px-5 pb-4 pt-6 shadow-xl transition-[transform,margin,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:relative md:z-auto md:w-64 md:max-w-none md:translate-x-0 md:px-8 md:py-8 md:shadow-none ${
-          peopleShown ? "overflow-hidden" : "overflow-y-auto"
-        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"} ${
-          collapsed ? "md:invisible md:-ml-64" : "md:visible md:ml-0"
+        className={`relative flex w-full flex-col gap-6 overscroll-contain px-5 pb-4 pt-6 md:h-full md:px-8 md:py-8 ${
+          peopleShown ? "md:overflow-hidden" : "md:overflow-y-auto"
         }`}
       >
-        {/* the mark goes home — the one nav convention nobody has to learn */}
-        <div className="flex items-center justify-between">
-          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
-          </Link>
+        {/* copy-link, alone in its corner — the way home is the top bar's mark */}
+        <div className="flex items-center justify-end">
           <ShareButton username={profile.username} />
         </div>
 
@@ -569,7 +544,7 @@ export default function Sidebar({
             <p className="text-xs leading-relaxed text-zinc-500">{profile.bio}</p>
           )}
           <button
-            onClick={onPeople}
+            onClick={() => setPeopleOpen(true)}
             className="w-fit cursor-pointer text-left text-xs text-zinc-400 transition-colors hover:text-zinc-900"
           >
             <span className="whitespace-nowrap">
@@ -585,8 +560,19 @@ export default function Sidebar({
               action row: follow (solid, same language as Favorite) + approve
               taste (quiet sibling) + ⋯ (block/report); socials get their own
               line below, on the same rhythm. */}
-          {(canFollow || (profile.socials?.length ?? 0) > 0) && (
+          {(canFollow || isOwner || (profile.socials?.length ?? 0) > 0) && (
           <div className="mt-1.5 flex flex-col gap-3">
+            {/* on your own page the relationship row is with yourself: edit */}
+            {isOwner && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Link
+                  href="/profile"
+                  className="flex h-7 shrink-0 items-center whitespace-nowrap border border-zinc-200 px-3 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-900"
+                >
+                  Edit profile
+                </Link>
+              </div>
+            )}
             {canFollow && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 {!blocked && (
@@ -711,7 +697,7 @@ export default function Sidebar({
 
         {/* sort + view — one tight group, matching row rhythm */}
         <div className="flex flex-col gap-1 text-xs">
-          {/* one word that cycles: my order → latest → oldest → my order */}
+          {/* one word that cycles: custom (your order) → latest → oldest */}
           <button
             onClick={() =>
               onSort(sort === "default" ? "latest" : sort === "latest" ? "oldest" : "default")
@@ -722,7 +708,7 @@ export default function Sidebar({
                 : "font-medium text-zinc-900"
             }`}
           >
-            {sort === "oldest" ? "Oldest" : "Latest"}
+            {sort === "default" ? "Custom" : sort === "latest" ? "Latest" : "Oldest"}
           </button>
           <div className="flex gap-3">
             {(["grid", "freeform"] as const).map((v) => (
@@ -746,11 +732,12 @@ export default function Sidebar({
         </div>
         </div>
 
-        {/* favorite — pinned to the bottom edge, its own action zone */}
+        {/* favorite — pinned to the bottom edge, its own action zone. desktop
+            only: on phones the top bar's ＋ carries adding */}
         {isOwner && (
           <Link
             href="/add"
-            className="mt-auto flex h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+            className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
           >
             <img src="/favicon.svg" alt="" className="h-4 w-auto" />
             Favorite
@@ -773,7 +760,7 @@ export default function Sidebar({
         {!signedIn && (
           <Link
             href={`/signin?next=/${profile.username}`}
-            className="mt-auto flex h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+            className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
           >
             Start curating
           </Link>
