@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <img src="star.svg" alt="" class="mark" />
+    <span class="wordmark">Favorites</span>
+  </header>
+
+  <!-- not connected yet -->
+  <section id="connect" hidden>
+    <p class="lead">Save any page to your library in one click.</p>
+    <p class="sub">Connect the extension to your Favorites account to start.</p>
+    <button id="connect-btn" class="primary">Connect</button>
+  </section>
+
+  <!-- nothing savable on this tab -->
+  <section id="nopage" hidden>
+    <p class="sub">Nothing to save on this page.</p>
+  </section>
+
+  <!-- the save form -->
+  <section id="form" hidden>
+    <div class="preview">
+      <div class="thumb" id="thumb"></div>
+      <div class="meta">
+        <input id="title" type="text" spellcheck="false" />
+        <div class="site" id="site"></div>
+      </div>
+    </div>
+    <textarea id="thoughts" rows="3" placeholder="Your thoughts — why is this a favorite?"></textarea>
+    <div class="actions">
+      <button id="save" class="primary">
+        <img src="star.svg" alt="" class="btn-mark" />
+        <span id="save-label">Favorite</span>
+      </button>
+      <span id="status"></span>
+    </div>
+  </section>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
