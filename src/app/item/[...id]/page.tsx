@@ -44,7 +44,7 @@ const canonicalFrom = async (params: Props["params"]) =>
 
 const TYPE_LABEL: Record<string, string> = {
   book: "Book", movie: "Film", tv: "TV show", music: "Album",
-  podcast: "Podcast", video: "Video", article: "Article", photo: "Photo", other: "",
+  podcast: "Podcast", video: "Video", article: "Link", photo: "Photo", other: "",
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

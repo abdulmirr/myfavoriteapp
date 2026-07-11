@@ -42,7 +42,7 @@ function shortDate(iso: string): string {
 /** "favorited a …" phrases for the feed — with the right article. */
 const FAVORITED_PHRASE: Record<string, string> = {
   book: "a book", movie: "a film", tv: "a show", music: "some music",
-  podcast: "a podcast", video: "a video", article: "an article",
+  podcast: "a podcast", video: "a video", article: "a link",
   photo: "a photo", other: "something",
 };
 
@@ -51,7 +51,7 @@ const SECTION_UI: Record<RecCategoryKey, { label: string; one: string; many: str
   music: { label: "Music", one: "album", many: "albums" },
   books: { label: "Books", one: "book", many: "books" },
   filmtv: { label: "Film & TV", one: "film or show", many: "films or shows" },
-  reading: { label: "Reading", one: "article or podcast", many: "articles or podcasts" },
+  reading: { label: "Reading", one: "link or podcast", many: "links or podcasts" },
 };
 const REC_SECTIONS = REC_CATEGORIES.map((c) => ({ ...c, ...SECTION_UI[c.key] }));
 
