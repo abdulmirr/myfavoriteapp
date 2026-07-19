@@ -3,7 +3,9 @@
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
 
-const svg = readFileSync(new URL("../public/favicon.svg", import.meta.url), "utf8");
+// the extension's own star (gold — the favoriting action; the app-chrome
+// favicon is ink and theme-adaptive, wrong for a fixed toolbar PNG)
+const svg = readFileSync(new URL("../extension/star.svg", import.meta.url), "utf8");
 const sizes = [16, 32, 48, 128];
 
 const browser = await chromium.launch();
