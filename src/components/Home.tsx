@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "./Star";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -639,7 +640,7 @@ function FlipCard({
               }`}
             >
               {/* the star mark — the same gesture it is everywhere else */}
-              <img src="/favicon.svg" alt="" className="h-3.5 w-auto" />
+              <Star className="h-3.5 w-3.5 text-[#f7a71e]" />
             </button>
           ))}
         {viewer && saved !== "done" && (
@@ -849,7 +850,7 @@ function FollowingFeed({
               <div className="flex items-center gap-3">
                 <Link
                   href={`/${group.profile.username}`}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 transition-opacity hover:opacity-80"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100 transition-opacity hover:opacity-80"
                 >
                   {group.profile.avatar_url ? (
                     <img

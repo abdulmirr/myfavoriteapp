@@ -121,7 +121,7 @@ export default function SearchBar({
       <div
         className={
           wide
-            ? `flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-[0_1px_2px_rgb(28_25_23/0.04),0_8px_24px_-12px_rgb(28_25_23/0.08)] transition-colors duration-200 ${
+            ? `flex items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-[0_1px_2px_rgb(28_25_23/0.04),0_8px_24px_-12px_rgb(28_25_23/0.08)] transition-colors duration-200 ${
                 focused ? "border-zinc-300" : "border-zinc-900/[0.08]"
               }`
             : `flex items-center gap-1.5 border-b border-t border-t-transparent pb-1 pt-1 transition-colors duration-200 ${
@@ -164,7 +164,7 @@ export default function SearchBar({
 
       {open && q.trim().length >= 2 && (
         <div
-          className={`absolute left-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-zinc-900/[0.06] bg-white/95 shadow-2xl backdrop-blur-xl save-appear ${
+          className={`absolute left-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-zinc-900/[0.06] bg-white/95 shadow-2xl backdrop-blur-xl save-appear ${
             wide ? "w-full" : "w-72"
           }`}
         >
@@ -189,7 +189,7 @@ export default function SearchBar({
                       href={`/${p.username}`}
                       className="flex items-center gap-2.5 px-4 py-1.5 transition-colors hover:bg-zinc-50"
                     >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100">
                         {p.avatar_url ? (
                           <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
                         ) : (

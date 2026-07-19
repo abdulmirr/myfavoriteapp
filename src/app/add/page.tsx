@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "@/components/Star";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Item, Profile, SearchResult } from "@/lib/types";
@@ -321,7 +322,7 @@ function BulkReview({
               disabled={saving}
               className="flex h-9 cursor-pointer items-center gap-2 bg-zinc-900 px-4 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-wait disabled:bg-zinc-400"
             >
-              <img src="/favicon.svg" alt="" className="h-4.5 w-auto" />
+              <Star className="h-4.5 w-4.5 text-[#f7a71e]" />
               {saving ? "Saving..." : `Favorite all (${basket.length})`}
             </button>
             {error && <span className="text-[11px] text-red-500">{error}</span>}

@@ -99,12 +99,12 @@ export default function FeedTabs() {
           </svg>
         </button>
         {open && (
-          <div className="save-appear absolute left-0 top-full z-40 mt-3 flex w-44 flex-col rounded-2xl border border-zinc-900/[0.06] bg-white/90 p-1.5 shadow-2xl backdrop-blur-xl">
+          <div className="save-appear absolute left-0 top-full z-40 mt-3 flex w-44 flex-col rounded-xl border border-zinc-900/[0.06] bg-white/90 p-1.5 shadow-2xl backdrop-blur-xl">
             {FEEDS.map((f) => (
               <Link
                 key={f.key}
                 href={f.href}
-                className={`rounded-lg px-3 py-2 text-xs transition-colors ${
+                className={`rounded-md px-3 py-2 text-xs transition-colors ${
                   active === f.key
                     ? "bg-zinc-900/[0.05] font-medium text-zinc-900"
                     : "text-zinc-500 hover:bg-zinc-900/[0.04] hover:text-zinc-900"

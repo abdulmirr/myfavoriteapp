@@ -25,12 +25,12 @@ function envUrl(raw: string | undefined, fallback: string): URL {
 export const metadata: Metadata = {
   metadataBase: envUrl(process.env.NEXT_PUBLIC_SITE_URL, "https://myfavoriteapp.com"),
   title: {
-    default: "Favorites",
-    template: "%s — Favorites",
+    default: "Favorite",
+    template: "%s — Favorite",
   },
   description: "One page for your taste — the books, films and music you love.",
   openGraph: {
-    siteName: "Favorites",
+    siteName: "Favorite",
     type: "website",
   },
   twitter: {

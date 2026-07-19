@@ -21,7 +21,7 @@ function Avatar({ p }: { p: Profile }) {
   const bio = p.bio?.trim();
   return (
     <div className="group/pfp relative shrink-0">
-      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
+      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md bg-zinc-100">
         {p.avatar_url ? (
           <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -35,7 +35,7 @@ function Avatar({ p }: { p: Profile }) {
           role="tooltip"
           className="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2.5 w-max max-w-56 origin-bottom-left translate-y-1.5 scale-90 opacity-0 transition-[opacity,transform,visibility] duration-200 ease-[var(--ease-drift)] group-hover/pfp:visible group-hover/pfp:translate-y-0 group-hover/pfp:scale-100 group-hover/pfp:opacity-100 group-hover/pfp:delay-75"
         >
-          <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[11px] leading-relaxed text-zinc-700 shadow-lg">
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[11px] leading-relaxed text-zinc-700 shadow-lg">
             {bio}
           </div>
           {/* the tail: a rotated square sharing the bubble's border, pointing
@@ -126,7 +126,7 @@ function PersonCard({
   return (
     <Link
       href={`/${p.username}`}
-      className="group flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300"
+      className="group flex flex-col rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300"
     >
       <div className="flex items-center gap-3">
         <Avatar p={p} />

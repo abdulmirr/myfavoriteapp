@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "@/components/Star";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -114,7 +115,7 @@ function SignIn() {
           className="inline-flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/favicon.svg" alt="" className="h-5 w-auto" />
+          <Star className="h-5 w-5 text-zinc-900" />
           Favorites
         </Link>
       </div>

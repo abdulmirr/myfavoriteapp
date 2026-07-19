@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "../Star";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import type { MediaType, Profile, SearchResult } from "@/lib/types";
@@ -467,7 +468,7 @@ export default function PicksStep({
                         className="flex h-9 cursor-pointer items-center gap-2 bg-zinc-900 px-4 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-default disabled:bg-zinc-400"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/favicon.svg" alt="" className="h-4.5 w-auto" />
+                        <Star className="h-4.5 w-4.5 text-[#f7a71e]" />
                         {saving ? "Saving..." : "Favorite"}
                       </button>
                       {error && <span className="text-[11px] text-red-500">{error}</span>}

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf9f7;
-  --foreground: #1c1917;
+  --background: #fbfbfa;
+  --foreground: #101010;
   --grid-cols: 6;
   --grid-gap: 36px;
   --row-ratio: 0.5;
@@ -19,32 +19,32 @@
 }
 
 /* ── the makeover's token layer ─────────────────────────────────────────────
-   The app is written in zinc utilities; remapping the scale here warms every
-   gray in one move (zinc → stone). "White" becomes paper so every white
-   surface — cards, glass bars, dropdowns — sits warm. Type steps up one
-   notch (the old 12px base read "terminal"), and the big shadows go soft and
-   low-opacity: depth as air, not as ink. */
+   The app is written in zinc utilities; the scale here nudges them to a
+   near-neutral gray with the faintest warmth — gallery white walls and real
+   ink, not cream, not blue-gray. Type steps up one notch (the old 12px base
+   read "terminal"), and the big shadows go soft and low-opacity: depth as
+   air, not as ink. */
 @theme {
-  --color-white: #fdfcfa;
+  --color-white: #fdfdfc;
   --color-zinc-50: #fafaf9;
-  --color-zinc-100: #f4f3f1;
-  --color-zinc-200: #e7e5e2;
-  --color-zinc-300: #d6d3cf;
-  --color-zinc-400: #a8a29b;
-  --color-zinc-500: #78716b;
-  --color-zinc-600: #57534d;
-  --color-zinc-700: #44403b;
-  --color-zinc-800: #292523;
-  --color-zinc-900: #1c1917;
-  --color-zinc-950: #100e0d;
+  --color-zinc-100: #f4f4f2;
+  --color-zinc-200: #e8e8e5;
+  --color-zinc-300: #d8d7d4;
+  --color-zinc-400: #a2a19d;
+  --color-zinc-500: #757470;
+  --color-zinc-600: #555451;
+  --color-zinc-700: #403f3d;
+  --color-zinc-800: #262524;
+  --color-zinc-900: #131211;
+  --color-zinc-950: #0b0a0a;
 
   --text-xs: 0.8125rem;
   --text-xs--line-height: 1.45;
   --text-sm: 0.9375rem;
   --text-sm--line-height: 1.5;
 
-  --shadow-xl: 0 12px 32px -8px rgb(28 25 23 / 0.14), 0 2px 8px -2px rgb(28 25 23 / 0.05);
-  --shadow-2xl: 0 24px 64px -16px rgb(28 25 23 / 0.16), 0 4px 16px -6px rgb(28 25 23 / 0.06);
+  --shadow-xl: 0 8px 24px -6px rgb(16 16 16 / 0.12), 0 2px 6px -2px rgb(16 16 16 / 0.06);
+  --shadow-2xl: 0 16px 48px -12px rgb(16 16 16 / 0.16), 0 3px 12px -4px rgb(16 16 16 / 0.07);
 }
 
 /* note: the library grid's density is measured in JS against the column it
@@ -274,48 +274,59 @@ img.item-media-img { border-radius: 6px; }
    handle the variant classes (hover:/placeholder:/focus-within:) without
    escaping gymnastics. Polaroid frames intentionally stay white. */
 .dark { color-scheme: dark; }
-.dark body { background: #0a0a0b; color: #ededed; }
+/* night gallery: lifted off pure black, a touch warm */
+.dark body { background: #171614; color: #f0efed; }
 
 /* screen bezel lifts off the dark page */
-.dark .screenframe { background: #232327; }
-.dark .posterframe { background: #1f1f23; border-color: #2c2c31; }
-.dark .vinylframe::before { --disc: #2b2b30; }
+.dark .screenframe { background: #262523; }
+.dark .posterframe { background: #211f1e; border-color: #302e2b; }
+.dark .vinylframe::before { --disc: #2d2b29; }
 
-.dark .bg-white { background-color: #0a0a0b; }
-.dark [class~="bg-white/85"] { background-color: rgba(10, 10, 11, 0.85); }
-.dark [class~="bg-white/35"] { background-color: rgba(10, 10, 11, 0.35); }
-.dark [class~="bg-zinc-900/20"] { background-color: rgba(244, 244, 245, 0.15); }
+.dark .bg-white { background-color: #171614; }
+.dark [class~="bg-white/85"] { background-color: rgba(23, 22, 20, 0.85); }
+.dark [class~="bg-white/70"] { background-color: rgba(23, 22, 20, 0.7); }
+.dark [class~="bg-white/90"] { background-color: rgba(30, 29, 27, 0.92); }
+.dark [class~="bg-white/95"] { background-color: rgba(30, 29, 27, 0.95); }
+.dark [class~="bg-white/35"] { background-color: rgba(23, 22, 20, 0.35); }
+.dark [class~="bg-zinc-900/20"] { background-color: rgba(240, 239, 237, 0.15); }
+.dark [class~="border-zinc-900/[0.06]"] { border-color: rgba(240, 239, 237, 0.09); }
+.dark [class~="bg-zinc-900/[0.05]"] { background-color: rgba(240, 239, 237, 0.07); }
+.dark [class~="bg-zinc-900/[0.04]"] { background-color: rgba(240, 239, 237, 0.06); }
+.dark [class~="hover:bg-zinc-900/[0.05]"]:hover { background-color: rgba(240, 239, 237, 0.08); }
+.dark [class~="hover:bg-zinc-900/[0.04]"]:hover { background-color: rgba(240, 239, 237, 0.06); }
+.dark [class~="outline-zinc-900/80"] { outline-color: rgba(240, 239, 237, 0.8); }
+.dark [class~="shadow-zinc-900/10"] { --tw-shadow-color: rgba(0, 0, 0, 0.4); }
 
-.dark .text-zinc-900 { color: #f4f4f5; }
-.dark .text-zinc-700 { color: #d4d4d8; }
-.dark .text-zinc-500 { color: #a1a1aa; }
-.dark .text-zinc-400 { color: #71717b; }
-.dark .text-zinc-300 { color: #52525c; }
-.dark [class~="hover:text-zinc-900"]:hover { color: #f4f4f5; }
-.dark [class~="hover:text-zinc-700"]:hover { color: #d4d4d8; }
-.dark [class~="group-focus-within:text-zinc-900"]:is(.group:focus-within *) { color: #f4f4f5; }
+.dark .text-zinc-900 { color: #f0efed; }
+.dark .text-zinc-700 { color: #d5d3d0; }
+.dark .text-zinc-500 { color: #a3a19d; }
+.dark .text-zinc-400 { color: #757370; }
+.dark .text-zinc-300 { color: #555451; }
+.dark [class~="hover:text-zinc-900"]:hover { color: #f0efed; }
+.dark [class~="hover:text-zinc-700"]:hover { color: #d5d3d0; }
+.dark [class~="group-focus-within:text-zinc-900"]:is(.group:focus-within *) { color: #f0efed; }
 
 /* primary buttons / slider handle invert: white on dark */
-.dark .bg-zinc-900 { background-color: #f4f4f5; }
-.dark .bg-zinc-900 { color: #0a0a0b; }
-.dark [class~="hover:bg-zinc-700"]:hover { background-color: #d4d4d8; }
-.dark [class~="disabled:bg-zinc-400"]:disabled { background-color: #52525c; }
+.dark .bg-zinc-900 { background-color: #f0efed; }
+.dark .bg-zinc-900 { color: #171614; }
+.dark [class~="hover:bg-zinc-700"]:hover { background-color: #d5d3d0; }
+.dark [class~="disabled:bg-zinc-400"]:disabled { background-color: #555451; }
 
-.dark .bg-zinc-100 { background-color: #1c1c1f; }
-.dark .bg-zinc-50 { background-color: #131316; }
-.dark [class~="hover:bg-zinc-50"]:hover { background-color: #18181b; }
+.dark .bg-zinc-100 { background-color: #242220; }
+.dark .bg-zinc-50 { background-color: #1d1c1a; }
+.dark [class~="hover:bg-zinc-50"]:hover { background-color: #211f1d; }
 
-.dark .border-zinc-400 { border-color: #52525c; }
-.dark .border-zinc-200 { border-color: #27272a; }
-.dark .border-zinc-100 { border-color: #1c1c1f; }
-.dark [class~="focus-within:border-zinc-900"]:focus-within { border-color: #f4f4f5; }
-.dark [class~="focus:border-zinc-400"]:focus { border-color: #71717b; }
+.dark .border-zinc-400 { border-color: #555451; }
+.dark .border-zinc-200 { border-color: #2e2c2a; }
+.dark .border-zinc-100 { border-color: #242220; }
+.dark [class~="focus-within:border-zinc-900"]:focus-within { border-color: #f0efed; }
+.dark [class~="focus:border-zinc-400"]:focus { border-color: #757370; }
 
-.dark [class~="placeholder:text-zinc-400"]::placeholder { color: #71717b; }
-.dark [class~="placeholder:text-zinc-300"]::placeholder { color: #52525c; }
+.dark [class~="placeholder:text-zinc-400"]::placeholder { color: #757370; }
+.dark [class~="placeholder:text-zinc-300"]::placeholder { color: #555451; }
 
-.dark .item-name { color: #f4f4f5; }
-.dark .item-sub { color: #a1a1aa; }
+.dark .item-name { color: #f0efed; }
+.dark .item-sub { color: #a3a19d; }
 .dark .shadow-2xl {
   --tw-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   box-shadow: var(--tw-shadow);

@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "./Star";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
@@ -62,9 +63,9 @@ export default function AppShell({
             aria-label="Home"
             className="flex w-fit items-center gap-2 transition-opacity hover:opacity-70 active:scale-95"
           >
-            <img src="/favicon.svg" alt="" className="h-[22px] w-auto" />
+            <Star className="h-[21px] w-[21px] text-zinc-900" />
             <span className="hidden text-[15px] font-semibold tracking-[-0.02em] text-zinc-900 md:block">
-              Favorites
+              Favorite
             </span>
           </Link>
           {/* on phones the slot beside the mark is the page's title: Home's
@@ -94,7 +95,7 @@ export default function AppShell({
               href="/?feed=explore&search=1"
               title="Search"
               aria-label="Search"
-              className="hidden h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 active:scale-95 sm:flex"
+              className="hidden h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 active:scale-95 sm:flex"
             >
               {/* a door, not a field — the real search bar lives on Explore */}
               <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
@@ -130,7 +131,7 @@ export default function AppShell({
                 href="/add"
                 title="Add a favorite"
                 aria-label="Add a favorite"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 active:scale-95"
               >
                 <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <rect x="1.5" y="1.5" width="13" height="13" rx="4" />
@@ -147,7 +148,7 @@ export default function AppShell({
                 className="transition hover:opacity-80 active:scale-95"
               >
                 <span
-                  className={`flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ${
+                  className={`flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-zinc-100 ${
                     isYou ? "outline outline-2 outline-offset-2 outline-zinc-900/80" : ""
                   }`}
                 >
@@ -174,7 +175,7 @@ export default function AppShell({
                 </Link>
                 <Link
                   href={`/signin?next=${encodeURIComponent(pathname)}`}
-                  className="rounded-full bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700 active:scale-95"
+                  className="rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700 active:scale-95"
                 >
                   Sign in
                 </Link>

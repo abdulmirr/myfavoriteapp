@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "./Star";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Item, Profile } from "@/lib/types";
@@ -851,7 +852,7 @@ export default function DetailOverlay({
                 disabled={favBusy}
                 className="flex h-9 cursor-pointer items-center gap-2 bg-zinc-900 px-4 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-default disabled:bg-zinc-400"
               >
-                <img src="/favicon.svg" alt="" className="h-4.5 w-auto" />
+                <Star className="h-4.5 w-4.5 text-[#f7a71e]" />
                 {favBusy ? "Saving..." : "Favorite"}
               </button>
               <button

@@ -1,5 +1,6 @@
 "use client";
 
+import Star from "./Star";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
@@ -55,7 +56,7 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
         <div className="absolute inset-x-0 h-px bg-zinc-300" />
         <div className="absolute h-px bg-zinc-900" style={{ left: 0, right: `${100 - pct}%` }} />
         <div
-          className="absolute h-3 w-3 -translate-x-1/2 cursor-grab rounded-full bg-zinc-900 shadow-sm active:cursor-grabbing"
+          className="absolute h-3 w-3 -translate-x-1/2 cursor-grab rounded-[3px] bg-zinc-900 shadow-sm active:cursor-grabbing"
           style={{ left: `${pct}%` }}
         />
       </div>
@@ -223,7 +224,7 @@ export function MoreButton({
               onToggleBlock();
             }}
             disabled={blockBusy}
-            className="cursor-pointer px-3 py-1.5 text-left text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-red-500 disabled:cursor-wait"
+            className="cursor-pointer rounded-md px-3 py-1.5 text-left text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-red-500 disabled:cursor-wait"
           >
             {blocked ? "Unblock" : "Block"}
           </button>
@@ -232,7 +233,7 @@ export function MoreButton({
               `Report: @${username}`
             )}`}
             onClick={() => setOpen(false)}
-            className="px-3 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+            className="rounded-md px-3 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900"
           >
             Report
           </a>
@@ -381,7 +382,7 @@ function PeoplePanel({
                 onClick={onClose}
                 className="flex min-w-0 items-center gap-3 py-2 transition-opacity hover:opacity-60"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100">
                   {f.avatar_url ? (
                     <img src={f.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -518,7 +519,7 @@ export default function Sidebar({
         {/* profile */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -565,7 +566,7 @@ export default function Sidebar({
               {isOwner && (
                 <Link
                   href="/profile"
-                  className="flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border border-zinc-200 px-3.5 text-xs font-medium text-zinc-500 transition hover:border-zinc-300 hover:text-zinc-900 active:scale-95"
+                  className="flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg border border-zinc-200 px-3.5 text-xs font-medium text-zinc-500 shadow-[0_1px_2px_rgb(16_16_16/0.04)] transition hover:border-zinc-300 hover:text-zinc-900 active:scale-95"
                 >
                   Edit profile
                 </Link>
@@ -575,7 +576,7 @@ export default function Sidebar({
                   <button
                     onClick={onToggleFollow}
                     disabled={followBusy}
-                    className={`flex h-8 shrink-0 cursor-pointer items-center whitespace-nowrap rounded-full px-3.5 text-xs font-medium transition active:scale-95 disabled:cursor-wait ${
+                    className={`flex h-8 shrink-0 cursor-pointer items-center whitespace-nowrap rounded-lg px-3.5 text-xs font-medium transition active:scale-95 disabled:cursor-wait ${
                       isFollowing
                         ? "border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-900"
                         : "bg-zinc-900 text-white hover:bg-zinc-700"
@@ -753,9 +754,9 @@ export default function Sidebar({
         {isOwner && (
           <Link
             href="/add"
-            className="mt-auto hidden h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full bg-zinc-900 text-sm font-medium text-white shadow-lg shadow-zinc-900/10 transition hover:bg-zinc-700 active:scale-[0.98] md:flex"
+            className="mt-auto hidden h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-zinc-900 text-sm font-medium text-white shadow-lg shadow-zinc-900/10 transition hover:bg-zinc-700 active:scale-[0.98] md:flex"
           >
-            <img src="/favicon.svg" alt="" className="h-4 w-auto" />
+            <Star className="h-4 w-4 text-[#f7a71e]" />
             Favorite
           </Link>
         )}
@@ -776,7 +777,7 @@ export default function Sidebar({
         {!signedIn && (
           <Link
             href={`/signin?next=/${profile.username}`}
-            className="mt-auto hidden h-10 w-full shrink-0 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-sm font-medium text-white shadow-lg shadow-zinc-900/10 transition hover:bg-zinc-700 active:scale-[0.98] md:flex"
+            className="mt-auto hidden h-10 w-full shrink-0 cursor-pointer items-center justify-center rounded-lg bg-zinc-900 text-sm font-medium text-white shadow-lg shadow-zinc-900/10 transition hover:bg-zinc-700 active:scale-[0.98] md:flex"
           >
             Start curating
           </Link>

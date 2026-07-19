@@ -167,7 +167,7 @@ export default function Notifications({
       <button
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={toggle}
-        className={`relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-zinc-900/[0.05] active:scale-95 ${
+        className={`relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition hover:bg-zinc-900/[0.05] active:scale-95 ${
           open || unread > 0 ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
         }`}
       >
@@ -186,7 +186,7 @@ export default function Notifications({
 
       {open && (
         <div
-          className={`save-appear fixed inset-x-4 top-16 z-40 overflow-hidden rounded-2xl border border-zinc-900/[0.06] bg-white/90 shadow-2xl backdrop-blur-xl sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-2rem)] ${
+          className={`save-appear fixed inset-x-4 top-16 z-40 overflow-hidden rounded-xl border border-zinc-900/[0.06] bg-white/90 shadow-2xl backdrop-blur-xl sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-2rem)] ${
             align === "right" ? "sm:right-0" : "sm:left-0"
           }`}
         >
@@ -242,7 +242,7 @@ export default function Notifications({
                       }}
                       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50"
                     >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100">
                         {n.actor?.avatar_url ? (
                           <img src={n.actor.avatar_url} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -284,7 +284,7 @@ export default function Notifications({
                               approveBack(n.actor!);
                             }}
                             disabled={approving.has(n.actor.id)}
-                            className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-900 active:scale-95 disabled:cursor-wait"
+                            className="shrink-0 cursor-pointer whitespace-nowrap rounded-md border border-zinc-200 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-900 active:scale-95 disabled:cursor-wait"
                           >
                             Approve back
                           </button>
