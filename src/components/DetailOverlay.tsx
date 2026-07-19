@@ -501,9 +501,22 @@ export default function DetailOverlay({
               </h1>
               {year && <p className="mt-1.5 text-sm text-zinc-700">{year}</p>}
               {item.description && (
-                <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
-                  {item.description}
-                </p>
+                <>
+                  {/* a rec's description is the engine's reasoning — label it
+                      as the curator's note it is */}
+                  {item.id.startsWith("discover-rec-") && (
+                    <span className="mt-4 font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-400">
+                      Why this pick
+                    </span>
+                  )}
+                  <p
+                    className={`whitespace-pre-wrap text-xs leading-relaxed text-zinc-500 ${
+                      item.id.startsWith("discover-rec-") ? "mt-1.5" : "mt-3"
+                    }`}
+                  >
+                    {item.description}
+                  </p>
+                </>
               )}
               <div className="mt-4 flex items-center gap-4">
                 {viewerProfile && !isOwner && savedByMe !== null && (
