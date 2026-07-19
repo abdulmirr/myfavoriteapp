@@ -13,7 +13,7 @@ export type FeedItem = Item & { profile: Profile };
 
 /** short type tags for the Discover group */
 export const TYPE_TAG: Record<string, string> = {
-  book: "Book", movie: "Film", tv: "TV", music: "Music", podcast: "Pod", article: "Read",
+  book: "Book", movie: "Film", tv: "TV", music: "Music", podcast: "Pod", article: "Link",
 };
 
 /**

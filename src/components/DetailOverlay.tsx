@@ -884,9 +884,6 @@ export default function DetailOverlay({
               placeholder="Your thoughts — why is this a favorite?"
               className="mt-3 w-full resize-none border border-zinc-200 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-400 focus:outline-none"
             />
-            <p className="mt-1.5 text-[11px] text-zinc-400">
-              Optional — a line on why makes it yours.
-            </p>
             <div className="mt-3 flex items-center gap-3">
               <button
                 onClick={favorite}

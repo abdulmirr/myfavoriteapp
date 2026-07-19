@@ -29,7 +29,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 function librarySummary(items: Pick<Item, "media_type">[]): string {
   const label: Record<string, string> = {
     book: "books", movie: "films", tv: "shows", music: "music",
-    podcast: "podcasts", video: "videos", article: "articles",
+    podcast: "podcasts", video: "videos", article: "links",
   };
   const kinds = [...new Set(items.map((i) => label[i.media_type]).filter(Boolean))].slice(0, 3);
   const count = `${items.length} favorite${items.length === 1 ? "" : "s"}`;

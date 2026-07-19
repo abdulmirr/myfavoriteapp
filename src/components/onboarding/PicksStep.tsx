@@ -38,7 +38,7 @@ const keyOf = (type: MediaType, title: string) => `${type}|${title.trim().toLowe
 
 const TYPE_TAG: Record<string, string> = {
   book: "Book", movie: "Film", tv: "TV", music: "Music", podcast: "Pod",
-  video: "Video", article: "Read",
+  video: "Video", article: "Link",
 };
 
 /** search enrichment type per media type (mirrors the import engine) */
@@ -458,9 +458,6 @@ export default function PicksStep({
                       placeholder="Your thoughts — why is this a favorite?"
                       className="resize-none border border-zinc-200 bg-white px-3 py-2 text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-300 focus:border-zinc-400 focus:outline-none"
                     />
-                    <p className="-mt-2 text-[11px] text-zinc-400">
-                      Optional — a line on why makes it yours.
-                    </p>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={commit}

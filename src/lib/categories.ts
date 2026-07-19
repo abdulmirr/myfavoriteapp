@@ -32,7 +32,8 @@ export const ADD_TYPES: {
   { type: "music", label: "music", mode: "search" },
   { type: "podcast", label: "podcast", mode: "search" },
   { type: "video", label: "video", mode: "url" },
-  { type: "article", label: "article", mode: "url" },
+  // any URL — an article, a tool, a game, a site worth keeping
+  { type: "article", label: "link", mode: "url" },
   { type: "photo", label: "photo", mode: "upload" },
   // anything without a database — a restaurant, a game, a place. Manual title +
   // optional creator/link/image, saved as media_type "other".
