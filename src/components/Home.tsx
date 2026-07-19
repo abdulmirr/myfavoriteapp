@@ -1,6 +1,5 @@
 "use client";
 
-import Star from "./Star";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,8 +14,8 @@ import {
   type Recommendation,
 } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-import { addToRadar, copyItem, fetchFollowing, itemKeys } from "@/lib/social";
-import { playSfx, playUi, preloadSfx } from "@/lib/sfx";
+import { fetchFollowing, itemKeys } from "@/lib/social";
+import { playSfx, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
 import dynamic from "next/dynamic";
 import DetailOverlay from "./DetailOverlay";
@@ -56,15 +55,21 @@ const SECTION_UI: Record<RecCategoryKey, { label: string; one: string; many: str
 };
 const REC_SECTIONS = REC_CATEGORIES.map((c) => ({ ...c, ...SECTION_UI[c.key] }));
 
-/** A daily pick shaped as a library Item so TileMedia frames it like the library. */
+/**
+ * A daily pick shaped as a library Item so the detail view frames it like the
+ * library. The discover- prefix gives it the same overlay behavior as search
+ * results (favorite + save actions, no favorited-count lookup), and the
+ * engine's "why" rides in as the description — the curator's note in the
+ * detail view's text column.
+ */
 function recToItem(rec: Recommendation): Item {
   return {
-    id: `rec-${rec.media_type}-${rec.title}`,
+    id: `discover-rec-${rec.media_type}-${rec.title}`,
     profile_id: "",
     media_type: rec.media_type,
     title: rec.title,
     creator: rec.creator,
-    description: "",
+    description: rec.reason,
     image_url: rec.image_url,
     view_url: rec.view_url,
     metadata: rec.year ? { year: rec.year } : {},
@@ -181,7 +186,7 @@ export default function Home() {
       >
         <main className="mx-auto max-w-4xl px-5 pb-24 pt-8 sm:px-8">
           {tab === "foryou" ? (
-            <ForYou viewer={viewer} />
+            <ForYou viewer={viewer} onOpen={(item, rect) => setQuick({ item, rect })} />
           ) : tab === "following" ? (
             <section>
               <div className="mb-8 flex items-end justify-between gap-4">
@@ -240,7 +245,13 @@ export default function Home() {
 
 /* ── For You: daily AI picks, one section per category ─────────────────────── */
 
-function ForYou({ viewer }: { viewer: Profile | null }) {
+function ForYou({
+  viewer,
+  onOpen,
+}: {
+  viewer: Profile | null;
+  onOpen: (item: Item, rect: DOMRect) => void;
+}) {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [counts, setCounts] = useState<Partial<RecCounts>>({});
   const [total, setTotal] = useState(0);
@@ -396,10 +407,11 @@ function ForYou({ viewer }: { viewer: Profile | null }) {
                 {picks.length ? (
                   <div className="hover-fx grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
                     {picks.map((r, i) => (
-                      <FlipCard
+                      <RecCard
                         key={`${r.title}-${i}`}
                         rec={r}
                         viewer={viewer}
+                        onOpen={onOpen}
                         onDismiss={() =>
                           setRecs((prev) =>
                             prev.filter(
@@ -505,45 +517,24 @@ function Rediscover({ viewer }: { viewer: Profile }) {
   );
 }
 
-/** Cover that flips over to reveal why it was recommended. */
-function FlipCard({
+/**
+ * A daily pick, one grammar with everything else: click the cover and the
+ * detail view opens — the engine's "why" reads as the curator's note in the
+ * text column, and Favorite / Save are the full-size actions there. The only
+ * control left on the card is `pass`, which has no home in the detail view
+ * (dismissals feed the engine).
+ */
+function RecCard({
   rec,
   viewer,
+  onOpen,
   onDismiss,
 }: {
   rec: Recommendation;
   viewer: Profile | null;
+  onOpen: (item: Item, rect: DOMRect) => void;
   onDismiss: () => void;
 }) {
-  const [flipped, setFlipped] = useState(false);
-  const [saved, setSaved] = useState<"idle" | "saving" | "done" | "error">("idle");
-  const [onRadar, setOnRadar] = useState<"idle" | "saving" | "done">("idle");
-
-  const radar = async () => {
-    if (!viewer || onRadar !== "idle") return;
-    setOnRadar("saving");
-    try {
-      await addToRadar(recToItem(rec), viewer.id);
-      playUi("confirm");
-      setOnRadar("done");
-    } catch {
-      setOnRadar("idle");
-    }
-  };
-
-  const favorite = async () => {
-    if (!viewer || saved === "saving" || saved === "done") return;
-    setSaved("saving");
-    try {
-      // provenance stays null — this pick came from the engine, not a person
-      await copyItem(recToItem(rec), viewer.id);
-      playSfx(rec.media_type);
-      setSaved("done");
-    } catch {
-      setSaved("error");
-    }
-  };
-
   const dismiss = async () => {
     if (!viewer) return;
     onDismiss(); // the card leaves immediately; the write is fire-and-forget
@@ -564,115 +555,38 @@ function FlipCard({
       });
   };
 
-  // same object-on-a-wall treatment as the library grid: vinyl sleeve for
-  // music, fore-edge pages for books, snap frame for film/tv
-  const cover = <TileMedia item={recToItem(rec)} />;
-
   return (
     <article className="item-tile">
-      <div className="relative aspect-square w-full" style={{ perspective: "1200px" }}>
-        <div
-          className="absolute inset-0"
-          style={{
-            transformStyle: "preserve-3d",
-            transition: "transform 0.45s var(--ease-morph)",
-            transform: flipped ? "rotateY(180deg)" : "none",
-          }}
-        >
-          {/* front: the cover */}
-          <div className="absolute inset-0" style={{ backfaceVisibility: "hidden" }}>
-            {rec.view_url && !flipped ? (
-              <a
-                href={rec.view_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block h-full w-full"
-              >
-                {cover}
-              </a>
-            ) : (
-              cover
-            )}
-          </div>
-          {/* back: the reason */}
-          <div
-            className="absolute inset-0 flex items-center overflow-y-auto bg-zinc-100 p-4 sm:p-5"
-            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-          >
-            <p className="text-[11px] leading-relaxed text-zinc-500 sm:text-xs">{rec.reason}</p>
-          </div>
-        </div>
-      </div>
+      <button
+        aria-label={rec.title}
+        className="block w-full cursor-pointer"
+        onClick={(e) => {
+          const media = e.currentTarget.querySelector(".item-media");
+          if (media) {
+            playSfx(rec.media_type);
+            onOpen(recToItem(rec), media.getBoundingClientRect());
+          }
+        }}
+      >
+        {/* same object-on-a-wall treatment as the library grid */}
+        <TileMedia item={recToItem(rec)} />
+      </button>
 
-      <h3 className="mt-3 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
-        {rec.title}
-      </h3>
-      {rec.creator && <p className="truncate text-xs text-zinc-400">{rec.creator}</p>}
-      <div className="mt-1.5 flex items-center gap-3">
-        <button
-          onClick={() => setFlipped((f) => !f)}
-          className={`cursor-pointer text-[10px] uppercase tracking-[0.08em] transition-colors ${
-            flipped ? "text-zinc-900 hover:text-zinc-400" : "text-zinc-400 hover:text-zinc-900"
-          }`}
-        >
-          {flipped ? "back" : "why?"}
-        </button>
-        {viewer &&
-          (saved === "done" ? (
-            <span className="save-appear text-[10px] uppercase tracking-[0.08em] text-zinc-900">
-              favorited ✓
-            </span>
-          ) : saved === "error" ? (
-            <button
-              onClick={favorite}
-              className="cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-400 transition-colors hover:text-zinc-900"
-            >
-              retry?
-            </button>
-          ) : (
-            <button
-              onClick={favorite}
-              disabled={saved === "saving"}
-              aria-label="Favorite"
-              title="Favorite — add to your library"
-              className={`cursor-pointer transition-opacity disabled:cursor-wait ${
-                saved === "saving" ? "opacity-40" : "opacity-80 hover:opacity-100"
-              }`}
-            >
-              {/* the star mark — the same gesture it is everywhere else */}
-              <Star className="h-3.5 w-3.5 text-[#f7a71e]" />
-            </button>
-          ))}
-        {viewer && saved !== "done" && (
-          <>
-            {onRadar === "done" ? (
-              <span className="save-appear text-[10px] uppercase tracking-[0.08em] text-zinc-900">
-                saved ✓
-              </span>
-            ) : (
-              <button
-                onClick={radar}
-                disabled={onRadar === "saving"}
-                aria-label="Save for later"
-                title="Save for later (private)"
-                className="cursor-pointer text-zinc-400 transition-colors hover:text-zinc-900 disabled:cursor-wait"
-              >
-                {/* bookmark */}
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
-                  <path d="M4 2.5h8v11.5l-4-3.2-4 3.2z" />
-                </svg>
-              </button>
-            )}
-            <button
-              onClick={dismiss}
-              title="Not for me — I won't suggest it again"
-              className="ml-auto cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:text-zinc-900"
-            >
-              pass
-            </button>
-          </>
+      <div className="mt-3 flex items-baseline gap-3">
+        <h3 className="min-w-0 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+          {rec.title}
+        </h3>
+        {viewer && (
+          <button
+            onClick={dismiss}
+            title="Not for me — I won't suggest it again"
+            className="ml-auto shrink-0 cursor-pointer text-[10px] uppercase tracking-[0.08em] text-zinc-300 transition-colors hover:text-zinc-900"
+          >
+            pass
+          </button>
         )}
       </div>
+      {rec.creator && <p className="truncate text-xs text-zinc-400">{rec.creator}</p>}
     </article>
   );
 }

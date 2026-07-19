@@ -12,6 +12,16 @@ function tiltOf(id: string): number {
   return h * 1.2;
 }
 
+/* ── typographic cover for imageless items ──
+   When there's no artwork, typography is the artwork: a quiet tone field with
+   the words set plainly. The tone derives from the title, so the same item is
+   always the same color — intentional, not random. Muted and desaturated so a
+   cluster of them stays calm on the wall. */
+const COVER_TONES = ["#e9e4d8", "#dde4dc", "#dbe1e7", "#e7dde1", "#e8e1d2", "#e0e0e4"];
+export function coverTone(seed: string): string {
+  return COVER_TONES[Math.floor(((hashRange(seed) + 1) / 2) * COVER_TONES.length) % COVER_TONES.length];
+}
+
 /**
  * Square media tile. Each medium keeps the same object-on-a-wall language
  * (soft shadow, whisper of tilt) with one distinguishing cue:
@@ -101,12 +111,21 @@ export function TileMedia({
           />
         )
       ) : (
+        /* the typographic cover — fixed ink on the tone (an object like the
+           polaroid, it doesn't follow the theme). all text equal size and
+           weight: hierarchy lives in the label below the tile, not here. */
         <div
-          style={tiltStyle}
-          className="item-media-img flex h-full w-full flex-col justify-end border border-zinc-200 p-3"
+          style={{ ...tiltStyle, background: coverTone(item.title) }}
+          className="item-media-img flex h-full w-full flex-col justify-end p-3"
         >
-          <span className="text-[11px] leading-tight text-zinc-900">{item.title}</span>
-          <span className="mt-1 text-[10px] text-zinc-400">{item.creator}</span>
+          <span className="text-[11px] font-medium leading-snug text-[#22211fcc]">
+            {item.title}
+          </span>
+          {item.creator && (
+            <span className="mt-0.5 text-[11px] font-medium leading-snug text-[#22211f80]">
+              {item.creator}
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { coverTone } from "./Tile";
 import Star from "./Star";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -431,35 +432,62 @@ export default function DetailOverlay({
           className="relative z-10 flex aspect-square w-full max-w-[560px] items-center justify-center [container-type:inline-size]"
           style={{ transformOrigin: "top left" }}
         >
-          {item.image_url ? (
-            frame ? (
-              // shrink-wraps the image's natural aspect, matching TileMedia
-              <div className={frame}>
+          {(() => {
+            const media = item.image_url ? (
+              frame ? (
+                // shrink-wraps the image's natural aspect, matching TileMedia
+                <div className={frame}>
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    className={`block bg-zinc-100 ${
+                      frame === "polaroid"
+                        ? "max-h-[75cqw] max-w-[75cqw]"
+                        : frame === "vinylframe"
+                          ? "max-h-[86cqw] max-w-[86cqw]"
+                          : "max-h-[92cqw] max-w-[88cqw]"
+                    }`}
+                  />
+                </div>
+              ) : (
                 <img
                   src={item.image_url}
                   alt={item.title}
-                  className={`block bg-zinc-100 ${
-                    frame === "polaroid"
-                      ? "max-h-[75cqw] max-w-[75cqw]"
-                      : frame === "vinylframe"
-                        ? "max-h-[86cqw] max-w-[86cqw]"
-                        : "max-h-[92cqw] max-w-[88cqw]"
-                  }`}
+                  className="max-h-full max-w-full object-contain"
                 />
-              </div>
+              )
             ) : (
-              <img
-                src={item.image_url}
-                alt={item.title}
-                className="max-h-full max-w-full object-contain"
-              />
-            )
-          ) : (
-            <div className="flex h-full w-full flex-col justify-end border border-zinc-200 p-6">
-              <span className="text-sm text-zinc-900">{item.title}</span>
-              <span className="mt-1 text-xs text-zinc-400">{item.creator}</span>
-            </div>
-          )}
+              /* the typographic cover, at exhibition scale — same tone as its
+                 tile, equal size and weight throughout */
+              <div
+                className="flex h-full w-full flex-col justify-end p-6"
+                style={{ background: coverTone(item.title) }}
+              >
+                <span className="text-sm font-medium text-[#22211fcc]">{item.title}</span>
+                {item.creator && (
+                  <span className="mt-1 text-sm font-medium text-[#22211f80]">{item.creator}</span>
+                )}
+              </div>
+            );
+            // one grammar, two depths: the first click opened this view; here
+            // the image itself is the door out to the thing
+            return item.view_url ? (
+              <a
+                href={item.view_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open ${item.title}`}
+                className="group/media relative flex h-full w-full items-center justify-center"
+              >
+                {media}
+                <span className="pointer-events-none absolute bottom-3 right-3 bg-zinc-900/85 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-white opacity-0 transition-opacity duration-200 group-hover/media:opacity-100">
+                  open ↗
+                </span>
+              </a>
+            ) : (
+              media
+            );
+          })()}
         </div>
 
         <div ref={infoRef} className="relative z-0 flex w-full max-w-md flex-col justify-self-start">
@@ -488,7 +516,7 @@ export default function DetailOverlay({
                       onClick={() => setFavOpen(true)}
                       className="flex h-7 cursor-pointer items-center gap-1 bg-zinc-900 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
                     >
-                      <img src="/favicon.svg" alt="" className="h-3.5 w-auto" />
+                      <Star className="h-3.5 w-3.5 text-[#f7a71e]" />
                       Favorite
                     </button>
                   )
@@ -500,7 +528,7 @@ export default function DetailOverlay({
                     href={`/signin?next=${encodeURIComponent(shareUrl ?? "/")}`}
                     className="flex h-7 cursor-pointer items-center gap-1 bg-zinc-900 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
                   >
-                    <img src="/favicon.svg" alt="" className="h-3.5 w-auto" />
+                    <Star className="h-3.5 w-3.5 text-[#f7a71e]" />
                     Favorite
                   </Link>
                 )}
