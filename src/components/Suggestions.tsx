@@ -49,7 +49,7 @@ export default function Suggestions({ viewer, lead }: { viewer: Profile | null; 
           <li key={p.id} className="flex items-center gap-3">
             <Link
               href={`/${p.username}`}
-              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100 transition-opacity hover:opacity-80"
+              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 transition-opacity hover:opacity-80"
             >
               {p.avatar_url ? (
                 <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />

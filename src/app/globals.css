@@ -150,15 +150,10 @@ img { -webkit-touch-callout: none; }
   display: block;
 }
 
-/* bare covers (music, podcasts, unframed art) get a whisper of rounding;
-   framed media round via their frames below */
-img.item-media-img { border-radius: 6px; }
-
 /* ── polaroid frame for personal photos ── */
 .polaroid {
   background: #fff;
   padding: 5.5% 5.5% 15% 5.5%;
-  border-radius: 3px;
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.1), 0 8px 24px rgba(28, 25, 23, 0.08);
 }
 
@@ -169,7 +164,6 @@ img.item-media-img { border-radius: 6px; }
   position: relative;
   background: #0d0d0e;
   padding: 1.6cqw;
-  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.09), 0 8px 24px rgba(28, 25, 23, 0.07);
 }
@@ -187,12 +181,8 @@ img.item-media-img { border-radius: 6px; }
 /* ── book cover: cream fore-edge of pages peeking out at the right ── */
 .bookframe {
   position: relative;
-  border-radius: 4px 2px 2px 4px; /* spine side rounder, pages side crisp */
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.09), 0 8px 24px rgba(28, 25, 23, 0.07);
 }
-/* round the cover itself — the frame can't clip (the page block and the
-   vinyl disc live outside its box) */
-.bookframe img { border-radius: 4px 2px 2px 4px; }
 .bookframe::before {
   /* hinge shading along the spine */
   content: "";
@@ -223,10 +213,8 @@ img.item-media-img { border-radius: 6px; }
 /* ── music: vinyl peeking out of the sleeve ── */
 .vinylframe {
   position: relative;
-  border-radius: 3px;
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.09), 0 8px 24px rgba(28, 25, 23, 0.07);
 }
-.vinylframe img { border-radius: 3px; }
 .vinylframe::before {
   /* the record — behind the sleeve, a grooved crescent showing at the right */
   content: "";
@@ -256,7 +244,6 @@ img.item-media-img { border-radius: 6px; }
   background: #fff;
   padding: 1.6cqw;
   border: 1px solid #e7e5e2;
-  border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.09), 0 8px 24px rgba(28, 25, 23, 0.07);
 }

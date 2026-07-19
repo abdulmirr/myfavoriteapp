@@ -103,7 +103,7 @@ export function TileMedia({
       ) : (
         <div
           style={tiltStyle}
-          className="item-media-img flex h-full w-full flex-col justify-end rounded-xl border border-zinc-200 p-3"
+          className="item-media-img flex h-full w-full flex-col justify-end border border-zinc-200 p-3"
         >
           <span className="text-[11px] leading-tight text-zinc-900">{item.title}</span>
           <span className="mt-1 text-[10px] text-zinc-400">{item.creator}</span>

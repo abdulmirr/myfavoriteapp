@@ -99,7 +99,7 @@ export default function FeedTabs() {
           </svg>
         </button>
         {open && (
-          <div className="save-appear absolute left-0 top-full z-40 mt-3 flex w-44 flex-col rounded-xl border border-zinc-900/[0.06] bg-white/90 p-1.5 shadow-2xl backdrop-blur-xl">
+          <div className="save-appear absolute left-0 top-full z-40 mt-3 flex w-44 flex-col border border-zinc-900/[0.06] bg-white/90 p-1.5 shadow-2xl backdrop-blur-xl">
             {FEEDS.map((f) => (
               <Link
                 key={f.key}
