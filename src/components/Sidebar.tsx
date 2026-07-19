@@ -52,14 +52,14 @@ function SizeSlider({ cols, onCols }: { cols: number; onCols: (c: number) => voi
           setDragging(false);
         }}
       >
-        <div className="absolute inset-x-0 h-px bg-zinc-400" />
+        <div className="absolute inset-x-0 h-px bg-zinc-300" />
         <div className="absolute h-px bg-zinc-900" style={{ left: 0, right: `${100 - pct}%` }} />
         <div
-          className="absolute h-2 w-2 -translate-x-1/2 cursor-grab bg-zinc-900 active:cursor-grabbing"
+          className="absolute h-3 w-3 -translate-x-1/2 cursor-grab rounded-full bg-zinc-900 shadow-sm active:cursor-grabbing"
           style={{ left: `${pct}%` }}
         />
       </div>
-      <div className="flex justify-between text-xs text-zinc-400">
+      <div className="flex justify-between font-mono text-[10px] uppercase tracking-[0.06em] text-zinc-400">
         <span>Small</span>
         <span>Large</span>
       </div>
@@ -216,7 +216,7 @@ export function MoreButton({
       {/* blocked hides Follow + approve, leaving ⋯ at the row's left edge —
           hang the menu from whichever side keeps it inside the sidebar */}
       {open && (
-        <div className={`save-appear absolute top-full z-20 mt-2 flex w-28 flex-col border border-zinc-200 bg-white py-1 shadow-xl ${blocked ? "left-0" : "right-0"}`}>
+        <div className={`save-appear absolute top-full z-20 mt-2 flex w-32 flex-col rounded-xl border border-zinc-900/[0.06] bg-white/95 p-1 shadow-xl backdrop-blur-xl ${blocked ? "left-0" : "right-0"}`}>
           <button
             onClick={() => {
               setOpen(false);
@@ -381,11 +381,11 @@ function PeoplePanel({
                 onClick={onClose}
                 className="flex min-w-0 items-center gap-3 py-2 transition-opacity hover:opacity-60"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
                   {f.avatar_url ? (
                     <img src={f.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-[10px] font-semibold text-zinc-300">
+                    <span className="text-[10px] font-semibold text-zinc-400">
                       {(f.display_name || f.username).slice(0, 1)}
                     </span>
                   )}
@@ -518,7 +518,7 @@ export default function Sidebar({
         {/* profile */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -526,7 +526,7 @@ export default function Sidebar({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-sm font-semibold text-zinc-300">
+                <span className="text-sm font-semibold text-zinc-400">
                   {(profile.display_name || profile.username).slice(0, 1)}
                 </span>
               )}
@@ -543,7 +543,7 @@ export default function Sidebar({
           )}
           <button
             onClick={() => setPeopleOpen(true)}
-            className="w-fit cursor-pointer text-left text-xs text-zinc-400 transition-colors hover:text-zinc-900"
+            className="w-fit cursor-pointer text-left font-mono text-[11px] text-zinc-400 transition-colors hover:text-zinc-900"
           >
             <span className="whitespace-nowrap">
               {followerCount} Follower{followerCount === 1 ? "" : "s"}
@@ -565,7 +565,7 @@ export default function Sidebar({
               {isOwner && (
                 <Link
                   href="/profile"
-                  className="flex h-7 shrink-0 items-center whitespace-nowrap border border-zinc-200 px-3 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-900"
+                  className="flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border border-zinc-200 px-3.5 text-xs font-medium text-zinc-500 transition hover:border-zinc-300 hover:text-zinc-900 active:scale-95"
                 >
                   Edit profile
                 </Link>
@@ -575,9 +575,9 @@ export default function Sidebar({
                   <button
                     onClick={onToggleFollow}
                     disabled={followBusy}
-                    className={`flex h-7 shrink-0 cursor-pointer items-center whitespace-nowrap px-3 text-xs font-medium transition-colors disabled:cursor-wait ${
+                    className={`flex h-8 shrink-0 cursor-pointer items-center whitespace-nowrap rounded-full px-3.5 text-xs font-medium transition active:scale-95 disabled:cursor-wait ${
                       isFollowing
-                        ? "border border-zinc-200 text-zinc-400 hover:text-zinc-900"
+                        ? "border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-900"
                         : "bg-zinc-900 text-white hover:bg-zinc-700"
                     }`}
                   >
@@ -693,7 +693,14 @@ export default function Sidebar({
                   : "text-zinc-400 hover:text-zinc-900"
               }`}
             >
-              {c === "All" ? "All" : `${counts[c] ?? 0} ${c}`}
+              {c === "All" ? (
+                "All"
+              ) : (
+                <>
+                  {/* the count gets the data whisper — mono against the grotesk */}
+                  <span className="font-mono text-[11px]">{counts[c] ?? 0}</span> {c}
+                </>
+              )}
             </button>
           ))}
         </nav>
@@ -746,7 +753,7 @@ export default function Sidebar({
         {isOwner && (
           <Link
             href="/add"
-            className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
+            className="mt-auto hidden h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full bg-zinc-900 text-sm font-medium text-white shadow-lg shadow-zinc-900/10 transition hover:bg-zinc-700 active:scale-[0.98] md:flex"
           >
             <img src="/favicon.svg" alt="" className="h-4 w-auto" />
             Favorite
@@ -769,7 +776,7 @@ export default function Sidebar({
         {!signedIn && (
           <Link
             href={`/signin?next=/${profile.username}`}
-            className="mt-auto hidden h-9 w-full shrink-0 cursor-pointer items-center justify-center bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 md:flex"
+            className="mt-auto hidden h-10 w-full shrink-0 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-sm font-medium text-white shadow-lg shadow-zinc-900/10 transition hover:bg-zinc-700 active:scale-[0.98] md:flex"
           >
             Start curating
           </Link>

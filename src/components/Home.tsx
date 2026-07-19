@@ -481,7 +481,7 @@ function Rediscover({ viewer }: { viewer: Profile }) {
         href={`/${viewer.username}?item=${item.id}`}
         className="group flex items-center gap-4"
       >
-        <div className="h-16 w-16 shrink-0 overflow-hidden bg-zinc-100">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
           {item.image_url && (
             <img
               src={thumbCover(item.image_url)}
@@ -849,7 +849,7 @@ function FollowingFeed({
               <div className="flex items-center gap-3">
                 <Link
                   href={`/${group.profile.username}`}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 transition-opacity hover:opacity-80"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 transition-opacity hover:opacity-80"
                 >
                   {group.profile.avatar_url ? (
                     <img

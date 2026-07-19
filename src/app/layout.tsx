@@ -51,6 +51,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
+        {/* Switzer — the app's voice (Swiss grotesk, free via Fontshare).
+            Loaded from Fontshare's CDN; Geist Mono stays via next/font as the
+            data whisper (counts, stamps, type tags). */}
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap"
+        />
         {/* every page talks to Supabase (auth/data) immediately and most load
             cover art from these CDNs — warm the connections during HTML parse */}
         <link rel="preconnect" href={sbUrl.origin} crossOrigin="anonymous" />

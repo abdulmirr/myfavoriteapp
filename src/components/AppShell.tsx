@@ -50,14 +50,22 @@ export default function AppShell({
   return (
     <div className="min-h-dvh">
       <header
-        className={`sticky top-0 z-50 flex h-14 items-center justify-between border-b border-zinc-100 bg-white/85 px-5 backdrop-blur transition-[margin,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] sm:px-8 ${
+        className={`sticky top-0 z-50 flex h-14 items-center justify-between border-b border-zinc-900/[0.06] bg-white/70 px-5 backdrop-blur-xl transition-[margin,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] sm:px-8 ${
           collapsed ? "pointer-events-none -mt-14 opacity-0" : ""
         }`}
       >
-        <div className="flex items-center gap-4 sm:gap-5">
-          {/* the mark goes home — the one nav convention nobody has to learn */}
-          <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-            <img src="/favicon.svg" alt="Favorites" className="h-6 w-auto" />
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* the mark goes home — star + wordmark, the one nav convention
+              nobody has to learn */}
+          <Link
+            href="/"
+            aria-label="Home"
+            className="flex w-fit items-center gap-2 transition-opacity hover:opacity-70 active:scale-95"
+          >
+            <img src="/favicon.svg" alt="" className="h-[22px] w-auto" />
+            <span className="hidden text-[15px] font-semibold tracking-[-0.02em] text-zinc-900 md:block">
+              Favorites
+            </span>
           </Link>
           {/* on phones the slot beside the mark is the page's title: Home's
               feed dropdown, your profile's shelf dropdown, or their handle
@@ -86,10 +94,10 @@ export default function AppShell({
               href="/?feed=explore&search=1"
               title="Search"
               aria-label="Search"
-              className="hidden h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900 sm:flex"
+              className="hidden h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 active:scale-95 sm:flex"
             >
               {/* a door, not a field — the real search bar lives on Explore */}
-              <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+              <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
                 <circle cx="5" cy="5" r="4" />
                 <path d="M8 8l3 3" />
               </svg>
@@ -122,10 +130,10 @@ export default function AppShell({
                 href="/add"
                 title="Add a favorite"
                 aria-label="Add a favorite"
-                className="flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:text-zinc-900"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 active:scale-95"
               >
-                <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
-                  <rect x="1.5" y="1.5" width="13" height="13" />
+                <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="1.5" y="1.5" width="13" height="13" rx="4" />
                   <path d="M8 5v6M5 8h6" />
                 </svg>
               </Link>
@@ -136,17 +144,17 @@ export default function AppShell({
                 href={`/${viewer.username}`}
                 title="Your library"
                 aria-label="Your library"
-                className="transition-opacity hover:opacity-80"
+                className="transition hover:opacity-80 active:scale-95"
               >
                 <span
-                  className={`flex h-7 w-7 items-center justify-center overflow-hidden bg-zinc-100 ${
-                    isYou ? "outline outline-1 outline-offset-2 outline-zinc-900" : ""
+                  className={`flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ${
+                    isYou ? "outline outline-2 outline-offset-2 outline-zinc-900/80" : ""
                   }`}
                 >
                   {viewer.avatar_url ? (
                     <img src={viewer.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-[11px] font-semibold text-zinc-300">
+                    <span className="text-[11px] font-semibold text-zinc-400">
                       {(viewer.display_name || viewer.username).slice(0, 1)}
                     </span>
                   )}
@@ -166,7 +174,7 @@ export default function AppShell({
                 </Link>
                 <Link
                   href={`/signin?next=${encodeURIComponent(pathname)}`}
-                  className="text-xs font-medium text-zinc-900 transition-colors hover:text-zinc-500"
+                  className="rounded-full bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700 active:scale-95"
                 >
                   Sign in
                 </Link>

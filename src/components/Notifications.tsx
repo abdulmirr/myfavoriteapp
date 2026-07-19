@@ -167,8 +167,8 @@ export default function Notifications({
       <button
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={toggle}
-        className={`relative flex h-7 w-7 cursor-pointer items-center justify-center transition-colors ${
-          open || unread > 0 ? "text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+        className={`relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-zinc-900/[0.05] active:scale-95 ${
+          open || unread > 0 ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
         }`}
       >
         <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
@@ -186,7 +186,7 @@ export default function Notifications({
 
       {open && (
         <div
-          className={`save-appear fixed inset-x-4 top-16 z-40 border border-zinc-200 bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-[21.5rem] sm:max-w-[calc(100vw-2rem)] ${
+          className={`save-appear fixed inset-x-4 top-16 z-40 overflow-hidden rounded-2xl border border-zinc-900/[0.06] bg-white/90 shadow-2xl backdrop-blur-xl sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-[22rem] sm:max-w-[calc(100vw-2rem)] ${
             align === "right" ? "sm:right-0" : "sm:left-0"
           }`}
         >
@@ -242,11 +242,11 @@ export default function Notifications({
                       }}
                       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50"
                     >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
                         {n.actor?.avatar_url ? (
                           <img src={n.actor.avatar_url} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-[11px] font-semibold text-zinc-300">
+                          <span className="text-[11px] font-semibold text-zinc-400">
                             {who.slice(0, 1)}
                           </span>
                         )}
@@ -263,7 +263,7 @@ export default function Notifications({
                             <span className="text-zinc-900">{n.item?.title ?? "something"}</span>
                           </>
                         )}
-                        <span className="text-zinc-400">
+                        <span className="font-mono text-[10px] text-zinc-400">
                           {" · "}
                           {timeAgo(n.created_at)}
                         </span>
@@ -284,7 +284,7 @@ export default function Notifications({
                               approveBack(n.actor!);
                             }}
                             disabled={approving.has(n.actor.id)}
-                            className="shrink-0 cursor-pointer whitespace-nowrap border border-zinc-200 px-2 py-1 text-[10px] font-medium text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-900 disabled:cursor-wait"
+                            className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] font-medium text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-900 active:scale-95 disabled:cursor-wait"
                           >
                             Approve back
                           </button>
@@ -296,7 +296,7 @@ export default function Notifications({
                         <img
                           src={n.item.image_url}
                           alt=""
-                          className="h-9 w-9 shrink-0 object-cover shadow-sm"
+                          className="h-9 w-9 shrink-0 rounded-md object-cover shadow-sm"
                         />
                       )}
                     </Link>

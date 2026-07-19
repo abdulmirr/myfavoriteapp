@@ -116,11 +116,18 @@ export default function SearchBar({
 
   return (
     <div className={`relative ${wide ? "w-full" : "max-w-56"}`}>
-      {/* pt-1 balances pb-1, and the transparent top border balances border-b, so the icon centers on the pfp beside it */}
+      {/* wide: a soft pill card — the page-opening instrument. compact: the
+          quiet underline that expands on focus. */}
       <div
-        className={`flex items-center border-b border-t border-t-transparent transition-colors duration-200 ${
-          wide ? "gap-2.5 pb-2 pt-2" : "gap-1.5 pb-1 pt-1"
-        } ${focused ? "border-zinc-900" : expanded ? "border-zinc-400" : "border-transparent"}`}
+        className={
+          wide
+            ? `flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-[0_1px_2px_rgb(28_25_23/0.04),0_8px_24px_-12px_rgb(28_25_23/0.08)] transition-colors duration-200 ${
+                focused ? "border-zinc-300" : "border-zinc-900/[0.08]"
+              }`
+            : `flex items-center gap-1.5 border-b border-t border-t-transparent pb-1 pt-1 transition-colors duration-200 ${
+                focused ? "border-zinc-900" : expanded ? "border-zinc-400" : "border-transparent"
+              }`
+        }
       >
         <button
           aria-label="Search"
@@ -157,7 +164,7 @@ export default function SearchBar({
 
       {open && q.trim().length >= 2 && (
         <div
-          className={`absolute left-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto border border-zinc-200 bg-white shadow-2xl save-appear ${
+          className={`absolute left-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-zinc-900/[0.06] bg-white/95 shadow-2xl backdrop-blur-xl save-appear ${
             wide ? "w-full" : "w-72"
           }`}
         >
@@ -182,11 +189,11 @@ export default function SearchBar({
                       href={`/${p.username}`}
                       className="flex items-center gap-2.5 px-4 py-1.5 transition-colors hover:bg-zinc-50"
                     >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100">
                         {p.avatar_url ? (
                           <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-[10px] font-semibold text-zinc-300">
+                          <span className="text-[10px] font-semibold text-zinc-400">
                             {(p.display_name || p.username).slice(0, 1)}
                           </span>
                         )}
@@ -208,7 +215,7 @@ export default function SearchBar({
                       href={`/${m.profile.username}`}
                       className="flex items-center gap-2.5 px-4 py-1.5 transition-colors hover:bg-zinc-50"
                     >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100">
                         {m.image_url ? (
                           <img
                             src={thumbCover(m.image_url, 100)}
@@ -249,7 +256,7 @@ export default function SearchBar({
                       }}
                       className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-1.5 text-left transition-colors hover:bg-zinc-50"
                     >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100">
                         {r.image_url ? (
                           <img src={r.thumb_url ?? r.image_url} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -262,7 +269,7 @@ export default function SearchBar({
                         {r.title}
                         {r.creator && <span className="text-zinc-400"> — {r.creator}</span>}
                       </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+                      <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-400">
                         {TYPE_TAG[r.media_type] ?? r.media_type}
                       </span>
                     </button>
