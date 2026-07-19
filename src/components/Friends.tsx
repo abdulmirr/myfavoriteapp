@@ -8,7 +8,7 @@ import {
   fetchFollowing,
   type DiscoverProfile,
 } from "@/lib/social";
-import { TileMedia } from "./Tile";
+import { TileMedia, coverTone } from "./Tile";
 
 /**
  * Avatar with a voice. Hovering the pfp raises a small speech bubble of the
@@ -100,8 +100,11 @@ const MiniTile = memo(function MiniTile({ item }: { item: Item }) {
     );
   }
   return (
-    <div className="flex aspect-square w-full items-center justify-center overflow-hidden border border-zinc-200 p-1.5">
-      <span className="line-clamp-3 text-center text-[9px] leading-tight text-zinc-500">
+    <div
+      className="flex aspect-square w-full items-center justify-center overflow-hidden p-1.5"
+      style={{ background: coverTone(item.title) }}
+    >
+      <span className="line-clamp-3 text-center text-[9px] font-medium leading-tight text-[#22211fcc]">
         {item.title}
       </span>
     </div>
