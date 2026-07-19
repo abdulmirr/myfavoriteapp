@@ -111,21 +111,17 @@ export function TileMedia({
           />
         )
       ) : (
-        /* the typographic cover — fixed ink on the tone (an object like the
-           polaroid, it doesn't follow the theme). all text equal size and
-           weight: hierarchy lives in the label below the tile, not here. */
+        /* the typographic cover — title only, set large and top-left like a
+           printed jacket (the byline lives in the label below the tile).
+           Sized in container units so the type scales with the cover. Fixed
+           ink on the tone: an object like the polaroid, it ignores the theme. */
         <div
           style={{ ...tiltStyle, background: coverTone(item.title) }}
-          className="item-media-img flex h-full w-full flex-col justify-end p-3"
+          className="item-media-img h-full w-full overflow-hidden p-[8cqw] text-left"
         >
-          <span className="text-[11px] font-medium leading-snug text-[#22211fcc]">
+          <span className="line-clamp-5 block text-[9.5cqw] font-medium leading-[1.2] tracking-[-0.01em] text-[#22211fd9]">
             {item.title}
           </span>
-          {item.creator && (
-            <span className="mt-0.5 text-[11px] font-medium leading-snug text-[#22211f80]">
-              {item.creator}
-            </span>
-          )}
         </div>
       )}
     </div>

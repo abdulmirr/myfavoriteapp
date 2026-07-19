@@ -457,16 +457,16 @@ export default function DetailOverlay({
                 />
               )
             ) : (
-              /* the typographic cover, at exhibition scale — same tone as its
-                 tile, equal size and weight throughout */
+              /* the typographic cover at exhibition scale — title only, large,
+                 top-left, same tone as its tile (the byline is in the text
+                 column beside it) */
               <div
-                className="flex h-full w-full flex-col justify-end p-6"
+                className="h-full w-full overflow-hidden p-[8cqw] text-left"
                 style={{ background: coverTone(item.title) }}
               >
-                <span className="text-sm font-medium text-[#22211fcc]">{item.title}</span>
-                {item.creator && (
-                  <span className="mt-1 text-sm font-medium text-[#22211f80]">{item.creator}</span>
-                )}
+                <span className="line-clamp-6 block text-[6.5cqw] font-medium leading-[1.2] tracking-[-0.015em] text-[#22211fd9]">
+                  {item.title}
+                </span>
               </div>
             );
             // one grammar, two depths: the first click opened this view; here

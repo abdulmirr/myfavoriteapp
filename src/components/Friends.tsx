@@ -101,10 +101,10 @@ const MiniTile = memo(function MiniTile({ item }: { item: Item }) {
   }
   return (
     <div
-      className="flex aspect-square w-full items-center justify-center overflow-hidden p-1.5"
+      className="aspect-square w-full overflow-hidden p-[8cqw] text-left [container-type:inline-size]"
       style={{ background: coverTone(item.title) }}
     >
-      <span className="line-clamp-3 text-center text-[9px] font-medium leading-tight text-[#22211fcc]">
+      <span className="line-clamp-4 block text-[10cqw] font-medium leading-[1.2] text-[#22211fd9]">
         {item.title}
       </span>
     </div>
