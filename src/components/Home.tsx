@@ -245,6 +245,23 @@ export default function Home() {
 
 /* ── For You: daily AI picks, one section per category ─────────────────────── */
 
+// the last good set, cached client-side — the feed paints instantly on open
+// and refreshes in the background. The set only changes once a day, so the
+// cache is almost always exactly right; on the daily rollover it shows
+// yesterday's picks while today's brew instead of a blank screen.
+const RECS_CACHE_KEY = "fav:recs";
+type RecsCache = {
+  uid: string;
+  day: string;
+  recs: Recommendation[];
+  counts: Partial<RecCounts>;
+  total: number;
+};
+const localDay = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+
 function ForYou({
   viewer,
   onOpen,
@@ -258,15 +275,51 @@ function ForYou({
   const [state, setState] = useState<
     "loading" | "ready" | "gated" | "budget" | "done" | "error"
   >("loading");
+  // a background refresh while cached picks are showing — never a blank screen
+  const [refreshing, setRefreshing] = useState(false);
+  const [cachedDay, setCachedDay] = useState<string | null>(null);
+  const shownRef = useRef<Recommendation[]>([]);
+  const cacheUidRef = useRef<string | null>(null);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // hydrate from the cache before the network is even asked
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RECS_CACHE_KEY);
+      if (!raw) return;
+      const c = JSON.parse(raw) as RecsCache;
+      if (!c.recs?.length) return;
+      cacheUidRef.current = c.uid ?? null;
+      shownRef.current = c.recs;
+      setRecs(c.recs);
+      setCounts(c.counts ?? {});
+      setTotal(c.total ?? 0);
+      setCachedDay(c.day ?? null);
+      setState("ready");
+    } catch {
+      /* an unreadable cache is just a cold start */
+    }
+  }, []);
 
   const load = useCallback(() => {
     const run = async (attempt: number) => {
-      setState("loading");
+      setRefreshing(true);
+      if (!shownRef.current.length) setState("loading");
       try {
         const { data } = await supabase().auth.getSession();
         const token = data.session?.access_token;
         if (!token) throw new Error("no session");
+        const uid = data.session!.user.id;
+        // a cached set that belongs to a different account (shared browser)
+        // must not linger on screen
+        if (cacheUidRef.current && cacheUidRef.current !== uid) {
+          cacheUidRef.current = null;
+          shownRef.current = [];
+          setRecs([]);
+          setCachedDay(null);
+          setState("loading");
+          localStorage.removeItem(RECS_CACHE_KEY);
+        }
         const res = await fetch("/api/recommendations", {
           method: "POST",
           headers: {
@@ -283,12 +336,18 @@ function ForYou({
             retryTimer.current = setTimeout(() => run(attempt + 1), 5000);
             return;
           }
+          // yesterday's set stays up rather than an error for a slow brew
+          if (shownRef.current.length) {
+            setRefreshing(false);
+            return;
+          }
           throw new Error("202");
         }
         if (res.status === 429) {
           // the day's generation budget is spent — retrying can't succeed,
           // so say that instead of offering a button that always fails
-          setState("budget");
+          setRefreshing(false);
+          if (!shownRef.current.length) setState("budget");
           return;
         }
         if (!res.ok) throw new Error(String(res.status));
@@ -300,20 +359,46 @@ function ForYou({
           empty?: boolean;
           allDismissed?: boolean;
         };
+        setRefreshing(false);
         setCounts(json.counts ?? {});
         if (json.allDismissed) {
           // they passed on the whole set — that's a judgment, not an empty
           // library; the gate copy would be flatly wrong here
+          shownRef.current = [];
+          setRecs([]);
+          localStorage.removeItem(RECS_CACHE_KEY);
           setState("done");
         } else if (json.gated || json.empty || !json.recommendations.length) {
           setTotal(json.total ?? 0);
+          shownRef.current = [];
+          setRecs([]);
+          localStorage.removeItem(RECS_CACHE_KEY);
           setState("gated");
         } else {
+          shownRef.current = json.recommendations;
           setRecs(json.recommendations);
+          setCachedDay(localDay());
           setState("ready");
+          try {
+            localStorage.setItem(
+              RECS_CACHE_KEY,
+              JSON.stringify({
+                uid,
+                day: localDay(),
+                recs: json.recommendations,
+                counts: json.counts ?? {},
+                total: json.total ?? 0,
+              } satisfies RecsCache)
+            );
+          } catch {
+            /* a full localStorage just means a cold start next time */
+          }
         }
       } catch {
-        setState("error");
+        setRefreshing(false);
+        // with cached picks on screen, a failed refresh stays silent — the
+        // stale set beats an error message
+        if (!shownRef.current.length) setState("error");
       }
     };
     run(0);
@@ -395,6 +480,13 @@ function ForYou({
 
       {state === "ready" && (
         <div className="flex flex-col gap-14">
+          {/* the daily rollover: yesterday's set stays up while today's brew —
+              a quiet note instead of a blank screen */}
+          {refreshing && cachedDay !== null && cachedDay !== localDay() && (
+            <p className="-mt-6 text-[11px] text-zinc-400 [animation:smart-search-wave_1.6s_ease-in-out_infinite]">
+              Yesterday’s picks, while today’s are being curated…
+            </p>
+          )}
           {REC_SECTIONS.map((section) => {
             const picks = recs.filter((r) => section.types.includes(r.media_type));
             const have = counts[section.key] ?? 0;
@@ -412,13 +504,27 @@ function ForYou({
                         rec={r}
                         viewer={viewer}
                         onOpen={onOpen}
-                        onDismiss={() =>
-                          setRecs((prev) =>
-                            prev.filter(
-                              (p) => !(p.media_type === r.media_type && p.title === r.title)
-                            )
-                          )
-                        }
+                        onDismiss={() => {
+                          // the cache must forget it too, or a passed pick
+                          // resurrects on the next open until the refresh lands
+                          const next = shownRef.current.filter(
+                            (p) => !(p.media_type === r.media_type && p.title === r.title)
+                          );
+                          shownRef.current = next;
+                          setRecs(next);
+                          try {
+                            const raw = localStorage.getItem(RECS_CACHE_KEY);
+                            if (raw) {
+                              const c = JSON.parse(raw) as RecsCache;
+                              localStorage.setItem(
+                                RECS_CACHE_KEY,
+                                JSON.stringify({ ...c, recs: next })
+                              );
+                            }
+                          } catch {
+                            /* cache refresh is best-effort */
+                          }
+                        }}
                       />
                     ))}
                   </div>
