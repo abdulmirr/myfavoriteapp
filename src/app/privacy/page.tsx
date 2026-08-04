@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage eyebrow="Privacy Policy" title="Privacy." updated="July 5, 2026">
+    <LegalPage eyebrow="Privacy Policy" title="Privacy." updated="August 4, 2026">
       <P>
         This is a short, plain-English description of how Favorites handles your information. We
         try to collect as little as possible, store it carefully, and never sell it. If anything
@@ -67,6 +67,18 @@ export default function PrivacyPage() {
         profile and your library are visible to anyone who visits your page — that&rsquo;s the
         point of the product. Your email and settings are never public. We will never make
         something more public than the setting you chose.
+      </P>
+
+      <H2>The browser extension</H2>
+      <P>
+        The Favorites browser extension saves the page you&rsquo;re on to your library, and does
+        nothing else. It only reads a page when you click the extension (or press its keyboard
+        shortcut) — at that moment it collects the page&rsquo;s address, title, site name, and
+        preview image, plus any thoughts you type, and sends them to your library. It does not
+        track your browsing history, does not read pages in the background, and does not send
+        anything anywhere until you act. To connect the extension to your account it stores a
+        personal access token on your device; you can revoke every connected browser at any time
+        at myfavoriteapp.com/extension, and disconnecting deletes the token.
       </P>
 
       <H2>Cookies</H2>
