@@ -105,7 +105,7 @@ export default function WelcomePage() {
       <header className="flex shrink-0 items-center justify-between px-5 pt-6 md:px-8 md:pt-8">
         {/* the mark, same corner as every page shell — no link mid-onboarding */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <Star className="h-6 w-6 text-zinc-900" />
+        <Star className="h-6 w-6 text-[#f7a71e]" />
         <div className="flex items-center gap-5">
           <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
             0{beat} / 0{BEATS}

@@ -115,7 +115,7 @@ function SignIn() {
           className="inline-flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Star className="h-5 w-5 text-zinc-900" />
+          <Star className="h-5 w-5 text-[#f7a71e]" />
           Favorites
         </Link>
       </div>

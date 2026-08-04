@@ -27,7 +27,7 @@ export function LegalPage({
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
           <Link href="/" aria-label="Home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <Star className="h-6 w-6 text-zinc-900" />
+            <Star className="h-6 w-6 text-[#f7a71e]" />
           </Link>
           <Link
             href="/signin"

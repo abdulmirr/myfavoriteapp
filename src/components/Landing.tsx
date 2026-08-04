@@ -383,7 +383,7 @@ export default function Landing() {
       <header className="sticky top-0 z-30 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Star className="h-6 w-6 text-zinc-900" />
+          <Star className="h-6 w-6 text-[#f7a71e]" />
           <Link
             href="/signin"
             className="text-xs text-zinc-400 transition-colors hover:text-zinc-900"

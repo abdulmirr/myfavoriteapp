@@ -63,7 +63,7 @@ export default function AppShell({
             aria-label="Home"
             className="flex w-fit items-center gap-2 transition-opacity hover:opacity-70"
           >
-            <Star className="h-[21px] w-[21px] text-zinc-900" />
+            <Star className="h-[21px] w-[21px] text-[#f7a71e]" />
             <span className="hidden text-[15px] font-semibold tracking-[-0.02em] text-zinc-900 md:block">
               Favorite
             </span>

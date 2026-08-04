@@ -79,7 +79,7 @@ export default async function ItemPage({ params }: Props) {
     <div className="flex min-h-screen flex-col bg-white">
       <nav className="flex items-center px-5 pt-6 md:px-8 md:pt-8">
         <Link href="/" aria-label="Home" className="w-fit transition-opacity hover:opacity-70">
-          <Star className="h-6 w-6 text-zinc-900" />
+          <Star className="h-6 w-6 text-[#f7a71e]" />
         </Link>
       </nav>
 
