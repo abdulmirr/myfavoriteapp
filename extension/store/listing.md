@@ -33,8 +33,18 @@ browser at any time from myfavoriteapp.com/extension.
 **Language:** English
 
 **Graphics:**
+- Store icon (128×128): `extension/store/store-icon.png` (96px star centered,
+  transparent — Chrome's recommended 16px padding)
 - Screenshots (1280×800): `extension/store/screenshot-1.jpg`, `extension/store/screenshot-2.jpg`
 - Small promo tile (440×280): `extension/store/tile.jpg`
+- Marquee promo tile (1400×560): `extension/store/marquee.jpg`
+- Promo video: leave blank (optional; only used if the store features the item)
+
+**Additional fields:**
+- Official URL: pick `myfavoriteapp.com` if it's verified in Google Search
+  Console on this account; otherwise leave "None" (it's optional)
+- Homepage URL: `https://myfavoriteapp.com`
+- Support URL: `https://myfavoriteapp.com/extension`
 
 ## Privacy tab
 
