@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import type { Profile } from "@/lib/types";
 import type { ProfileBar } from "./ShellProvider";
-import Notifications from "./Notifications";
 import FeedTabs from "./FeedTabs";
 import ShelfTabs from "./ShelfTabs";
 
@@ -16,6 +15,10 @@ import ShelfTabs from "./ShelfTabs";
  * identity left (star → home), place center (Home's feed switcher — the center
  * simply empties on other pages), tools right (search → Explore's bar, add,
  * bell, your avatar).
+ *
+ * The feed switcher is icons (home / bell / search) — Friends wears the
+ * unread badge, so there's no separate bell. The right zone is the Favorite
+ * pill and your avatar.
  *
  * `minimal` strips the actions for focused tasks (/add) — just the way home.
  * `collapsed` slides the bar away entirely (freeform view is full-screen).
@@ -56,17 +59,14 @@ export default function AppShell({
         }`}
       >
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* the mark goes home — star + wordmark, the one nav convention
+          {/* the mark goes home — the star alone, the one nav convention
               nobody has to learn */}
           <Link
             href="/"
             aria-label="Home"
-            className="flex w-fit items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex w-fit items-center transition-opacity hover:opacity-70"
           >
             <Star className="h-[21px] w-[21px] text-[#f7a71e]" />
-            <span className="hidden text-[15px] font-semibold tracking-[-0.02em] text-zinc-900 md:block">
-              Favorite
-            </span>
           </Link>
           {/* on phones the slot beside the mark is the page's title: Home's
               feed dropdown, your profile's shelf dropdown, or their handle
@@ -74,7 +74,7 @@ export default function AppShell({
           {showFeeds && (
             <div className="sm:hidden">
               <Suspense fallback={null}>
-                <FeedTabs />
+                <FeedTabs viewer={viewer} />
               </Suspense>
             </div>
           )}
@@ -90,20 +90,6 @@ export default function AppShell({
               @{profileBar!.handle}
             </span>
           )}
-          {signedIn && !minimal && (
-            <Link
-              href="/?feed=explore&search=1"
-              title="Search"
-              aria-label="Search"
-              className="hidden h-8 w-8 items-center justify-center text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900 sm:flex"
-            >
-              {/* a door, not a field — the real search bar lives on Explore */}
-              <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
-                <circle cx="5" cy="5" r="4" />
-                <path d="M8 8l3 3" />
-              </svg>
-            </Link>
-          )}
         </div>
 
         {/* on wide screens the bar's center answers "where are you within this
@@ -112,7 +98,7 @@ export default function AppShell({
         {showFeeds && (
           <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
             <Suspense fallback={null}>
-              <FeedTabs />
+              <FeedTabs viewer={viewer} />
             </Suspense>
           </div>
         )}
@@ -125,33 +111,36 @@ export default function AppShell({
         )}
 
         {!minimal && (
-          <div className="flex items-center gap-4 sm:gap-5">
+          <div className="flex items-center gap-3 sm:gap-4">
             {signedIn && (
+              /* the primary act, worn as a pill — plus + word, right beside
+                 your avatar and sized to it (the avatar is 28px; the pill
+                 matches, so the pair reads as one weight). On your own wall
+                 the sidebar already carries Favorite, so the pill steps aside
+                 on desktop and stays only where the sidebar's button isn't. */
               <Link
                 href="/add"
                 title="Add a favorite"
-                aria-label="Add a favorite"
-                className="flex h-8 w-8 items-center justify-center text-zinc-500 transition hover:bg-zinc-900/[0.05] hover:text-zinc-900"
+                className={`h-[30px] shrink-0 items-center gap-1.5 border border-zinc-300 pl-3 pr-3.5 text-[11px] font-medium leading-none text-zinc-900 transition-colors hover:border-zinc-900 ${
+                  isYou ? "flex md:hidden" : "flex"
+                }`}
               >
-                <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <rect x="1.5" y="1.5" width="13" height="13" />
-                  <path d="M8 5v6M5 8h6" />
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+                  <path d="M6 1.5v9M1.5 6h9" />
                 </svg>
+                Favorite
               </Link>
             )}
-            {viewer && <Notifications viewer={viewer} />}
-            {viewer && (
+            {/* on your own wall the sidebar already carries your identity —
+                the avatar door only shows everywhere else */}
+            {viewer && !isYou && (
               <Link
                 href={`/${viewer.username}`}
                 title="Your library"
                 aria-label="Your library"
                 className="transition hover:opacity-80"
               >
-                <span
-                  className={`flex h-7 w-7 items-center justify-center overflow-hidden bg-zinc-100 ${
-                    isYou ? "outline outline-2 outline-offset-2 outline-zinc-900/80" : ""
-                  }`}
-                >
+                <span className="flex h-7 w-7 items-center justify-center overflow-hidden bg-zinc-100">
                   {viewer.avatar_url ? (
                     <img src={viewer.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (

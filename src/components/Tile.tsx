@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import type { Item } from "@/lib/types";
+import { coverSrcSet, thumbCover } from "@/lib/img";
 import { hashRange } from "@/lib/rand";
 import { playSfx } from "@/lib/sfx";
 
@@ -35,17 +36,28 @@ export function TileMedia({
   item,
   tilted = true,
   eager = false,
+  thumb,
 }: {
   item: Item;
   tilted?: boolean;
   /** above-the-fold tiles load immediately at high priority (LCP) */
   eager?: boolean;
+  /** small-slot mode (feed thumbs, cover strips): fetch a ~thumb-px CDN
+      variant instead of the full 500-600px cover */
+  thumb?: number;
 }) {
   const polaroid = item.media_type === "photo";
+  // grid tiles get a responsive srcset (the browser downloads the smallest
+  // variant that fills the slot); thumb slots pin one small variant directly
   const imgPerf = {
     loading: eager ? ("eager" as const) : ("lazy" as const),
     fetchPriority: eager ? ("high" as const) : undefined,
     decoding: "async" as const,
+    ...(item.image_url
+      ? thumb
+        ? { src: thumbCover(item.image_url, thumb) }
+        : coverSrcSet(item.image_url)
+      : null),
   };
   const tiltStyle = tilted
     ? ({ "--tilt": `${tiltOf(item.id)}deg` } as React.CSSProperties)
@@ -61,7 +73,6 @@ export function TileMedia({
         <div className="polaroid item-media-img" style={tiltStyle}>
           {item.image_url ? (
             <img
-              src={item.image_url}
               alt={item.title}
               {...imgPerf}
               className="block max-h-[75cqw] max-w-[75cqw] bg-zinc-100"
@@ -91,7 +102,6 @@ export function TileMedia({
         deco ? (
           <div className={`${deco} item-media-img`} style={tiltStyle}>
             <img
-              src={item.image_url}
               alt={item.title}
               {...imgPerf}
               className={`block ${
@@ -101,7 +111,6 @@ export function TileMedia({
           </div>
         ) : (
           <img
-            src={item.image_url}
             alt={item.title}
             {...imgPerf}
             style={tiltStyle}

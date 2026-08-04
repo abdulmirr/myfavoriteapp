@@ -110,13 +110,8 @@ function SignIn() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <div className="px-5 pt-6 md:px-8 md:pt-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+        <Link href="/" aria-label="Home" className="inline-flex items-center">
           <Star className="h-5 w-5 text-[#f7a71e]" />
-          Favorites
         </Link>
       </div>
 

@@ -318,6 +318,7 @@ function PeoplePanel({
   followingCount,
   followers,
   following,
+  initialTab,
   onClose,
 }: {
   closing: boolean;
@@ -325,9 +326,13 @@ function PeoplePanel({
   followingCount: number;
   followers: Profile[];
   following: Profile[];
+  /** which list the opener asked for — the two counts are separate doors */
+  initialTab: "followers" | "following";
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"followers" | "following">("followers");
+  const [tab, setTab] = useState<"followers" | "following">(initialTab);
+  // reopening from the other count lands on that list
+  useEffect(() => setTab(initialTab), [initialTab]);
 
   const people = tab === "followers" ? followers : following;
   const empty = tab === "followers" ? "No followers yet." : "Not following anyone yet.";
@@ -338,8 +343,27 @@ function PeoplePanel({
         closing ? "people-out" : "people-in"
       }`}
     >
-      {/* the X gets the header row to itself — same corner as the copy icon */}
-      <div className="flex h-6 items-center justify-end">
+      {/* one header row: the count toggle left, the X right — the list starts
+          where the sidebar's own content does, no dead band above it */}
+      <div className="flex h-6 items-center justify-between">
+        <div className="flex gap-4 text-xs">
+          <button
+            onClick={() => setTab("followers")}
+            className={`cursor-pointer whitespace-nowrap transition-colors ${
+              tab === "followers" ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+            }`}
+          >
+            {followerCount} Follower{followerCount === 1 ? "" : "s"}
+          </button>
+          <button
+            onClick={() => setTab("following")}
+            className={`cursor-pointer whitespace-nowrap transition-colors ${
+              tab === "following" ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
+            }`}
+          >
+            {followingCount} Following
+          </button>
+        </div>
         <button
           onClick={onClose}
           aria-label="Close"
@@ -351,30 +375,10 @@ function PeoplePanel({
         </button>
       </div>
 
-      {/* count toggle — same idiom as the Latest/Oldest switch */}
-      <div className="mt-6 flex gap-4 text-xs">
-        <button
-          onClick={() => setTab("followers")}
-          className={`cursor-pointer whitespace-nowrap transition-colors ${
-            tab === "followers" ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-          }`}
-        >
-          {followerCount} Follower{followerCount === 1 ? "" : "s"}
-        </button>
-        <button
-          onClick={() => setTab("following")}
-          className={`cursor-pointer whitespace-nowrap transition-colors ${
-            tab === "following" ? "font-medium text-zinc-900" : "text-zinc-400 hover:text-zinc-900"
-          }`}
-        >
-          {followingCount} Following
-        </button>
-      </div>
-
       {people.length === 0 ? (
-        <p className="mt-6 text-xs text-zinc-400">{empty}</p>
+        <p className="mt-5 text-xs text-zinc-400">{empty}</p>
       ) : (
-        <ul className="mt-5 flex-1 overflow-y-auto overscroll-contain">
+        <ul className="mt-4 flex-1 overflow-y-auto overscroll-contain">
           {people.map((f) => (
             <li key={f.id}>
               <Link
@@ -384,7 +388,13 @@ function PeoplePanel({
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden bg-zinc-100">
                   {f.avatar_url ? (
-                    <img src={f.avatar_url} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={f.avatar_url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <span className="text-[10px] font-semibold text-zinc-400">
                       {(f.display_name || f.username).slice(0, 1)}
@@ -476,6 +486,11 @@ export default function Sidebar({
 }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [peopleTab, setPeopleTab] = useState<"followers" | "following">("followers");
+  const openPeople = (tab: "followers" | "following") => {
+    setPeopleTab(tab);
+    setPeopleOpen(true);
+  };
   const onClosePeople = useCallback(() => setPeopleOpen(false), []);
   const asideRef = useRef<HTMLElement>(null);
   const followerCount = followers.length;
@@ -542,16 +557,21 @@ export default function Sidebar({
           {profile.bio && (
             <p className="text-xs leading-relaxed text-zinc-500">{profile.bio}</p>
           )}
-          <button
-            onClick={() => setPeopleOpen(true)}
-            className="w-fit cursor-pointer text-left font-mono text-[11px] text-zinc-400 transition-colors hover:text-zinc-900"
-          >
-            <span className="whitespace-nowrap">
+          {/* two counts, two doors — each highlights and opens on its own */}
+          <div className="flex gap-3 font-mono text-[11px] text-zinc-400">
+            <button
+              onClick={() => openPeople("followers")}
+              className="cursor-pointer whitespace-nowrap transition-[color,transform] duration-150 hover:-translate-y-px hover:text-zinc-900"
+            >
               {followerCount} Follower{followerCount === 1 ? "" : "s"}
-            </span>
-            {" · "}
-            <span className="whitespace-nowrap">{followingCount} Following</span>
-          </button>
+            </button>
+            <button
+              onClick={() => openPeople("following")}
+              className="cursor-pointer whitespace-nowrap transition-[color,transform] duration-150 hover:-translate-y-px hover:text-zinc-900"
+            >
+              {followingCount} Following
+            </button>
+          </div>
           {socialError && (
             <p className="save-appear text-[11px] text-red-500">{socialError}</p>
           )}
@@ -769,6 +789,7 @@ export default function Sidebar({
             followingCount={followingCount}
             followers={followers}
             following={following}
+            initialTab={peopleTab}
             onClose={onClosePeople}
           />
         )}

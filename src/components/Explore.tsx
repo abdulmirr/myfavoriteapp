@@ -78,13 +78,10 @@ export function ExploreFeed({
 
   return (
     <section>
-      <div className="mb-8 flex flex-col gap-1.5">
+      <div className="mb-8">
         <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
           Explore
         </h1>
-        <p className="text-xs text-zinc-400">
-          Everyone on the app — people worth following, and what they’re saving.
-        </p>
       </div>
 
       {/* the one true search — people, saved items, and the catalog in one
@@ -125,14 +122,15 @@ export function ExploreFeed({
         ) : (
           <>
             <div className="hover-fx grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 md:grid-cols-4">
-              {recent.map((item) => (
+              {recent.map((item, i) => (
                 <article key={item.id} className="item-tile">
                   <button
                     onClick={(e) => openItem(item, e)}
                     aria-label={item.title}
                     className="block w-full cursor-pointer"
                   >
-                    <TileMedia item={item} />
+                    {/* the first row is above the fold — fetch it eagerly */}
+                    <TileMedia item={item} eager={i < 8} />
                   </button>
                   <h3 className="mt-3 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
                     {item.title}

@@ -14,13 +14,14 @@ import {
   type Recommendation,
 } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-import { fetchFollowing, itemKeys } from "@/lib/social";
+import { fetchFollowing, itemKeys, type Notification } from "@/lib/social";
 import { playSfx, preloadSfx } from "@/lib/sfx";
 import { thumbCover } from "@/lib/img";
 import dynamic from "next/dynamic";
 import DetailOverlay from "./DetailOverlay";
 import { ExploreFeed } from "./Explore";
 import { FriendsStrip, InviteFriendButton } from "./Friends";
+import { NotificationEntry, useNotifications } from "./Notifications";
 import Suggestions from "./Suggestions";
 import { TYPE_TAG, type FeedItem } from "./SearchBar";
 import { TileMedia } from "./Tile";
@@ -192,10 +193,10 @@ export default function Home() {
               <div className="mb-8 flex items-end justify-between gap-4">
                 <div className="flex flex-col gap-1.5">
                   <h1 className="text-lg font-semibold leading-snug tracking-tight text-zinc-900">
-                    Following
+                    Friends
                   </h1>
                   <p className="text-xs text-zinc-400">
-                    People you follow — and what they’ve been favoriting.
+                    Your people — what they’re favoriting, and who’s noticing you.
                   </p>
                 </div>
                 <InviteFriendButton />
@@ -487,7 +488,7 @@ function ForYou({
               Yesterday’s picks, while today’s are being curated…
             </p>
           )}
-          {REC_SECTIONS.map((section) => {
+          {REC_SECTIONS.map((section, sectionIdx) => {
             const picks = recs.filter((r) => section.types.includes(r.media_type));
             const have = counts[section.key] ?? 0;
             const need = REC_MIN_PER_CATEGORY - have;
@@ -503,6 +504,7 @@ function ForYou({
                         key={`${r.title}-${i}`}
                         rec={r}
                         viewer={viewer}
+                        eager={sectionIdx === 0}
                         onOpen={onOpen}
                         onDismiss={() => {
                           // the cache must forget it too, or a passed pick
@@ -633,11 +635,14 @@ function Rediscover({ viewer }: { viewer: Profile }) {
 function RecCard({
   rec,
   viewer,
+  eager = false,
   onOpen,
   onDismiss,
 }: {
   rec: Recommendation;
   viewer: Profile | null;
+  /** first section sits above the fold — fetch its covers immediately */
+  eager?: boolean;
   onOpen: (item: Item, rect: DOMRect) => void;
   onDismiss: () => void;
 }) {
@@ -675,7 +680,7 @@ function RecCard({
         }}
       >
         {/* same object-on-a-wall treatment as the library grid */}
-        <TileMedia item={recToItem(rec)} />
+        <TileMedia item={recToItem(rec)} eager={eager} />
       </button>
 
       <div className="mt-3 flex items-baseline gap-3">
@@ -813,6 +818,9 @@ function FollowingFeed({
     setLoadingMore(false);
   };
 
+  // notifications ride this same feed — one merged timeline, one grammar
+  const notif = useNotifications(viewer);
+
   // fold the flat feed into per-friend, per-day groups (feed is newest-first);
   // memoized so unrelated re-renders (overlay opens etc.) skip the regroup
   const groups: FeedGroup[] = useMemo(() => {
@@ -825,6 +833,23 @@ function FollowingFeed({
     }
     return out;
   }, [feed]);
+
+  // visits and notifications shuffled into one newest-first stream
+  type Entry =
+    | { ts: string; key: string; kind: "group"; group: FeedGroup }
+    | { ts: string; key: string; kind: "notif"; n: Notification };
+  const entries: Entry[] = useMemo(() => {
+    const out: Entry[] = groups.map((group) => ({
+      ts: group.items[0].created_at,
+      key: `g-${group.profile.id}-${group.day}-${group.items[0].id}`,
+      kind: "group",
+      group,
+    }));
+    for (const n of notif.list ?? [])
+      out.push({ ts: n.created_at, key: `n-${n.id}`, kind: "notif", n });
+    return out.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
+  }, [groups, notif.list]);
+
   const overlaySavedSet = useMemo(() => new Set(overlaySaved), [overlaySaved]);
 
   return (
@@ -857,105 +882,47 @@ function FollowingFeed({
           Loading…
         </p>
       ) : followCount === 0 ? (
-        <Suggestions viewer={viewer} />
-      ) : feed.length === 0 ? (
+        // nobody followed yet — notifications (someone found you first) still
+        // show above the suggestions
+        <div className="flex flex-col gap-14">
+          {entries.map((e) =>
+            e.kind === "notif" ? (
+              <NotificationEntry
+                key={e.key}
+                n={e.n}
+                state={notif}
+                viewerId={viewer?.id ?? null}
+                viewerFollowing={friends ?? []}
+              />
+            ) : null
+          )}
+          <Suggestions viewer={viewer} />
+        </div>
+      ) : entries.length === 0 ? (
         <p className="pt-12 text-center text-xs text-zinc-400">
           The people you follow haven’t favorited anything yet.
         </p>
       ) : (
         <div className="flex flex-col gap-14">
-          {groups.map((group) => (
-            <section key={`${group.profile.id}-${group.day}-${group.items[0].id}`}>
-              {/* who + when — once per visit, not once per item */}
-              <div className="flex items-center gap-3">
-                <Link
-                  href={`/${group.profile.username}`}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 transition-opacity hover:opacity-80"
-                >
-                  {group.profile.avatar_url ? (
-                    <img
-                      src={group.profile.avatar_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-xs font-semibold text-zinc-300">
-                      {(group.profile.display_name || group.profile.username).slice(0, 1)}
-                    </span>
-                  )}
-                </Link>
-                <p className="min-w-0 flex-1 truncate text-xs text-zinc-400">
-                  <Link
-                    href={`/${group.profile.username}`}
-                    className="text-[13px] font-medium text-zinc-900 transition-colors hover:text-zinc-400"
-                  >
-                    {group.profile.display_name || `@${group.profile.username}`}
-                  </Link>{" "}
-                  favorited{" "}
-                  {group.items.length === 1
-                    ? FAVORITED_PHRASE[group.items[0].media_type] ?? `a ${group.items[0].media_type}`
-                    : `${group.items.length} pieces`}
-                </p>
-                <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                  {shortDate(group.items[0].created_at)}
-                </span>
-              </div>
-
-              <ul className="hover-fx mt-5 flex flex-col gap-7 border-l border-zinc-100 pl-6 sm:ml-4">
-                {group.items.map((item) => {
-                  const saved =
-                    savedKeys &&
-                    itemKeys(item).some((k) => savedKeys.has(k) || overlaySavedSet.has(k));
-                  const openItem = (e: React.MouseEvent<HTMLElement>, favoriting?: boolean) => {
-                    const thumb = e.currentTarget.closest("li")?.querySelector(".feed-thumb");
-                    playSfx(item.media_type);
-                    onOpen(item, (thumb ?? e.currentTarget).getBoundingClientRect(), favoriting);
-                  };
-                  return (
-                    <li key={item.id} className="item-tile flex gap-4">
-                      <button
-                        onClick={openItem}
-                        aria-label={item.title}
-                        className="feed-thumb w-24 shrink-0 cursor-pointer self-start"
-                      >
-                        <TileMedia item={item} />
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                              {TYPE_TAG[item.media_type] ?? item.media_type}
-                            </span>
-                            <h2 className="mt-0.5 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
-                              <button
-                                onClick={openItem}
-                                className="cursor-pointer text-left transition-colors hover:text-zinc-400"
-                              >
-                                {item.title}
-                              </button>
-                            </h2>
-                            {item.creator && (
-                              <p className="truncate text-xs text-zinc-400">{item.creator}</p>
-                            )}
-                          </div>
-                          {savedKeys && saved && (
-                            <span className="shrink-0 pt-1 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-                              Favorited
-                            </span>
-                          )}
-                        </div>
-                        {item.description && (
-                          <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
-                            “{item.description}”
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+          {entries.map((e) =>
+            e.kind === "notif" ? (
+              <NotificationEntry
+                key={e.key}
+                n={e.n}
+                state={notif}
+                viewerId={viewer?.id ?? null}
+                viewerFollowing={friends ?? []}
+              />
+            ) : (
+              <FeedGroupEntry
+                key={e.key}
+                group={e.group}
+                savedKeys={savedKeys}
+                overlaySavedSet={overlaySavedSet}
+                onOpen={onOpen}
+              />
+            )
+          )}
           {hasMore && (
             <button
               onClick={loadMore}
@@ -965,8 +932,137 @@ function FollowingFeed({
               {loadingMore ? "Loading…" : "Earlier saves ↓"}
             </button>
           )}
+          {/* the reach footnote — who you put on, quietly closing the feed */}
+          {notif.reach !== null && notif.reach.pieces > 0 && (
+            <p className="border-t border-zinc-100 pt-5 text-[11px] leading-relaxed text-zinc-400">
+              You put on{" "}
+              {notif.reach.people.slice(0, 2).map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && (notif.reach!.people.length > 2 ? ", " : " and ")}
+                  <Link
+                    href={`/${p.username}`}
+                    className="text-zinc-900 transition-colors hover:text-zinc-400"
+                  >
+                    {p.display_name || `@${p.username}`}
+                  </Link>
+                </span>
+              ))}
+              {notif.reach.people.length > 2 &&
+                `, and ${notif.reach.people.length - 2} other${
+                  notif.reach.people.length === 3 ? "" : "s"
+                }`}{" "}
+              on {notif.reach.pieces} piece{notif.reach.pieces === 1 ? "" : "s"}.
+            </p>
+          )}
         </div>
       )}
+    </section>
+  );
+}
+
+/** one friend's visit — who + when, then their pieces under the hairline */
+function FeedGroupEntry({
+  group,
+  savedKeys,
+  overlaySavedSet,
+  onOpen,
+}: {
+  group: FeedGroup;
+  savedKeys: Set<string> | null;
+  overlaySavedSet: Set<string>;
+  onOpen: (item: Item, rect: DOMRect, favoriting?: boolean) => void;
+}) {
+  return (
+    <section>
+      {/* who + when — once per visit, not once per item */}
+      <div className="flex items-center gap-3">
+        <Link
+          href={`/${group.profile.username}`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden bg-zinc-100 transition-opacity hover:opacity-80"
+        >
+          {group.profile.avatar_url ? (
+            <img
+              src={group.profile.avatar_url}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-xs font-semibold text-zinc-300">
+              {(group.profile.display_name || group.profile.username).slice(0, 1)}
+            </span>
+          )}
+        </Link>
+        <p className="min-w-0 flex-1 truncate text-xs text-zinc-400">
+          <Link
+            href={`/${group.profile.username}`}
+            className="text-[13px] font-medium text-zinc-900 transition-colors hover:text-zinc-400"
+          >
+            {group.profile.display_name || `@${group.profile.username}`}
+          </Link>{" "}
+          favorited{" "}
+          {group.items.length === 1
+            ? FAVORITED_PHRASE[group.items[0].media_type] ?? `a ${group.items[0].media_type}`
+            : `${group.items.length} pieces`}
+        </p>
+        <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+          {shortDate(group.items[0].created_at)}
+        </span>
+      </div>
+
+      <ul className="hover-fx mt-5 flex flex-col gap-7 border-l border-zinc-100 pl-6 sm:ml-4">
+        {group.items.map((item) => {
+          const saved =
+            savedKeys &&
+            itemKeys(item).some((k) => savedKeys.has(k) || overlaySavedSet.has(k));
+          const openItem = (e: React.MouseEvent<HTMLElement>, favoriting?: boolean) => {
+            const thumb = e.currentTarget.closest("li")?.querySelector(".feed-thumb");
+            playSfx(item.media_type);
+            onOpen(item, (thumb ?? e.currentTarget).getBoundingClientRect(), favoriting);
+          };
+          return (
+            <li key={item.id} className="item-tile flex gap-4">
+              <button
+                onClick={openItem}
+                aria-label={item.title}
+                className="feed-thumb w-24 shrink-0 cursor-pointer self-start"
+              >
+                {/* a 96px slot — the 200px variant, not the full cover */}
+                <TileMedia item={item} thumb={200} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+                      {TYPE_TAG[item.media_type] ?? item.media_type}
+                    </span>
+                    <h2 className="mt-0.5 truncate text-[13px] leading-snug tracking-[-0.01em] text-zinc-900">
+                      <button
+                        onClick={openItem}
+                        className="cursor-pointer text-left transition-colors hover:text-zinc-400"
+                      >
+                        {item.title}
+                      </button>
+                    </h2>
+                    {item.creator && (
+                      <p className="truncate text-xs text-zinc-400">{item.creator}</p>
+                    )}
+                  </div>
+                  {savedKeys && saved && (
+                    <span className="shrink-0 pt-1 text-[10px] uppercase tracking-[0.08em] text-zinc-400">
+                      Favorited
+                    </span>
+                  )}
+                </div>
+                {item.description && (
+                  <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
+                    “{item.description}”
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

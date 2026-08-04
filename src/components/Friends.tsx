@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useState, type ReactNode } from "react";
+import { memo, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Item, Profile } from "@/lib/types";
 import {
@@ -17,13 +17,19 @@ import { TileMedia, coverTone } from "./Tile";
  * ~4.5 covers wide), so it always reads balanced. Pure CSS, so it costs
  * nothing when nobody's hovering; pointer-events-none keeps the card click.
  */
-function Avatar({ p }: { p: Profile }) {
+function Avatar({ p, size = "h-10 w-10" }: { p: Profile; size?: string }) {
   const bio = p.bio?.trim();
   return (
     <div className="group/pfp relative shrink-0">
-      <div className="flex h-10 w-10 items-center justify-center overflow-hidden bg-zinc-100">
+      <div className={`flex ${size} items-center justify-center overflow-hidden bg-zinc-100`}>
         {p.avatar_url ? (
-          <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+          <img
+            src={p.avatar_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <span className="text-xs font-semibold text-zinc-300">
             {(p.display_name || p.username).slice(0, 1)}
@@ -95,13 +101,14 @@ const MiniTile = memo(function MiniTile({ item }: { item: Item }) {
   if (item.image_url && !broken) {
     return (
       <div onErrorCapture={() => setBroken(true)}>
-        <TileMedia item={item} />
+        {/* ~70px slots — fetch the 200px CDN variant, not the 600px cover */}
+        <TileMedia item={item} thumb={200} />
       </div>
     );
   }
   return (
     <div
-      className="aspect-square w-full overflow-hidden p-[8cqw] text-left [container-type:inline-size]"
+      className="item-media-img aspect-square w-full overflow-hidden p-[8cqw] text-left [container-type:inline-size]"
       style={{ background: coverTone(item.title) }}
     >
       <span className="line-clamp-4 block text-[10cqw] font-medium leading-[1.2] text-[#22211fd9]">
@@ -112,46 +119,36 @@ const MiniTile = memo(function MiniTile({ item }: { item: Item }) {
 });
 
 /**
- * One person, one card, one rhythm for both shelves: identity, a full strip
- * of four covers (framed, like everything on a wall here), and a quiet gray
- * footer — the bio for friends, the overlap numbers for strangers. The whole
- * card is a door to their library.
+ * One person, one row — identity first: a full-size avatar and the name at
+ * reading size, never squeezed (the counts fold into the byline instead of
+ * competing for the row's right edge). Their taste rides along as four small
+ * covers on the right — a hint, not the headline. The hover is one quiet
+ * gesture, not per-cover theatrics: the row's ground tints and the strip
+ * drifts up a breath, all as a single object.
  */
-function PersonCard({
-  p,
-  strip,
-  footer,
-}: {
-  p: Profile;
-  strip: Item[];
-  footer?: ReactNode;
-}) {
+function PersonCard({ p, strip, meta }: { p: Profile; strip: Item[]; meta?: string }) {
   return (
     <Link
       href={`/${p.username}`}
-      className="group flex flex-col border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300"
+      className="group -mx-3 flex items-center gap-3.5 px-3 py-2 transition-colors duration-200 hover:bg-zinc-900/[0.03]"
     >
-      <div className="flex items-center gap-3">
-        <Avatar p={p} />
-        <div className="min-w-0">
-          <div className="truncate text-xs font-medium text-zinc-900">
-            {p.display_name || `@${p.username}`}
-          </div>
-          <div className="truncate text-[11px] text-zinc-400">@{p.username}</div>
+      <Avatar p={p} size="h-11 w-11" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13px] font-medium leading-snug text-zinc-900">
+          {p.display_name || `@${p.username}`}
+        </div>
+        <div className="truncate text-[11px] text-zinc-400">
+          @{p.username}
+          {meta && <span className="text-zinc-400"> · {meta}</span>}
         </div>
       </div>
-      <div className="mt-3.5">
-        {strip.length > 0 ? (
-          <div className="grid grid-cols-4 gap-1.5">
-            {strip.map((it) => (
-              <MiniTile key={it.id} item={it} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-[11px] text-zinc-300">Nothing favorited yet.</p>
-        )}
-      </div>
-      {footer && <div className="mt-3">{footer}</div>}
+      {strip.length > 0 && (
+        <div className="grid w-[7.5rem] shrink-0 grid-cols-4 gap-1 transition-transform duration-200 ease-[var(--ease-drift,ease-out)] group-hover:-translate-y-0.5">
+          {strip.map((it) => (
+            <MiniTile key={it.id} item={it} />
+          ))}
+        </div>
+      )}
     </Link>
   );
 }
@@ -207,22 +204,17 @@ export function DiscoverPeople({ viewer }: { viewer: Profile }) {
     return <p className="text-xs text-zinc-400">No one new right now — you already know everyone here.</p>;
   }
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    // two columns, not three — the names get the room; the covers are the garnish
+    <div className="grid gap-x-10 gap-y-4 sm:grid-cols-2">
       {others.map((p) => (
         <PersonCard
           key={p.id}
           p={p}
           strip={p.preview}
-          footer={
-            <p className="text-[10px] uppercase tracking-[0.08em] text-zinc-400">
-              {p.shared > 0 && (
-                <>
-                  <span className="font-medium text-zinc-900">{p.shared} shared</span>
-                  <span> · </span>
-                </>
-              )}
-              {p.count} favorite{p.count === 1 ? "" : "s"}
-            </p>
+          meta={
+            p.shared > 0
+              ? `${p.shared} shared`
+              : `${p.count} favorite${p.count === 1 ? "" : "s"}`
           }
         />
       ))}

@@ -93,6 +93,22 @@ export default function AddPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [leave, reviewOpen]);
 
+  // "click outside to return" — listen at the document so it's true anywhere
+  // on the page (the old wrapper onClick only covered as far as the content
+  // reached; clicks below the palette or in the header's empty band did
+  // nothing). Links and buttons keep their own behavior.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (reviewOpen) return; // the review pass has its own scrim
+      const t = e.target as HTMLElement;
+      if (colRef.current?.contains(t)) return;
+      if (t.closest("a, button")) return;
+      leave();
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [leave, reviewOpen]);
+
   const done = (item: Item) => {
     playSfx(item.media_type);
     router.push(viewer ? `/${viewer.username}` : "/");
@@ -110,15 +126,7 @@ export default function AddPage() {
   const selectedKeys = new Set(basket.map(resultKey));
 
   return (
-    <div
-      className="min-h-full bg-white"
-      onClick={(e) => {
-        if (reviewOpen) return; // the review pass has its own scrim
-        // anywhere outside the content column (palette + header controls)
-        // returns to your library
-        if (colRef.current && !colRef.current.contains(e.target as Node)) leave();
-      }}
-    >
+    <div className="min-h-dvh bg-white">
       {/* warm connections to the cover CDNs before the first search lands */}
       <link rel="preconnect" href="https://image.tmdb.org" />
       <link rel="preconnect" href="https://is1-ssl.mzstatic.com" />
