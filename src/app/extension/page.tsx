@@ -151,7 +151,7 @@ function ExtensionConnect() {
                 onClick={connect}
                 className="mt-4 flex h-9 cursor-pointer items-center gap-2 bg-zinc-900 px-4 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
               >
-                <img src="/favicon.svg" alt="" className="h-4.5 w-auto" />
+                <img src="/faviconstar.svg" alt="" className="h-4.5 w-auto" />
                 Connect
               </button>
             </>

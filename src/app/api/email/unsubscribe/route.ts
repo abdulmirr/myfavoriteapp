@@ -15,7 +15,7 @@ const page = (title: string, note: string) =>
 <title>${title} — Favorites</title>
 <body style="margin:0;display:grid;place-items:center;min-height:100vh;background:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#18181b">
 <div style="text-align:center;font-size:15px;line-height:1.65;padding:24px;max-width:420px">
-<img src="/favicon.svg" width="28" height="28" alt="Favorites" style="margin:0 auto 20px;display:block">
+<img src="/faviconstar.svg" width="28" height="28" alt="Favorites" style="margin:0 auto 20px;display:block">
 <p style="margin:0 0 6px;font-size:17px;font-weight:600">${title}</p>
 <p style="margin:0;color:#71717a">${note}</p>
 <p style="margin:28px 0 0;font-size:12px"><a href="https://myfavoriteapp.com" style="color:#a1a1aa">myfavoriteapp.com</a></p>
