@@ -157,9 +157,9 @@ img { -webkit-touch-callout: none; }
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.1), 0 8px 24px rgba(28, 25, 23, 0.08);
 }
 
-/* ── video: paused player — slim screen bezel with a scrubber ──
+/* ── video: paused player — slim screen bezel ──
    Sized in cqw (both hosts set container-type on the square media box) so the
-   bezel and bar keep their scale whatever shape the frame shrink-wraps to. */
+   bezel keeps its scale whatever shape the frame shrink-wraps to. */
 .screenframe {
   position: relative;
   background: #0d0d0e;
@@ -167,15 +167,21 @@ img { -webkit-touch-callout: none; }
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.09), 0 8px 24px rgba(28, 25, 23, 0.07);
 }
-.screenframe::after {
-  /* the scrubber, paused a third of the way in */
+/* YouTube's mark, resting in the bottom-right of the still — the whole cue,
+   no scrubber needed. Only set when the link really is YouTube (see
+   isYouTube in Tile.tsx), so a Vimeo video never wears the wrong badge.
+   Inline SVG: no network request, and it stays crisp at any tile size. */
+.screenframe--yt::after {
   content: "";
   position: absolute;
-  left: 1.6cqw;
-  right: 1.6cqw;
-  bottom: 1.6cqw;
-  height: max(0.9cqw, 1.5px);
-  background: linear-gradient(90deg, #e53935 0 34%, rgba(255, 255, 255, 0.32) 34%);
+  right: 3cqw;
+  bottom: 3cqw;
+  width: 9cqw;
+  aspect-ratio: 28 / 20;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Cpath fill='%23FF0000' d='M27.4 3.1A3.5 3.5 0 0 0 24.9.6C22.7 0 14 0 14 0S5.3 0 3.1.6A3.5 3.5 0 0 0 .6 3.1C0 5.3 0 10 0 10s0 4.7.6 6.9a3.5 3.5 0 0 0 2.5 2.5C5.3 20 14 20 14 20s8.7 0 10.9-.6a3.5 3.5 0 0 0 2.5-2.5C28 14.7 28 10 28 10s0-4.7-.6-6.9z'/%3E%3Cpath fill='%23FFFFFF' d='M11.2 14.3 18.5 10l-7.3-4.3z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 
 /* ── book cover: cream fore-edge of pages peeking out at the right ── */

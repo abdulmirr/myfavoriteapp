@@ -24,6 +24,24 @@ export function coverTone(seed: string): string {
 }
 
 /**
+ * Videos wear YouTube's mark only when the link agrees — the /api/og oEmbed
+ * branch uses this same host test, and Vimeo links go through it too.
+ */
+export function isYouTube(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return /(^|\.)(youtube\.com|youtu\.be)$/i.test(new URL(url).hostname);
+  } catch {
+    return false; // not a parseable URL — no badge
+  }
+}
+
+/** Screen bezel, plus the YouTube mark when the video is hosted there. */
+export function screenFrame(viewUrl: string | null | undefined): string {
+  return isYouTube(viewUrl) ? "screenframe screenframe--yt" : "screenframe";
+}
+
+/**
  * Square media tile. Each medium keeps the same object-on-a-wall language
  * (soft shadow, whisper of tilt) with one distinguishing cue:
  *   photo → polaroid · video → paused-player screen bezel · book → fore-edge
@@ -93,7 +111,7 @@ export function TileMedia({
         : item.media_type === "music"
           ? "vinylframe"
           : item.media_type === "video"
-            ? "screenframe"
+            ? screenFrame(item.view_url)
             : null;
 
   return (

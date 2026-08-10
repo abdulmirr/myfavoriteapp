@@ -254,7 +254,9 @@ const FRAME: Record<MediaType, string | null> = {
   book: "bookframe",
   movie: "posterframe",
   music: "vinylframe",
-  video: "screenframe",
+  // the one video piece in the showcase is a YouTube upload, so it carries
+  // the same mark the library tiles do
+  video: "screenframe screenframe--yt",
   photo: "polaroid",
   podcast: null,
 };

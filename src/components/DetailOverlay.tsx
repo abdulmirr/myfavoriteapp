@@ -1,6 +1,6 @@
 "use client";
 
-import { coverTone } from "./Tile";
+import { coverTone, screenFrame } from "./Tile";
 import Star from "./Star";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -390,7 +390,7 @@ export default function DetailOverlay({
     item.media_type === "photo"
       ? "polaroid"
       : item.media_type === "video"
-        ? "screenframe"
+        ? screenFrame(item.view_url)
         : item.media_type === "book"
           ? "bookframe"
           : item.media_type === "movie" || item.media_type === "tv"
