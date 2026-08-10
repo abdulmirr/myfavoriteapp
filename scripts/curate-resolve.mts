@@ -3,7 +3,9 @@
 // would have produced had each one been added by hand.
 // Writes JSON to the path in argv[2]; inserting is curate-apply.mjs's job.
 import { readFileSync, writeFileSync } from "node:fs";
-import { tmdb, books } from "../src/lib/search-sources.ts";
+// extensionless: tsconfig includes **/*.mts, so `next build` typechecks this
+// file and a ".ts" specifier fails without allowImportingTsExtensions
+import { tmdb, books } from "../src/lib/search-sources";
 
 const env = Object.fromEntries(
   readFileSync(new URL("../.env.local", import.meta.url), "utf8")
