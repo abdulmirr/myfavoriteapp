@@ -29,7 +29,7 @@ async function podcast(q) {
   let res = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!res.ok) {
     res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FavoritesApp/1.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FavoriteApp/1.0" },
       signal: AbortSignal.timeout(8000),
     });
   }

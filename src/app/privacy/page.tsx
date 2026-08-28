@@ -3,14 +3,14 @@ import { LegalPage, H2, P, UL, LI, Strong, Mail } from "@/components/Legal";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "Privacy policy for Favorites — a personal library for everything you love.",
+  description: "Privacy policy for Favorite — a personal library for everything you love.",
 };
 
 export default function PrivacyPage() {
   return (
     <LegalPage eyebrow="Privacy Policy" title="Privacy." updated="August 4, 2026">
       <P>
-        This is a short, plain-English description of how Favorites handles your information. We
+        This is a short, plain-English description of how Favorite handles your information. We
         try to collect as little as possible, store it carefully, and never sell it. If anything
         here is unclear, email us and we&rsquo;ll explain it like a person would.
       </P>
@@ -47,7 +47,7 @@ export default function PrivacyPage() {
         We don&rsquo;t sell your data. We don&rsquo;t run third-party advertising. We don&rsquo;t
         build shadow profiles of people who haven&rsquo;t signed up. We don&rsquo;t read your
         library to train a generic recommendation engine for some other company. The point of
-        Favorites is taste expressed quietly, and we try to run the company the same way.
+        Favorite is taste expressed quietly, and we try to run the company the same way.
       </P>
 
       <H2>Who else sees it</H2>
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
 
       <H2>Sharing on the platform</H2>
       <P>
-        Most of what makes Favorites useful comes from sharing taste with other humans. Your
+        Most of what makes Favorite useful comes from sharing taste with other humans. Your
         profile and your library are visible to anyone who visits your page — that&rsquo;s the
         point of the product. Your email and settings are never public. We will never make
         something more public than the setting you chose.
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
 
       <H2>The browser extension</H2>
       <P>
-        The Favorites browser extension saves the page you&rsquo;re on to your library, and does
+        The Favorite browser extension saves the page you&rsquo;re on to your library, and does
         nothing else. It only reads a page when you click the extension (or press its keyboard
         shortcut) — at that moment it collects the page&rsquo;s address, title, site name, and
         preview image, plus any thoughts you type, and sends them to your library. It does not
@@ -96,7 +96,7 @@ export default function PrivacyPage() {
 
       <H2>Children</H2>
       <P>
-        Favorites isn&rsquo;t designed for people under 13. If you believe a child has signed up,
+        Favorite isn&rsquo;t designed for people under 13. If you believe a child has signed up,
         please let us know and we will remove the account.
       </P>
 

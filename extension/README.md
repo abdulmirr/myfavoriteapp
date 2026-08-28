@@ -1,4 +1,4 @@
-# Favorites — Chrome extension
+# Favorite — Chrome extension
 
 One click and the page you're on becomes a favorite in your library.
 

@@ -152,7 +152,7 @@ async function generate(
     thinking: { type: "adaptive" },
     output_config: { format: { type: "json_schema", schema: REC_SCHEMA } },
     system:
-      "You are the taste engine behind Favorites, a personal media library. " +
+      "You are the taste engine behind Favorite, a personal media library. " +
       "You study what someone has saved and recommend what they should try next. " +
       "Your picks are specific, slightly off the beaten path, and never generic crowd-pleasers " +
       "unless they genuinely fit. Never recommend anything already in the library.",

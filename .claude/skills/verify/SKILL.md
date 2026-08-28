@@ -1,9 +1,9 @@
 ---
 name: verify
-description: Build/launch/drive recipe for verifying changes to the Favorites app (Next.js + Supabase) end-to-end.
+description: Build/launch/drive recipe for verifying changes to the Favorite app (Next.js + Supabase) end-to-end.
 ---
 
-# Verifying Favorites (myfavoriteapp.com)
+# Verifying Favorite (myfavoriteapp.com)
 
 ## Build & run
 - `npm run build` — typecheck + prod build.

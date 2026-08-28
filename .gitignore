@@ -47,4 +47,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-favorites-extension-*.zip
+favorite-extension-*.zip

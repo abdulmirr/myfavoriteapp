@@ -5,7 +5,7 @@ export default function NotFound() {
     <div className="flex min-h-screen flex-col bg-white">
       <div className="px-5 pt-6 md:px-8 md:pt-8">
         <Link href="/" className="text-base font-semibold tracking-tight text-zinc-900">
-          Favorites
+          Favorite
         </Link>
       </div>
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 pb-24 text-center">

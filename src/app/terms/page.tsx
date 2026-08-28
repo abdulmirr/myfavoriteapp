@@ -3,20 +3,20 @@ import { LegalPage, H2, P, UL, LI, Mail } from "@/components/Legal";
 
 export const metadata: Metadata = {
   title: "Terms",
-  description: "Terms of service for Favorites — a personal library for everything you love.",
+  description: "Terms of service for Favorite — a personal library for everything you love.",
 };
 
 export default function TermsPage() {
   return (
     <LegalPage eyebrow="Terms of Service" title="Terms." updated="July 5, 2026">
       <P>
-        These are the terms for using Favorites. They are intentionally short and written without
+        These are the terms for using Favorite. They are intentionally short and written without
         legalese. By using the product, you agree to them.
       </P>
 
       <H2>Who we are</H2>
       <P>
-        Favorites is a personal library for the films, books, albums, podcasts, videos, and
+        Favorite is a personal library for the films, books, albums, podcasts, videos, and
         articles you love. The service is operated by Abdul Mir. When these terms say
         &ldquo;we&rdquo; or &ldquo;us,&rdquo; that&rsquo;s who they mean. When they say
         &ldquo;you,&rdquo; they mean you — the person reading this.
@@ -32,7 +32,7 @@ export default function TermsPage() {
       <H2>What you put in your library</H2>
       <P>
         Everything you save — your favorites, the thoughts you write about them, the photos you
-        upload — belongs to you. You keep all rights to it. By posting it on Favorites, you give
+        upload — belongs to you. You keep all rights to it. By posting it on Favorite, you give
         us a limited license to store it, display it on your public profile, and show it to the
         people who follow you. That license ends when you delete the content or the account.
       </P>
@@ -44,7 +44,7 @@ export default function TermsPage() {
 
       <H2>How you behave on the platform</H2>
       <P>
-        Favorites exists because recommendations from a real person you trust beat anything an
+        Favorite exists because recommendations from a real person you trust beat anything an
         algorithm can hand you. That only works if the platform stays a kind place. So:
       </P>
       <UL>
@@ -55,7 +55,7 @@ export default function TermsPage() {
         <LI>No spam, no scraping, no automated mass-following, no bots pretending to be humans.</LI>
         <LI>No attempts to break, overload, or reverse-engineer the service.</LI>
         <LI>
-          No using Favorites to advertise, solicit, or run a commercial campaign without our
+          No using Favorite to advertise, solicit, or run a commercial campaign without our
           written permission.
         </LI>
       </UL>
@@ -66,7 +66,7 @@ export default function TermsPage() {
 
       <H2>Third-party content</H2>
       <P>
-        Favorites displays metadata, cover art, and links for media we don&rsquo;t own — films,
+        Favorite displays metadata, cover art, and links for media we don&rsquo;t own — films,
         books, albums, and so on. Those rights belong to their respective owners. If you&rsquo;re
         a rights holder and you&rsquo;d like something removed, email us and we&rsquo;ll handle it
         promptly.
@@ -74,7 +74,7 @@ export default function TermsPage() {
 
       <H2>Changes to the service</H2>
       <P>
-        Favorites is a small, evolving product. Features will be added, changed, and occasionally
+        Favorite is a small, evolving product. Features will be added, changed, and occasionally
         removed. We&rsquo;ll do our best not to break anything important to you, but we can&rsquo;t
         promise the product will always look exactly the way it does today.
       </P>
@@ -92,7 +92,7 @@ export default function TermsPage() {
         The service is provided as-is. We work hard to keep it running and your data safe, but we
         can&rsquo;t guarantee it will always be available, perfectly accurate, or free of bugs. To
         the extent the law allows, we aren&rsquo;t liable for indirect or consequential losses
-        arising from your use of Favorites.
+        arising from your use of Favorite.
       </P>
 
       <H2>Governing law</H2>

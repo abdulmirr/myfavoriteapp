@@ -1,8 +1,9 @@
 // Chrome Web Store listing assets:
 //   node scripts/ext-store-shots.mjs
 // Renders the real popup (real popup.css + fonts, state forced per shot)
-// inside a minimal browser-window scene, and the promo tile. Outputs
-// extension/store/screenshot-{1,2}.jpg (1280×800) and tile.jpg (440×280) —
+// inside a minimal browser-window scene, and the promo tiles. Outputs
+// extension/store/screenshot-{1,2}.jpg (1280×800), tile.jpg (440×280) and
+// marquee.jpg (1400×560) —
 // rendered @2x, downscaled via sips, JPEG because the store forbids alpha.
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -23,7 +24,7 @@ const cover = `file://${root}public/landing/covers/blog-paul-graham.svg`;
 // ---- popup states (real markup + real stylesheet, no scripts) ----
 const popupBody = (state) => `<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="${css}"></head><body>
-<header><img src="${star}" alt="" class="mark"><span class="wordmark">Favorites</span></header>
+<header><img src="${star}" alt="" class="mark"><span class="wordmark">Favorite</span></header>
 <section id="form">
   <div class="preview">
     <div class="thumb"><img src="${cover}"></div>
@@ -93,22 +94,28 @@ h1 { font-size: 36px; line-height: 1.35; font-weight: 600; color: #18181b; }
   </div>
 </body></html>`;
 
-// ---- the 440×280 tile ----
-const tile = `<!doctype html><html><head><meta charset="utf-8"><style>
+// ---- the promo tiles (440×280 small, 1400×560 marquee) ----
+const promo = ({ w, h, star: starH, word, tag, gap, text }) => `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: "Geist Mono"; src: url("file://${root}extension/fonts/GeistMono-Regular.ttf"); font-weight: 400; }
 @font-face { font-family: "Geist Mono"; src: url("file://${root}extension/fonts/GeistMono-SemiBold.ttf"); font-weight: 600; }
 * { margin: 0; }
-body { width: 440px; height: 280px; background: #101010; overflow: hidden;
+body { width: ${w}px; height: ${h}px; background: #101010; overflow: hidden;
   font-family: "Geist Mono", monospace; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 18px; }
-img { height: 54px; }
-.word { font-size: 15px; font-weight: 600; letter-spacing: .22em; color: #fbfbfa; }
-.tag { font-size: 10px; letter-spacing: .04em; color: #a1a1aa; }
+  align-items: center; justify-content: center; gap: ${gap}px; }
+img { height: ${starH}px; }
+.word { font-size: ${word}px; font-weight: 600; letter-spacing: .22em; color: #fbfbfa; }
+.tag { font-size: ${tag}px; letter-spacing: .04em; color: #a1a1aa; }
 </style></head><body>
   <img src="${star}" alt="">
-  <div class="word">FAVORITES</div>
-  <div class="tag">One-click save to your library</div>
+  <div class="word">FAVORITE</div>
+  <div class="tag">${text}</div>
 </body></html>`;
+
+const PROMOS = [
+  { out: "tile", w: 440, h: 280, star: 54, word: 15, tag: 10, gap: 18, text: "One-click save to your library" },
+  { out: "marquee", w: 1400, h: 560, star: 96, word: 26, tag: 14, gap: 30,
+    text: "One click and the page you're on becomes a favorite in your library." },
+];
 
 const SHOTS = [
   {
@@ -148,14 +155,16 @@ for (const s of SHOTS) {
   console.log(`${s.out}.jpg`);
 }
 
-const tileFile = join(tmp, "tile.html");
-writeFileSync(tileFile, tile);
-await page.setViewportSize({ width: 440, height: 280 });
-await page.goto(`file://${tileFile}`);
-await page.waitForTimeout(300);
-const tilePng = join(tmp, "tile.png");
-await page.screenshot({ path: tilePng });
-jpeg(tilePng, join(store, "tile.jpg"), 440, 280);
-console.log("tile.jpg");
+for (const p of PROMOS) {
+  const file = join(tmp, `${p.out}.html`);
+  writeFileSync(file, promo(p));
+  await page.setViewportSize({ width: p.w, height: p.h });
+  await page.goto(`file://${file}`);
+  await page.waitForTimeout(300);
+  const png = join(tmp, `${p.out}.png`);
+  await page.screenshot({ path: png });
+  jpeg(png, join(store, `${p.out}.jpg`), p.w, p.h);
+  console.log(`${p.out}.jpg`);
+}
 
 await browser.close();

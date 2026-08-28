@@ -10,7 +10,7 @@ import { coverDataUris } from "@/lib/og-covers";
  * profile link looks like everywhere — it IS the marketing asset.
  */
 
-export const alt = "A Favorites taste page";
+export const alt = "A Favorite taste page";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -51,7 +51,7 @@ export default async function Image({ params }: { params: Promise<{ username: st
     count = total ?? urls.length;
   }
 
-  const name = profile ? profile.display_name || `@${profile.username}` : "Favorites";
+  const name = profile ? profile.display_name || `@${profile.username}` : "Favorite";
 
   return new ImageResponse(
     (
@@ -79,7 +79,7 @@ export default async function Image({ params }: { params: Promise<{ username: st
               textTransform: "uppercase",
             }}
           >
-            Favorites
+            Favorite
           </div>
           <div
             style={{

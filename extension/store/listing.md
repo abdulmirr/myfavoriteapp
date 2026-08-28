@@ -2,11 +2,11 @@
 
 Everything below maps 1:1 to fields in the developer console
 (https://chrome.google.com/webstore/devconsole). Upload
-`favorites-extension-v1.0.0.zip` from the repo root, then fill these in.
+`favorite-extension-v1.0.1.zip` from the repo root, then fill these in.
 
 ## Store listing tab
 
-**Name** (comes from the manifest): Favorites
+**Name** (comes from the manifest): Favorite
 
 **Summary** (from manifest description): One click and the page you're on
 becomes a favorite in your library.
@@ -14,7 +14,7 @@ becomes a favorite in your library.
 **Detailed description:**
 
 ```
-Favorites is a home for everything you love — the films, books, albums,
+Favorite is a home for everything you love — the films, books, albums,
 podcasts, and pages that are actually yours. This extension is the fastest
 way in: hit the star on any page and it lands in your library.
 
@@ -25,7 +25,7 @@ way in: hit the star on any page and it lands in your library.
 
 The extension does one thing and nothing else. It reads a page only when
 you click it, sends nothing until you act, and never sees your browsing
-history. Connect it to your Favorites account once; disconnect every
+history. Connect it to your Favorite account once; disconnect every
 browser at any time from myfavoriteapp.com/extension.
 ```
 
@@ -51,7 +51,7 @@ browser at any time from myfavoriteapp.com/extension.
 **Single purpose description:**
 
 ```
-Save the page the user is currently viewing to their Favorites library
+Save the page the user is currently viewing to their Favorite library
 (myfavoriteapp.com) with one click.
 ```
 
@@ -76,7 +76,7 @@ Runs only on user action, on the active tab only.
 
 ```
 Store the personal access token that links this browser to the user's
-Favorites account, created when the user explicitly connects the extension.
+Favorite account, created when the user explicitly connects the extension.
 ```
 
 - Host permission `https://myfavoriteapp.com/extension*` (content script):

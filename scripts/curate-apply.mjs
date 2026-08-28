@@ -78,7 +78,7 @@ const DELETE = [
 async function hydrate(row) {
   if (row._lookup) {
     const r = (await (await fetch(`https://itunes.apple.com/lookup?id=${row._lookup}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FavoritesApp/1.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FavoriteApp/1.0" },
     })).json()).results?.[0];
     if (r) {
       row.image_url = (r.artworkUrl100 ?? "").replace("100x100", "600x600") || null;

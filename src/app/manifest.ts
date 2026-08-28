@@ -7,8 +7,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Favorites",
-    short_name: "Favorites",
+    name: "Favorite",
+    short_name: "Favorite",
     description: "A library for everything you love.",
     start_url: "/",
     display: "standalone",

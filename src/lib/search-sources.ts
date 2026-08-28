@@ -334,7 +334,7 @@ export async function itunes(q: string, type: "music" | "podcast"): Promise<Sear
         if (!res.ok) {
           res = await ftimeout(url, {
             cache: "no-store",
-            headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FavoritesApp/1.0" },
+            headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FavoriteApp/1.0" },
           });
         }
         if (!res.ok) return [] as ItunesHit[];

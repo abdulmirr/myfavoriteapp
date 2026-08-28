@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen flex-col bg-white">
       <div className="px-5 pt-6 md:px-8 md:pt-8">
         <Link href="/" className="text-base font-semibold tracking-tight text-zinc-900">
-          Favorites
+          Favorite
         </Link>
       </div>
 

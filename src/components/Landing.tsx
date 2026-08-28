@@ -445,7 +445,7 @@ export default function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.65, ease: DRIFT_EASE }}
           >
-            Favorites is a library for everything you love.
+            Favorite is a library for everything you love.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-5"

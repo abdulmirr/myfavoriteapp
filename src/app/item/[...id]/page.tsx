@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!rows.length) return {};
   const it = rows.find((r) => r.image_url) ?? rows[0];
   const title = `${it.title}${it.creator ? ` by ${it.creator}` : ""}`;
-  const description = `A favorite of ${rows.length} ${rows.length === 1 ? "person" : "people"} on Favorites.`;
+  const description = `A favorite of ${rows.length} ${rows.length === 1 ? "person" : "people"} on Favorite.`;
   return {
     title,
     description,
@@ -158,7 +158,7 @@ export default async function ItemPage({ params }: Props) {
         </div>
 
         <p className="mt-14 text-xs text-zinc-400">
-          Favorites is where taste lives —{" "}
+          Favorite is where taste lives —{" "}
           <Link
             href="/signin"
             className="text-zinc-900 underline underline-offset-4 hover:text-zinc-500"

@@ -1,4 +1,4 @@
-# Favorites — myfavoriteapp.com
+# Favorite — myfavoriteapp.com
 
 A personal media curation library: books, movies, TV, music, podcasts, videos,
 articles, and photos, curated on one profile. Design replicates

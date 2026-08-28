@@ -161,7 +161,7 @@ export default function RecapPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={cardUrl}
-                        alt={`Your ${monthLabel(selected)} on Favorites`}
+                        alt={`Your ${monthLabel(selected)} on Favorite`}
                         className={`h-full w-full object-cover transition-opacity duration-300 ${
                           imgState === "ready" ? "opacity-100" : "opacity-0"
                         }`}
