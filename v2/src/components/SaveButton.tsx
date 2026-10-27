@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Bookmark } from "lucide-react";
 import type { Work } from "@/lib/types";
 import { listsHolding, useViewer, viewer } from "@/lib/viewer";
-import { cn, iconButton } from "./ui/styles";
+import { CARD_ACTIONS, cn, iconButton } from "./ui/styles";
 
 const SaveDialog = dynamic(() => import("./SaveDialog"));
 
@@ -33,7 +33,13 @@ export default function SaveButton({ work, className }: { work: Work; className?
         }}
         className={cn(iconButton, className)}
       >
-        <Bookmark className={cn("size-3.5", saved && "fill-current")} strokeWidth={2.2} />
+        <Bookmark
+          className={cn(
+            CARD_ACTIONS === "bare" ? "size-4" : "size-3.5",
+            saved && "fill-current text-gray-900 dark:text-neutral-100"
+          )}
+          strokeWidth={2.2}
+        />
       </button>
       {open && <SaveDialog work={work} open={open} onOpenChange={setOpen} />}
     </>

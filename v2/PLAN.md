@@ -462,7 +462,47 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
    Production env already has every variable v2 reads.
 4. **Roll back if needed.** Use Vercel → Deployments → the last v1 deployment → Instant Rollback, then set Root Directory back to `.`.
 
+### 2026-10-27, second batch (Abdul's design notes)
+
+- [x] The header avatar links straight to your profile. The account menu is deleted; Settings already had Appearance and Log out, and its footer now links Privacy and Terms.
+- [x] Your own profile card shows Share plus a settings gear. Edit profile is gone, because it also opened /settings.
+- [x] Profile header: banner, then the avatar over its edge, then name, @handle, bio, counts (bold numbers) and links at the bottom.
+  - The banner is `profiles.header_url` (migration29), uploaded in place ("Add header" on your banner) or in Settings → Profile → Header.
+  - Without one, the banner is your top three covers, blurred into a glow.
+- [x] The profile is 1024px wide (was 672px).
+  - The wall drops its cards. Top four is large: 2×2 on phones, four across on desktop. When fewer than four are pinned on a wall of 8+, it fills from the wall's order, and the owner sees "Pin yours from any favorite's page".
+  - The grid is 3/4/5 columns. Lists grow to 3 columns; Activity stays a 672px reading column.
+- [x] Save and Favorite on cards are bare icons. To revert, set `CARD_ACTIONS` in `ui/styles.ts` to `"boxed"`.
+- [x] Search is 0.1–0.5s, measured. It was at least 3s for books (Open Library takes 2.5–6s and had a 3s timeout) and up to 6s when iTunes throttled.
+  - Every catalog has a 1.2s deadline.
+  - Open Library only runs when Apple Books finds fewer than 4.
+  - /api/search checks the JWT locally (ES256 `getClaims`) instead of a round trip to the auth server.
+  - The add dialog's code preloads after the page settles.
+- [x] Feedback emails builtbyabdul@gmail.com (lands in Gmail's Updates tab) and retries once.
+- [x] Newsletter: Home's five daily community picks, emailed each morning.
+  - The call to action sits at the bottom of Home. Visitors confirm by email (double opt-in); members subscribe in one click, or with the Settings → Email → Daily picks switch. Subscribers never see it.
+  - Sent by `/api/newsletter/send` from Vercel Cron at 13:00 UTC (v2/vercel.json), so it only runs once v2 is production. Each day is claimed once, and `?to=` / `?html` give previews (both need CRON_SECRET).
+  - Gmail's one-click unsubscribe headers are included.
+  - The community picks now skip anything picked in the last 14 days, on Home and in the email.
+- [x] Chrome extension v1.1.0. The popup lists your lists: tick to save, untick to remove, "New list" creates a list and saves the page into it, and one click favorites.
+  - It's in the v2 look (Inter, light and dark).
+  - It uses migration29's `extension_*` RPCs.
+  - Store screenshots and tiles were regenerated, and `favorite-extension-v1.1.0.zip` is built.
+- [x] Share cards are in the v2 look.
+  - The default card: "Find your next favorite." beside the cover wall.
+  - Profile card: avatar, name, counts and your Top four in their frames.
+  - **Fixed a bug:** profile pages had no og:image (the page's own `openGraph` replaced the inherited image), so the image moved into `(tabs)`. List pages fall back to their newest cover.
+- [x] Photo uploads are retired from the add dialog (17 photos from 3 people, 2 in the last 60 days). The existing ones still show. The line to restore them is in `lib/categories.ts`.
+- [x] QA, all against the real DB with throwaway users that clean up after themselves:
+  - `_e2e-v2`: 23 checks
+  - `_e2e-picks`: 9 checks
+  - `_e2e-profile`: 13 checks
+  - `_e2e-extension`: 14 checks
+  - the newsletter flow: 19 checks
+  - The preview was browser-checked signed out and signed in. tsc and eslint are clean, and `next build` produced 387 pages.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.
-- Say when to swap.
+- Say when to swap. Upload `favorite-extension-v1.1.0.zip` to the Chrome Web Store after the swap, because its lists only show in v2.
+- Newsletter: Resend's free plan sends 100 emails a day. Past roughly 90 subscribers, the daily send needs a paid plan.

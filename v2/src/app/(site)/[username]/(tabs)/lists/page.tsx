@@ -21,7 +21,7 @@ async function Lists({ params }: Params) {
 
 function ListsSkeleton() {
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4" aria-busy>
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3" aria-busy>
       {[0, 1].map((i) => (
         <li key={i} className="rounded-2xl border border-gray-200 bg-white p-3.5 dark:border-neutral-700 dark:bg-neutral-800">
           <span className="block aspect-video animate-pulse rounded-md bg-gray-200 dark:bg-neutral-700" />

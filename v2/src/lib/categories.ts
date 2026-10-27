@@ -34,7 +34,9 @@ export const ADD_TYPES: {
   { type: "video", label: "video", mode: "url" },
   // any URL — an article, a tool, a game, a site worth keeping
   { type: "article", label: "link", mode: "url" },
-  { type: "photo", label: "photo", mode: "upload" },
+  // photo uploads were retired 2026-10-27 (discovery, not a camera roll); the
+  // 17 existing photos still show on their walls. To bring them back:
+  // { type: "photo", label: "photo", mode: "upload" },
   // anything without a database — a restaurant, a game, a place. Manual title +
   // optional creator/link/image, saved as media_type "other".
   { type: "other", label: "other", mode: "manual" },

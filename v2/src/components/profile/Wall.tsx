@@ -20,23 +20,29 @@ function Tile({ item, username, eager, big = false }: { item: Item; username: st
       href={href}
       prefetch={true}
       onClick={() => playSfx(item.media_type)}
-      className="group block min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400"
+      className="group block min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-4 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-900"
     >
       <Framed
         item={item}
         eager={eager}
-        sizes={big ? "(max-width: 639px) 24vw, 160px" : "(max-width: 639px) 30vw, 150px"}
+        sizes={
+          big
+            ? "(max-width: 639px) 44vw, 240px"
+            : "(max-width: 639px) 30vw, (max-width: 1023px) 22vw, 190px"
+        }
       />
       <p
         className={cn(
-          "mt-2.5 truncate text-center font-semibold tracking-tight text-gray-900 group-hover:underline dark:text-neutral-100",
-          big ? "text-[13px]" : "text-xs"
+          "truncate text-center font-semibold tracking-tight text-gray-900 group-hover:underline dark:text-neutral-100",
+          big ? "mt-3 text-sm sm:text-[15px]" : "mt-2.5 text-[13px]"
         )}
       >
         {item.title}
       </p>
       {item.creator && (
-        <p className="truncate text-center text-[11px] text-gray-500 dark:text-neutral-400">{item.creator}</p>
+        <p className={cn("truncate text-center text-gray-500 dark:text-neutral-400", big ? "text-[13px]" : "text-xs")}>
+          {item.creator}
+        </p>
       )}
     </Link>
   );
@@ -44,8 +50,9 @@ function Tile({ item, username, eager, big = false }: { item: Item; username: st
 
 /**
  * The library, kept: a person's favorites as objects on a wall — vinyl,
- * page edges, posters in frames — with their Top four first and quiet type
- * filters. Lives under the profile header in antislop's card language.
+ * page edges, posters in frames — straight on the page, no boxes. Their Top
+ * four leads, large (pinned first; a full wall tops up the empty slots from
+ * its own order), then the whole wall with quiet type filters.
  */
 export default function Wall({ items, profileId, username }: { items: Item[]; profileId: string; username: string }) {
   const v = useViewer();
@@ -57,6 +64,12 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
     () => items.filter((i) => i.pinned_order).sort((a, b) => (a.pinned_order ?? 0) - (b.pinned_order ?? 0)),
     [items]
   );
+  const four = useMemo(() => {
+    const top = pinned.slice(0, 4);
+    if (top.length === 4 || items.length < 8) return top;
+    const used = new Set(top.map((i) => i.id));
+    return [...top, ...items.filter((i) => !used.has(i.id) && i.media_type !== "photo")].slice(0, 4);
+  }, [items, pinned]);
   const counts = useMemo(() => {
     const c = new Map<string, number>();
     for (const f of TYPE_FILTERS) c.set(f.key, items.filter((i) => f.types.includes(i.media_type)).length);
@@ -88,22 +101,27 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
-      {pinned.length > 0 && (
-        <section className={cn(card, "p-4 sm:p-6")}>
-          <h2 className="mb-3 text-sm font-semibold tracking-tight text-gray-900 sm:mb-4 dark:text-neutral-100">
-            Top four
-          </h2>
-          <div className="grid grid-cols-4 gap-3 sm:gap-5">
-            {pinned.slice(0, 4).map((i) => (
+    <div className="flex flex-col gap-10 pt-2 sm:gap-14 sm:pt-4">
+      {four.length > 0 && (
+        <section aria-labelledby="top-four">
+          <div className="mb-4 flex items-baseline justify-between gap-3 sm:mb-6">
+            <h2 id="top-four" className="text-base font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
+              Top four
+            </h2>
+            {own && pinned.length < 4 && (
+              <p className="text-xs text-gray-500 dark:text-neutral-400">Pin yours from any favorite&rsquo;s page</p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 sm:gap-x-8 lg:gap-x-12">
+            {four.map((i) => (
               <Tile key={i.id} item={i} username={username} eager big />
             ))}
           </div>
         </section>
       )}
 
-      <section className={cn(card, "p-4 sm:p-6")}>
-        <div className="mb-5 flex items-start justify-between gap-3">
+      <section aria-label="All favorites">
+        <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8">
           <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
             {filters.map((f) => (
               <button
@@ -130,9 +148,9 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
             </button>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 sm:gap-x-5 sm:gap-y-8">
+        <div className="grid grid-cols-3 gap-x-4 gap-y-8 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-5 lg:gap-x-8">
           {shown.map((i, n) => (
-            <Tile key={i.id} item={i} username={username} eager={n < 8} />
+            <Tile key={i.id} item={i} username={username} eager={n < 10} />
           ))}
         </div>
       </section>

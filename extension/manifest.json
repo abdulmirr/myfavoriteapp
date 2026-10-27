@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Favorite",
-  "description": "One click and the page you're on becomes a favorite in your library.",
-  "version": "1.0.1",
+  "description": "Save the page you are on to any of your lists, or favorite it, in one click.",
+  "version": "1.1.0",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Favorite this page",
+    "default_title": "Save to Favorite",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -19,7 +19,11 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
   "content_scripts": [
     {
       "matches": [
@@ -27,14 +31,19 @@
         "http://localhost:3000/extension*",
         "http://127.0.0.1:3000/extension*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Ctrl+Shift+F", "mac": "Command+Shift+F" },
-      "description": "Favorite this page"
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "Save this page to Favorite"
     }
   }
 }

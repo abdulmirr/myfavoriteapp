@@ -9,9 +9,10 @@ import { supabase } from "@/lib/supabase";
 import { useViewer, viewer } from "@/lib/viewer";
 import { titleKey } from "@/lib/work";
 import { TypedLine, TypedTitle } from "../Typewriter";
+import NewsletterCTA from "./NewsletterCTA";
 import PickCard, { PickSkeleton } from "./PickCard";
 import { toast } from "../ui/Toast";
-import { cn, pageSubtitle, pageTitle, primaryButton } from "../ui/styles";
+import { cn, inlineLink, pageSubtitle, pageTitle } from "../ui/styles";
 
 type AiState =
   | { state: "idle" }
@@ -281,12 +282,14 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
             </>
           )}
         </p>
+        <NewsletterCTA />
         {v.status === "signed-out" && (
-          <div className="mt-8 flex justify-center">
-            <Link href="/signin" className={primaryButton}>
-              Get picks chosen from your taste
+          <p className="mt-8 text-center text-sm text-gray-500 dark:text-neutral-400">
+            Want picks chosen from your own taste?{" "}
+            <Link href="/signin" className={inlineLink}>
+              Make your page
             </Link>
-          </div>
+          </p>
         )}
       </div>
     </div>

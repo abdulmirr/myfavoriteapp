@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { getFavorites } from "@/lib/data";
 import { resolveProfile } from "@/lib/profile-route";
 import Wall from "@/components/profile/Wall";
-import { card, cn } from "@/components/ui/styles";
 
 type Params = { params: Promise<{ username: string }> };
 
@@ -29,14 +28,10 @@ async function Favorites({ params }: Params) {
 
 function WallSkeleton() {
   return (
-    <div className={cn(card, "p-4 sm:p-6")} aria-busy>
-      <div className="mb-5 flex gap-1.5">
-        {[56, 64, 56, 80].map((w, i) => (
-          <span key={i} className="h-7 animate-pulse rounded-xl bg-gray-200 dark:bg-neutral-700" style={{ width: w }} />
-        ))}
-      </div>
-      <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 sm:gap-x-5 sm:gap-y-8">
-        {Array.from({ length: 8 }, (_, i) => (
+    <div className="pt-2 sm:pt-4" aria-busy>
+      <span className="mb-4 block h-5 w-24 animate-pulse rounded bg-gray-200 sm:mb-6 dark:bg-neutral-700" />
+      <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 sm:gap-x-8 lg:gap-x-12">
+        {Array.from({ length: 4 }, (_, i) => (
           <div key={i}>
             <span className="block aspect-square animate-pulse rounded-md bg-gray-200 dark:bg-neutral-700" />
             <span className="mx-auto mt-2.5 block h-3 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-neutral-700" />

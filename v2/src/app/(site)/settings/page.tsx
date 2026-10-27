@@ -13,6 +13,7 @@ import Avatar from "@/components/ui/Avatar";
 import Toggle from "@/components/ui/Toggle";
 import SocialIcon from "@/components/profile/SocialIcon";
 import ImportLibrary from "@/components/settings/ImportLibrary";
+import HeaderSetting from "@/components/settings/HeaderSetting";
 import {
   card,
   cn,
@@ -121,6 +122,7 @@ export default function SettingsPage() {
   const [tasteNote, setTasteNote] = useState("");
   const [noteState, setNoteState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [digest, setDigest] = useState(false);
+  const [dailyPicks, setDailyPicks] = useState(false);
   const [events, setEvents] = useState(true);
   const [emailError, setEmailError] = useState("");
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
@@ -153,13 +155,14 @@ export default function SettingsPage() {
     let stale = false;
     (async () => {
       const db = supabase();
-      const [{ data: session }, { data: priv }] = await Promise.all([
+      const [{ data: session }, { data: priv }, { data: picksStatus }] = await Promise.all([
         db.auth.getSession(),
         db
           .from("profile_private")
           .select("digest_opt_in, taste_note, email_events")
           .eq("profile_id", me.id)
           .maybeSingle<{ digest_opt_in: boolean; taste_note: string | null; email_events: boolean }>(),
+        db.rpc("newsletter_me"),
       ]);
       if (stale) return;
       setEmail(session.session?.user.email ?? "");
@@ -180,6 +183,7 @@ export default function SettingsPage() {
       });
       setAvatarPreview(me.avatar_url);
       setDigest(priv?.digest_opt_in ?? false);
+      setDailyPicks(picksStatus === "active");
       setEvents(priv?.email_events ?? true);
       setTasteNote(priv?.taste_note ?? "");
       setLoaded(true);
@@ -337,6 +341,7 @@ export default function SettingsPage() {
                 }}
               />
             </div>
+            <HeaderSetting profileId={me.id} username={me.username} headerUrl={me.header_url ?? null} />
             <label className="flex flex-col gap-1.5">
               <span className={fieldLabel}>Name</span>
               <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} className={field} />
@@ -448,6 +453,19 @@ export default function SettingsPage() {
 
         <Section title="Email">
           <div className="flex flex-col gap-3">
+            <Toggle
+              label="Daily picks"
+              hint="Every morning: the day’s five favorites from people with taste, the same picks Home shows."
+              checked={dailyPicks}
+              onChange={async (on) => {
+                setDailyPicks(on);
+                const { error } = await supabase().rpc("newsletter_set_me", { p_on: on });
+                if (error) {
+                  setDailyPicks(!on);
+                  setEmailError("Couldn't save — try again.");
+                }
+              }}
+            />
             <Toggle
               label="Activity"
               hint="Your first follower, favorites spreading from your wall, taste approvals. At most one a day."
@@ -566,6 +584,14 @@ export default function SettingsPage() {
           </div>
         </Section>
       </div>
+      <p className="mt-8 flex justify-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+        <Link href="/privacy" className="hover:text-gray-900 dark:hover:text-neutral-100">
+          Privacy
+        </Link>
+        <Link href="/terms" className="hover:text-gray-900 dark:hover:text-neutral-100">
+          Terms
+        </Link>
+      </p>
     </main>
   );
 }

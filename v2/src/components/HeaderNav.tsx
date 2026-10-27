@@ -3,11 +3,11 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useViewer } from "@/lib/viewer";
 import { cn, headerIcon, pill, pillActive, pillIdle } from "./ui/styles";
-import AccountMenu from "./AccountMenu";
+import Avatar from "./ui/Avatar";
 import NotificationsButton from "./NotificationsButton";
 
 // the add flow (catalog search, links, uploads) loads on first open only
@@ -49,6 +49,23 @@ function PersonalSkeleton() {
   );
 }
 
+/** Your avatar goes straight to your page; settings live behind its gear. */
+function YouLink({ pathname }: { pathname: string | null }) {
+  const p = useViewer().profile;
+  const href = p ? `/${p.username}` : "/settings";
+  return (
+    <Link
+      href={href}
+      aria-label="Your profile"
+      title="Your profile"
+      aria-current={pathname === href ? "page" : undefined}
+      className="rounded-[30%] outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-900"
+    >
+      <Avatar p={p} className="size-8" eager />
+    </Link>
+  );
+}
+
 function LogIn({ pathname }: { pathname: string | null }) {
   const next = pathname && pathname !== "/signin" ? `?next=${encodeURIComponent(pathname)}` : "";
   return (
@@ -62,6 +79,13 @@ export default function HeaderNav() {
   const pathname = usePathname();
   const v = useViewer();
   const [adding, setAdding] = useState(false);
+
+  // members: fetch the add dialog's code once the page settles, so ＋ opens instantly
+  useEffect(() => {
+    if (v.status !== "signed-in") return;
+    const t = setTimeout(() => void import("./add/AddDialog"), 1500);
+    return () => clearTimeout(t);
+  }, [v.status]);
 
   return (
     <div className="flex items-center gap-1 sm:gap-1.5">
@@ -90,7 +114,7 @@ export default function HeaderNav() {
             <Plus className="size-4" strokeWidth={2.25} />
           </button>
           <NotificationsButton />
-          <AccountMenu />
+          <YouLink pathname={pathname} />
           {adding && <AddDialog open={adding} onOpenChange={setAdding} />}
         </div>
       )}

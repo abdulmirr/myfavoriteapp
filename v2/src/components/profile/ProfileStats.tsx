@@ -44,18 +44,21 @@ export default function ProfileStats({ profile }: { profile: ProfilePageData }) 
   const { favorites, followers, following } = profile.counts;
   const btn =
     "cursor-pointer rounded-md text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-neutral-400 dark:hover:text-neutral-100";
+  const num = (n: number) => (
+    <span className="font-semibold text-gray-900 dark:text-neutral-100">{n.toLocaleString()}</span>
+  );
 
   return (
     <>
-      <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-gray-500 dark:text-neutral-400">
-        <span>{plural(favorites, "favorite")}</span>
-        <span aria-hidden>·</span>
+      <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-neutral-400">
+        <span>
+          {num(favorites)} {favorites === 1 ? "favorite" : "favorites"}
+        </span>
         <button type="button" className={btn} onClick={() => setPeople("followers")}>
-          {plural(followers, "follower")}
+          {num(followers)} {followers === 1 ? "follower" : "followers"}
         </button>
-        <span aria-hidden>·</span>
         <button type="button" className={btn} onClick={() => setPeople("following")}>
-          {following.toLocaleString()} following
+          {num(following)} following
         </button>
       </p>
       {(approvals > 0 || (match && match.shared > 0)) && (

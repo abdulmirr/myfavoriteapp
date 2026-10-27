@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { DropdownMenu as M } from "radix-ui";
 import { cn } from "./styles";
 
@@ -63,20 +62,6 @@ export function MenuItem({
 
 export function MenuLabel({ children }: { children: React.ReactNode }) {
   return <M.Label className="px-2.5 pt-1.5 pb-1">{children}</M.Label>;
-}
-
-/** A quiet small-print link that is still a real menu item (closes the menu, arrow-key reachable). */
-export function MenuFinePrint({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <M.Item asChild>
-      <Link
-        href={href}
-        className="cursor-pointer rounded-md px-1 py-0.5 text-xs text-gray-500 outline-none data-[highlighted]:text-gray-900 dark:text-neutral-400 dark:data-[highlighted]:text-neutral-100"
-      >
-        {children}
-      </Link>
-    </M.Item>
-  );
 }
 
 export function MenuSeparator() {

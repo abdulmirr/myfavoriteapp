@@ -16,6 +16,19 @@ function ftimeout(url: string, init?: RequestInit): Promise<Response> {
   return fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), ...init });
 }
 
+// Type-ahead budget per source (2026-10-27): results land in well under a
+// second when one catalog stalls or Apple 403-throttles (its retry alone could
+// add 3s). A source still out at the deadline sits this query out; the merge
+// keeps whatever the others returned. Measured: iTunes/Deezer/TMDB answer in
+// 0.06–0.5s; Open Library takes 2.5–6s, so it only runs as a fallback.
+const SOURCE_DEADLINE_MS = 1200;
+function within<T>(p: Promise<T[]>, ms = SOURCE_DEADLINE_MS): Promise<T[]> {
+  return Promise.race([
+    p.catch(() => [] as T[]),
+    new Promise<T[]>((resolve) => setTimeout(() => resolve([]), ms)),
+  ]);
+}
+
 // Upstream APIs fuzzy-match aggressively (iTunes returns an artist's popular
 // tracks ahead of — or instead of — an exact-title album), so every search fn
 // re-ranks its results by text match against the query before returning.
@@ -105,7 +118,7 @@ export async function books(q: string): Promise<SearchResult[]> {
     trackId: number; trackName: string; artistName: string;
     artworkUrl100?: string; trackViewUrl?: string; releaseDate?: string;
   };
-  const [apple, ol] = await Promise.all([
+  const apple = await within(
     (async () => {
       try {
         const res = await ftimeout(
@@ -127,9 +140,11 @@ export async function books(q: string): Promise<SearchResult[]> {
       } catch {
         return [] as SearchResult[];
       }
-    })(),
-    openLibrary(q).catch(() => [] as SearchResult[]),
-  ]);
+    })()
+  );
+  // Open Library is slow (2.5–6s), so it only steps in when Apple Books comes
+  // up short — the obscure titles it exists for.
+  const ol = apple.length >= 4 ? [] : await openLibrary(q).catch(() => [] as SearchResult[]);
   const seen = new Set<string>();
   const merged = zip(apple, ol).filter((b) => {
     const k = b.title.toLowerCase();
@@ -207,10 +222,7 @@ export async function wikipedia(q: string): Promise<SearchResult[]> {
 // are keyless. iTunes goes first so existing itunes: canonical IDs keep
 // matching items users already saved.
 export async function music(q: string): Promise<SearchResult[]> {
-  const [apple, dz] = await Promise.all([
-    itunes(q, "music").catch(() => [] as SearchResult[]),
-    deezer(q).catch(() => [] as SearchResult[]),
-  ]);
+  const [apple, dz] = await Promise.all([within(itunes(q, "music")), within(deezer(q))]);
   const key = (r: SearchResult) =>
     `${r.title.toLowerCase().trim()}|${r.creator.toLowerCase().trim()}`;
   const seen = new Set<string>();
@@ -278,10 +290,7 @@ async function deezer(q: string): Promise<SearchResult[]> {
 // Deezer's podcast index keeps results flowing when Apple is out. Dedupe is
 // title-only because Deezer podcast objects carry no host/creator field.
 export async function podcasts(q: string): Promise<SearchResult[]> {
-  const [apple, dz] = await Promise.all([
-    itunes(q, "podcast").catch(() => [] as SearchResult[]),
-    deezerPodcasts(q).catch(() => [] as SearchResult[]),
-  ]);
+  const [apple, dz] = await Promise.all([within(itunes(q, "podcast")), within(deezerPodcasts(q))]);
   const seen = new Set<string>();
   const merged = zip(apple, dz).filter((r) => {
     const k = norm(r.title);

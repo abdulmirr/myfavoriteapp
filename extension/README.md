@@ -1,6 +1,6 @@
 # Favorite — Chrome extension
 
-One click and the page you're on becomes a favorite in your library.
+Save the page you're on to any of your lists, or favorite it, in one click.
 
 ## How it works
 
@@ -15,7 +15,16 @@ One click and the page you're on becomes a favorite in your library.
   The RPC validates the token, charges the same 300/day favorites budget as the
   app, dedupes against the library, and inserts a `media_type: "article"` item
   (shown as "link" in the UI).
+- **Lists** (v1.1, migration29): on open the popup calls `extension_lists`
+  (your lists, newest first, each marked if this URL is already in it, plus
+  whether it's already a favorite). Ticking a row calls
+  `extension_save_to_list`, unticking `extension_remove_from_list`, and
+  "New list" calls `extension_create_list` (public, like the app) and saves
+  the page into it. No lists yet → a private "Check later" starter, made on
+  first tick, same as the app. Saves charge the app's 500/day save budget.
 - Disconnect every browser at once at `myfavoriteapp.com/extension`.
+- Look: the app's v2 design (Inter, gray page, white cards), light and dark.
+  Test: `cd v2 && node scripts/_e2e-extension.mjs`.
 
 ## Install (unpacked, for now)
 

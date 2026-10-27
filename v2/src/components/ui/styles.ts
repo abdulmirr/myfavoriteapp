@@ -25,9 +25,17 @@ export const pillActive = "bg-gray-900 text-white dark:bg-neutral-100 dark:text-
 export const pillIdle =
   "cursor-pointer bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700";
 
-/** Square gray icon button (bookmark, star, bell…). */
+/**
+ * Save + Favorite on cards. "bare" (trial, 2026-10-27) drops the gray
+ * squares; "boxed" brings them back — this one word is the whole revert.
+ */
+export const CARD_ACTIONS: "bare" | "boxed" = "bare";
+
+/** The card action button (bookmark, star): bare icon or gray square, per CARD_ACTIONS. */
 export const iconButton =
-  "relative z-20 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-gray-200 text-gray-900 outline-none transition-colors hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-60 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-800";
+  CARD_ACTIONS === "bare"
+    ? "relative z-20 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-gray-500 outline-none transition-colors hover:bg-gray-900/5 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-60 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-400"
+    : "relative z-20 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-gray-200 text-gray-900 outline-none transition-colors hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-60 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-800";
 
 /** Smaller header icon button, sized to the pills. */
 export const headerIcon =

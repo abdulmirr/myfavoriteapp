@@ -23,6 +23,11 @@ function storageRender(url: string, width: number, square = false): string | nul
   }
 }
 
+/** A profile header, sized for the widest banner (1024px at 1.5x). */
+export function headerSrc(url: string): string {
+  return storageRender(url, 1600) ?? url;
+}
+
 /** An avatar sized for its slot (128px covers every avatar on the site at 2x). */
 export function avatarSrc(url: string, px = 128): string {
   return storageRender(url, px, true) ?? url;

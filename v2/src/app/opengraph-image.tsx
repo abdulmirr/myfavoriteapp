@@ -2,13 +2,15 @@ import { ImageResponse } from "next/og";
 import { cacheLife } from "next/cache";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { Framed, type OgPiece } from "@/lib/og-frames";
 
 /**
  * The default share card — what any myfavoriteapp.com link looks like when
  * it's shared (LinkedIn, X, iMessage, Slack…) unless a route brings its own
- * card (profiles do). The landing hero's line set in Switzer, the star, and a
- * wall of real covers wearing the library's frames (poster / book / vinyl),
- * bleeding off the edges the way the wall continues past the frame.
+ * card (profiles do). In the v2 look: the gray page, the gold star beside the
+ * lowercase wordmark in Inter, and a wall of real covers wearing the wall's
+ * light frames (poster / book / vinyl), bleeding off the edges the way the
+ * wall continues past the frame.
  *
  * Everything is read from disk so the render never depends on the network,
  * and nothing here is request-time, so Next renders it once at build.
@@ -17,12 +19,11 @@ import { join } from "node:path";
  * the sleeve — no z-index), and fonts must be ttf/otf/woff.
  */
 
-export const alt = "Favorite — your taste, in one place";
+export const alt = "Favorite — find your next favorite";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-type Frame = "vinyl" | "poster" | "book" | "bare";
-type Piece = { file: string; frame: Frame; w: number; h: number; tilt: number };
+type Piece = OgPiece & { file: string };
 
 // 3×3, read left→right, top→bottom. w/h are the object's on-card pixels
 // (posters and books fill 92% of the cell's height, sleeves 86%); tilts
@@ -43,98 +44,6 @@ const WALL: Piece[] = [
   { file: "album-in-rainbows.jpg", frame: "vinyl", w: 198, h: 198, tilt: 0.7 },
 ];
 
-const SHADOW = "0 18px 48px rgba(0,0,0,0.55)";
-
-function Framed({ p, src }: { p: Piece; src: string }) {
-  const rotate = `rotate(${p.tilt}deg)`;
-  const cover = (extra: React.CSSProperties = {}) => (
-    <img
-      src={src}
-      alt=""
-      width={p.w}
-      height={p.h}
-      style={{ width: p.w, height: p.h, objectFit: "cover", ...extra }}
-    />
-  );
-
-  if (p.frame === "poster") {
-    // a one-sheet behind glass in a thin snap frame (the dark-theme frame)
-    return (
-      <div
-        style={{
-          display: "flex",
-          position: "relative",
-          transform: rotate,
-          padding: 4,
-          background: "#211f1e",
-          border: "1px solid #302e2b",
-          boxShadow: SHADOW,
-        }}
-      >
-        {cover()}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background:
-              "linear-gradient(115deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 40%)",
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (p.frame === "book") {
-    // hinge shading along the spine, the page block peeking out on the right
-    return (
-      <div style={{ display: "flex", position: "relative", transform: rotate, boxShadow: SHADOW }}>
-        {cover()}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: Math.round(p.w * 0.11),
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.03) 55%, rgba(0,0,0,0) 100%)",
-          }}
-        />
-        <div
-          style={{ position: "absolute", top: 2, bottom: 2, right: -5, width: 5, background: "#f3f1ea" }}
-        />
-      </div>
-    );
-  }
-
-  if (p.frame === "vinyl") {
-    // the record behind the sleeve — a crescent showing at the right
-    const disc = Math.round(p.h * 0.93);
-    return (
-      <div style={{ display: "flex", position: "relative", transform: rotate }}>
-        <div
-          style={{
-            position: "absolute",
-            top: Math.round(p.h * 0.035),
-            right: -12,
-            width: disc,
-            height: disc,
-            borderRadius: disc / 2,
-            background: "#2d2b29",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.18)",
-          }}
-        />
-        {cover({ boxShadow: SHADOW })}
-      </div>
-    );
-  }
-
-  return <div style={{ display: "flex", transform: rotate, boxShadow: SHADOW }}>{cover()}</div>;
-}
-
 /**
  * Every byte the card needs, read from disk once and cached — uncached file
  * reads would make Cache Components render the card on every request.
@@ -143,17 +52,17 @@ async function cardAssets() {
   "use cache";
   cacheLife("max");
   const root = process.cwd();
-  const [switzer, mono, starSvg] = await Promise.all([
-    readFile(join(root, "src/fonts/Switzer-SemiBold.ttf")),
-    readFile(join(root, "src/fonts/GeistMono-Regular.ttf")),
+  const [bold, medium, starSvg] = await Promise.all([
+    readFile(join(root, "src/fonts/Inter-Bold.ttf")),
+    readFile(join(root, "src/fonts/Inter-Medium.ttf")),
     readFile(join(root, "public/faviconstar.svg"), "utf8"),
   ]);
   const covers = await Promise.all(
     WALL.map((p) => readFile(join(root, "public/landing/covers", p.file)))
   );
   return {
-    switzer: switzer.toString("base64"),
-    mono: mono.toString("base64"),
+    bold: bold.toString("base64"),
+    medium: medium.toString("base64"),
     starPath: /\sd="([^"]+)"/.exec(starSvg)?.[1] ?? "",
     srcs: covers.map((b) => `data:image/jpeg;base64,${b.toString("base64")}`),
   };
@@ -162,8 +71,8 @@ async function cardAssets() {
 export default async function Image() {
   const assets = await cardAssets();
   const { starPath, srcs } = assets;
-  const switzer = Buffer.from(assets.switzer, "base64");
-  const mono = Buffer.from(assets.mono, "base64");
+  const bold = Buffer.from(assets.bold, "base64");
+  const medium = Buffer.from(assets.medium, "base64");
 
   return new ImageResponse(
     (
@@ -174,9 +83,9 @@ export default async function Image() {
           display: "flex",
           position: "relative",
           overflow: "hidden",
-          background: "#101010",
-          color: "#fbfbfa",
-          fontFamily: "Switzer",
+          background: "#f3f4f6",
+          color: "#111827",
+          fontFamily: "Inter",
         }}
       >
         {/* the copy */}
@@ -192,32 +101,39 @@ export default async function Image() {
             justifyContent: "center",
           }}
         >
-          <svg viewBox="0 0 1017.42 1017.7" width={44} height={44} style={{ marginBottom: 36 }}>
-            <path d={starPath} fill="#f7a71e" />
-          </svg>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 44 }}>
+            <svg viewBox="0 0 1017.42 1017.7" width={40} height={40} style={{ marginRight: 10 }}>
+              <path d={starPath} fill="#f7a71e" />
+            </svg>
+            <div style={{ display: "flex", fontSize: 46, fontWeight: 700, letterSpacing: "-0.055em", lineHeight: 1 }}>
+              favorite
+            </div>
+          </div>
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               fontSize: 64,
-              fontWeight: 600,
-              lineHeight: 1.06,
-              letterSpacing: "-0.025em",
+              fontWeight: 700,
+              lineHeight: 1.04,
+              letterSpacing: "-0.04em",
             }}
           >
-            <div>Your taste,</div>
-            <div>in one place.</div>
+            <div>Find your next</div>
+            <div>favorite.</div>
           </div>
           <div
             style={{
               display: "flex",
-              marginTop: 22,
-              fontFamily: "Geist Mono",
-              fontSize: 16,
-              color: "#a2a19d",
+              marginTop: 24,
+              fontSize: 22,
+              fontWeight: 500,
+              lineHeight: 1.45,
+              letterSpacing: "-0.01em",
+              color: "#6b7280",
             }}
           >
-            Favorite is a library for everything you love.
+            What people with taste love — books, films, music and more, picked fresh every day.
           </div>
         </div>
         <div
@@ -226,10 +142,9 @@ export default async function Image() {
             left: 72,
             bottom: 52,
             display: "flex",
-            fontFamily: "Geist Mono",
-            fontSize: 13,
-            letterSpacing: "0.06em",
-            color: "#757470",
+            fontSize: 18,
+            fontWeight: 500,
+            color: "#9ca3af",
           }}
         >
           myfavoriteapp.com
@@ -258,8 +173,8 @@ export default async function Image() {
     {
       ...size,
       fonts: [
-        { name: "Switzer", data: switzer, weight: 600, style: "normal" },
-        { name: "Geist Mono", data: mono, weight: 400, style: "normal" },
+        { name: "Inter", data: bold, weight: 700, style: "normal" },
+        { name: "Inter", data: medium, weight: 500, style: "normal" },
       ],
     }
   );

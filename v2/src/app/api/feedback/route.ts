@@ -83,18 +83,22 @@ export async function POST(req: NextRequest) {
     const from = process.env.EMAIL_FROM || "Favorite <hello@myfavoriteapp.com>";
     const replyTo = email ?? userEmail ?? undefined;
     const who = profile ? `@${profile.username}` : "a visitor";
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: [REPORT_EMAIL],
-        ...(replyTo ? { reply_to: replyTo } : {}),
-        subject: `Favorite ${topic}: ${message.slice(0, 60).replace(/\s+/g, " ")}`,
-        html: `<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;white-space:pre-wrap">${esc(message)}</p>
-<p style="font-family:system-ui,sans-serif;font-size:13px;color:#6b7280">From ${esc(who)}${replyTo ? ` · ${esc(replyTo)}` : ""}${page ? ` · ${esc(page)}` : ""}</p>`,
-      }),
-    }).catch(() => null);
+    // one retry: a transient Resend hiccup must not lose the note
+    const send = () =>
+      fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from,
+          to: [REPORT_EMAIL],
+          ...(replyTo ? { reply_to: replyTo } : {}),
+          subject: `Favorite ${topic}: ${message.slice(0, 60).replace(/\s+/g, " ")}`,
+          html: `<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;white-space:pre-wrap">${esc(message)}</p>
+  <p style="font-family:system-ui,sans-serif;font-size:13px;color:#6b7280">From ${esc(who)}${replyTo ? ` · ${esc(replyTo)}` : ""}${page ? ` · ${esc(page)}` : ""}</p>`,
+        }),
+      }).catch(() => null);
+    let res = await send();
+    if (!res?.ok) res = await new Promise((r) => setTimeout(r, 600)).then(send);
     if (!res?.ok) console.error("feedback email failed:", res?.status);
   }
 

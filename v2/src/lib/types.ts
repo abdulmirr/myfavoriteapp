@@ -9,6 +9,8 @@ export interface Profile {
   bio: string;
   avatar_url: string | null;
   socials: { label: string; url: string }[];
+  /** the banner across the top of their page (null → their top covers, blurred) */
+  header_url: string | null;
 }
 
 export interface Item {

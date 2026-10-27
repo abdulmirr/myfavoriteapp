@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
+import { emailPage } from "@/lib/newsletter";
 
 /**
  * One-click unsubscribe target for email footers. The link carries a signed
@@ -7,21 +8,8 @@ import { supabaseServer } from "@/lib/supabase";
  * and can't be forged to unsubscribe anyone else — `email_unsub` verifies it.
  */
 
-// visually continuous with the emails that link here (same shell: star mark,
-// system sans, quiet footer) — this page is part of the email, not the app
-const page = (title: string, note: string) =>
-  new NextResponse(
-    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title} — Favorite</title>
-<body style="margin:0;display:grid;place-items:center;min-height:100vh;background:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#18181b">
-<div style="text-align:center;font-size:15px;line-height:1.65;padding:24px;max-width:420px">
-<img src="/faviconstar.svg" width="28" height="28" alt="Favorite" style="margin:0 auto 20px;display:block">
-<p style="margin:0 0 6px;font-size:17px;font-weight:600">${title}</p>
-<p style="margin:0;color:#71717a">${note}</p>
-<p style="margin:28px 0 0;font-size:12px"><a href="https://myfavoriteapp.com" style="color:#a1a1aa">myfavoriteapp.com</a></p>
-</div></body>`,
-    { headers: { "Content-Type": "text/html; charset=utf-8" } }
-  );
+// the same small page every email link lands on
+const page = emailPage;
 
 export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams.get("p") ?? "";

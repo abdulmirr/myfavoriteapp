@@ -2,26 +2,28 @@
 
 Everything below maps 1:1 to fields in the developer console
 (https://chrome.google.com/webstore/devconsole). Upload
-`favorite-extension-v1.0.1.zip` from the repo root, then fill these in.
+`favorite-extension-v1.1.0.zip` from the repo root (v1.1.0 adds lists — upload it as a new version of the existing item), then fill these in.
 
 ## Store listing tab
 
 **Name** (comes from the manifest): Favorite
 
-**Summary** (from manifest description): One click and the page you're on
-becomes a favorite in your library.
+**Summary** (from manifest description): Save the page you are on to any of
+your lists, or favorite it, in one click.
 
 **Detailed description:**
 
 ```
-Favorite is a home for everything you love — the films, books, albums,
-podcasts, and pages that are actually yours. This extension is the fastest
-way in: hit the star on any page and it lands in your library.
+Favorite is where you keep what's worth your time — the films, books,
+albums, podcasts, and pages you find. This extension is the fastest way
+in: open it on any page and save it to a list, or make it a favorite.
 
-— One click (or ⌘⇧F / Ctrl+Shift+F) saves the page you're on
+— Tick any of your lists (Check later, Watch this weekend, 10/10 albums…)
+  and the page is in it; untick to take it out
+— Start a new list right from the popup
+— One click (or ⌘⇧F / Ctrl+Shift+F) favorites the page you're on
 — Title, site, and artwork come along on their own
-— Add a line on why it's a favorite — that's what makes it yours
-— Everything appears instantly in your library at myfavoriteapp.com
+— Everything appears instantly on your page at myfavoriteapp.com
 
 The extension does one thing and nothing else. It reads a page only when
 you click it, sends nothing until you act, and never sees your browsing
@@ -51,8 +53,9 @@ browser at any time from myfavoriteapp.com/extension.
 **Single purpose description:**
 
 ```
-Save the page the user is currently viewing to their Favorite library
-(myfavoriteapp.com) with one click.
+Save the page the user is currently viewing to their Favorite account
+(myfavoriteapp.com) — into one of their lists, or as a favorite — with one
+click.
 ```
 
 **Permission justifications:**
@@ -77,6 +80,7 @@ Runs only on user action, on the active tab only.
 ```
 Store the personal access token that links this browser to the user's
 Favorite account, created when the user explicitly connects the extension.
+The token is also what lets the popup show the user's own lists.
 ```
 
 - Host permission `https://myfavoriteapp.com/extension*` (content script):

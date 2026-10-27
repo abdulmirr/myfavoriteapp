@@ -45,9 +45,12 @@ function ActivitySkeleton() {
 }
 
 export default function ActivityPage({ params }: Params) {
+  // a reading column under the wide profile header
   return (
-    <Suspense fallback={<ActivitySkeleton />}>
-      <Activity params={params} />
-    </Suspense>
+    <div className="mx-auto max-w-2xl">
+      <Suspense fallback={<ActivitySkeleton />}>
+        <Activity params={params} />
+      </Suspense>
+    </div>
   );
 }

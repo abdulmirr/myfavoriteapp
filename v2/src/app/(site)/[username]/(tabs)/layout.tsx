@@ -22,7 +22,7 @@ export default function ProfileLayout({
   params: Promise<{ username: string }>;
 }) {
   return (
-    <main className="mx-auto max-w-2xl px-4 pt-2 pb-16 sm:px-6 sm:pt-8">
+    <main className="mx-auto max-w-5xl px-4 pt-2 pb-16 sm:px-6 sm:pt-8">
       <Suspense fallback={<ProfileHeaderSkeleton />}>
         <Header params={params} />
       </Suspense>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SearchResult } from "@/lib/types";
 import { tmdb, books, music, podcasts, rankResults } from "@/lib/search-sources";
-import { requireUser, withinLimit } from "@/lib/api-guard";
+import { requireClaims, withinLimit } from "@/lib/api-guard";
 
 /** Global search (home search bar): every source at once, a few hits each. */
 async function searchAll(q: string): Promise<SearchResult[]> {
@@ -73,7 +73,7 @@ async function searchType(type: string, q: string): Promise<SearchResult[]> {
 
 export async function GET(req: NextRequest) {
   // signed-in + budgeted: this route relays to TMDB/iTunes/OL on our quota
-  const auth = await requireUser(req);
+  const auth = await requireClaims(req);
   if (!auth) return NextResponse.json({ error: "not signed in" }, { status: 401 });
 
   const q = req.nextUrl.searchParams.get("q")?.trim();

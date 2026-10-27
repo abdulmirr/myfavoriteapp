@@ -31,6 +31,8 @@ const LITE = "id, username, display_name, avatar_url";
 
 export interface ProfilePageData extends Profile {
   counts: { favorites: number; followers: number; following: number; lists: number };
+  /** up to three top covers (pinned first) — the banner when there's no header image */
+  ambient: string[];
 }
 
 export async function getProfile(username: string): Promise<ProfilePageData | null> {
@@ -42,20 +44,32 @@ export async function getProfile(username: string): Promise<ProfilePageData | nu
   if (!data) return null;
   const p = data as Profile;
   cacheTag(`profile:${p.id}`);
-  const [favs, followers, following, lists] = await Promise.all([
+  const [favs, followers, following, lists, top] = await Promise.all([
     db.from("items").select("id", { count: "exact", head: true }).eq("profile_id", p.id),
     db.from("follows").select("follower_id", { count: "exact", head: true }).eq("followee_id", p.id),
     db.from("follows").select("followee_id", { count: "exact", head: true }).eq("follower_id", p.id),
     db.from("lists").select("id", { count: "exact", head: true }).eq("profile_id", p.id),
+    db
+      .from("items")
+      .select("image_url")
+      .eq("profile_id", p.id)
+      .not("image_url", "is", null)
+      .neq("media_type", "photo")
+      .order("pinned_order", { ascending: true, nullsFirst: false })
+      .order("sort_order", { ascending: true })
+      .limit(8),
   ]);
   return {
     ...p,
+    header_url: p.header_url ?? null,
     counts: {
       favorites: favs.count ?? 0,
       followers: followers.count ?? 0,
       following: following.count ?? 0,
       lists: lists.count ?? 0,
     },
+    // distinct covers only — a repeat would just muddy the color field
+    ambient: [...new Set(((top.data ?? []) as { image_url: string }[]).map((r) => r.image_url))].slice(0, 3),
   };
 }
 
@@ -476,30 +490,43 @@ export async function getCommunityPicks(day: string): Promise<CommunityPick[]> {
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
     return h >>> 0;
   };
-  const shuffled = [...rows].sort((a, b) => seeded(day + a.id) - seeded(day + b.id));
+  const workKey = (r: Item) => r.canonical_id ?? titleKey(r.media_type, r.title);
   const buckets: MediaType[][] = [["music"], ["book"], ["movie", "tv"], ["podcast", "article", "video"]];
-  const picks: ItemWithProfile[] = [];
-  const usedPeople = new Set<string>();
-  const usedWorks = new Set<string>();
-  const take = (r: ItemWithProfile) => {
-    picks.push(r);
-    usedPeople.add(r.profile_id);
-    usedWorks.add(r.canonical_id ?? titleKey(r.media_type, r.title));
+  const choose = (d: string, skip: Set<string>): ItemWithProfile[] => {
+    const shuffled = rows
+      .filter((r) => !skip.has(workKey(r)))
+      .map((r) => ({ r, h: seeded(d + r.id) }))
+      .sort((a, b) => a.h - b.h)
+      .map((x) => x.r);
+    const picks: ItemWithProfile[] = [];
+    const usedPeople = new Set<string>();
+    const usedWorks = new Set<string>();
+    const take = (r: ItemWithProfile) => {
+      picks.push(r);
+      usedPeople.add(r.profile_id);
+      usedWorks.add(workKey(r));
+    };
+    for (const b of buckets) {
+      const hit = shuffled.find(
+        (r) => b.includes(r.media_type) && !usedPeople.has(r.profile_id) && !usedWorks.has(workKey(r))
+      );
+      if (hit) take(hit);
+    }
+    for (const r of shuffled) {
+      if (picks.length >= 5) break;
+      if (!usedPeople.has(r.profile_id) && !usedWorks.has(workKey(r))) take(r);
+    }
+    return picks;
   };
-  for (const b of buckets) {
-    const hit = shuffled.find(
-      (r) =>
-        b.includes(r.media_type) &&
-        !usedPeople.has(r.profile_id) &&
-        !usedWorks.has(r.canonical_id ?? titleKey(r.media_type, r.title))
-    );
-    if (hit) take(hit);
+  // the last two weeks' picks sit today out, so Home and the daily email don't
+  // repeat themselves (each past day re-derived from today's pool)
+  const recent = new Set<string>();
+  for (let n = 1; n <= 14; n++) {
+    const prev = new Date(Date.parse(day) - n * 864e5).toISOString().slice(0, 10);
+    for (const r of choose(prev, new Set())) recent.add(workKey(r));
   }
-  for (const r of shuffled) {
-    if (picks.length >= 5) break;
-    const k = r.canonical_id ?? titleKey(r.media_type, r.title);
-    if (!usedPeople.has(r.profile_id) && !usedWorks.has(k)) take(r);
-  }
+  let picks = choose(day, recent);
+  if (picks.length < 5) picks = choose(day, new Set()); // a thin pool repeats rather than comes up short
   return picks.map(({ profile, ...item }) => ({
     item: item as Item,
     by: profile!,

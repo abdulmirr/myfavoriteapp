@@ -10,10 +10,13 @@ export default function Avatar({
   p,
   className = "size-8",
   eager = false,
+  px = 128,
 }: {
   p: Pick<ProfileLite, "username" | "display_name" | "avatar_url"> | null | undefined;
   className?: string;
   eager?: boolean;
+  /** source width to fetch (128 covers 64px slots at 2x) */
+  px?: number;
 }) {
   const name = p?.display_name || p?.username || "";
   return (
@@ -26,7 +29,7 @@ export default function Avatar({
       {p?.avatar_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={avatarSrc(p.avatar_url)}
+          src={avatarSrc(p.avatar_url, px)}
           alt=""
           loading={eager ? "eager" : "lazy"}
           decoding="async"

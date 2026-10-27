@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Ban, Copy, Flag, MoreHorizontal, Share } from "lucide-react";
+import { Ban, Copy, Flag, MoreHorizontal, Settings, Share } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import {
   approveTaste,
@@ -179,7 +179,7 @@ function MoreMenu({ profile }: { profile: Profile }) {
   );
 }
 
-/** Follow · Share · ⋯ for visitors; Edit profile · Share on your own page. */
+/** Follow · Share · ⋯ for visitors; Share and the settings gear on your own page. */
 export default function ProfileActions({ profile, stretch = false }: { profile: Profile; stretch?: boolean }) {
   const v = useViewer();
   const own = v.status === "signed-in" && v.profile?.id === profile.id;
@@ -195,10 +195,10 @@ export default function ProfileActions({ profile, stretch = false }: { profile: 
   if (own) {
     return (
       <div className={cn("flex items-center gap-1.5", stretch && "w-full")}>
-        <Link href="/settings" className={cn(quietButton, h9, stretch && "flex-1")}>
-          Edit profile
-        </Link>
         <ShareLinkButton path={`/${profile.username}`} className={stretch ? "flex-1" : undefined} />
+        <Link href="/settings" aria-label="Settings" title="Settings" className={cn(quietButton, h9, "w-9 px-0")}>
+          <Settings className="size-4" />
+        </Link>
       </div>
     );
   }

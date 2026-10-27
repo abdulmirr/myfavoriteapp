@@ -1,10 +1,11 @@
 // Chrome Web Store listing assets:
 //   node scripts/ext-store-shots.mjs
 // Renders the real popup (real popup.css + fonts, state forced per shot)
-// inside a minimal browser-window scene, and the promo tiles. Outputs
+// inside a minimal browser-window scene, and the promo tiles — all in the
+// app's v2 look (Inter, gray page, white cards, the gold star). Outputs
 // extension/store/screenshot-{1,2}.jpg (1280×800), tile.jpg (440×280) and
-// marquee.jpg (1400×560) —
-// rendered @2x, downscaled via sips, JPEG because the store forbids alpha.
+// marquee.jpg (1400×560) — rendered @2x, downscaled via sips, JPEG because
+// the store forbids alpha.
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -19,62 +20,81 @@ mkdirSync(tmp, { recursive: true });
 
 const css = `file://${root}extension/popup.css`;
 const star = `file://${root}extension/star.svg`;
+const inter = `file://${root}extension/fonts/Inter-Latin.woff2`;
 const cover = `file://${root}public/landing/covers/blog-paul-graham.svg`;
 
+const CHECK =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const LOCK =
+  '<svg class="lock" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>';
+
 // ---- popup states (real markup + real stylesheet, no scripts) ----
-const popupBody = (state) => `<!doctype html><html><head><meta charset="utf-8">
+const LISTS = [
+  { title: "Check later", priv: true, n: 12 },
+  { title: "Essays that rewired me", priv: false, n: 9 },
+  { title: "10/10 albums", priv: false, n: 24 },
+  { title: "Watch this weekend", priv: true, n: 5 },
+];
+const popupBody = (state) => {
+  const saved = state === "saved";
+  const rows = LISTS.map((l, i) => {
+    const on = i === 0 || (saved && i === 1);
+    return `<li><button class="row${on ? " on" : ""}"><span class="box">${CHECK}</span><span class="name">${l.title}</span>${l.priv ? LOCK : ""}<span class="n">${l.n + (on ? 1 : 0)}</span></button></li>`;
+  }).join("");
+  return `<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="${css}"></head><body>
-<header><img src="${star}" alt="" class="mark"><span class="wordmark">Favorite</span></header>
+<header><img src="${star}" alt="" class="mark"><span class="wordmark">favorite</span></header>
 <section id="form">
-  <div class="preview">
+  <div class="card page">
     <div class="thumb"><img src="${cover}"></div>
     <div class="meta">
       <input id="title" type="text" value="How to Do Great Work" spellcheck="false">
       <div class="site">paulgraham.com</div>
     </div>
   </div>
-  <textarea id="thoughts" rows="3" placeholder="Your thoughts — why is this a favorite?">${
-    state === "saved" ? "The essay I send to everyone who is starting something." : ""
-  }</textarea>
-  <div class="actions">
-    <button id="save" class="primary"${state === "saved" ? " disabled" : ""}>
-      <img src="${star}" alt="" class="btn-mark">
-      <span>${state === "saved" ? "Favorited" : "Favorite"}</span>
+  <div class="fav">
+    <button id="fav" class="primary wide${saved ? " done" : ""}"${saved ? " disabled" : ""}>
+      <img src="${star}" alt="" class="btn-mark"><span>${saved ? "In your favorites" : "Favorite"}</span>
     </button>
-    <span id="status"${state === "saved" ? ' class="ok"' : ""}>${
-      state === "saved" ? "Added to your library." : ""
-    }</span>
+    ${saved ? "" : '<button type="button" class="link">Add a thought</button>'}
   </div>
+  <div class="card lists">
+    <p class="label">Save to a list</p>
+    <ul class="rows">${rows}</ul>
+    <form class="new"><input type="text" placeholder="New list"><button type="button" class="quiet">Create</button></form>
+  </div>
+  <p id="status" class="ok">${saved ? "Added to your favorites." : "Saved to Check later."}</p>
 </section>
 </body></html>`;
+};
 
 // ---- the 1280×800 scene ----
 const scene = (popupSrc, popupH, h1, sub) => `<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face { font-family: "Geist Mono"; src: url("file://${root}extension/fonts/GeistMono-Regular.ttf"); font-weight: 400; }
-@font-face { font-family: "Geist Mono"; src: url("file://${root}extension/fonts/GeistMono-SemiBold.ttf"); font-weight: 600; }
+@font-face { font-family: "Inter"; src: url("${inter}") format("woff2"); font-weight: 100 900; }
 * { margin: 0; box-sizing: border-box; }
-body { width: 1280px; height: 800px; background: #f4f4f5; overflow: hidden;
-  font-family: "Geist Mono", monospace; display: flex; align-items: center; }
-.copy { width: 460px; padding: 0 0 0 84px; flex-shrink: 0; }
-.copy img { height: 30px; margin-bottom: 28px; }
-h1 { font-size: 36px; line-height: 1.35; font-weight: 600; color: #18181b; }
-.sub { margin-top: 18px; font-size: 13px; line-height: 1.7; color: #71717a; }
+body { width: 1280px; height: 800px; background: #f3f4f6; overflow: hidden;
+  font-family: Inter, sans-serif; display: flex; align-items: center; -webkit-font-smoothing: antialiased; }
+.copy { width: 470px; padding: 0 0 0 84px; flex-shrink: 0; }
+.brand { display: flex; align-items: center; gap: 8px; margin-bottom: 36px; }
+.brand img { width: 30px; height: 30px; }
+.brand span { font-size: 32px; font-weight: 700; letter-spacing: -0.055em; color: #111827; line-height: 1; }
+h1 { font-size: 40px; line-height: 1.15; font-weight: 700; letter-spacing: -0.035em; color: #111827; }
+.sub { margin-top: 18px; font-size: 17px; line-height: 1.6; color: #6b7280; }
 .stage { flex: 1; display: flex; justify-content: center; }
-.window { width: 600px; background: #fff; border: 1px solid #e4e4e7;
-  box-shadow: 0 32px 64px rgba(24,24,27,.08); }
-.bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #f4f4f5; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: #e4e4e7; }
-.url { flex: 1; margin: 0 12px; background: #f4f4f5; font-size: 11px; color: #a1a1aa;
-  padding: 6px 12px; }
-.bar img { height: 15px; }
-.page { position: relative; height: 620px; padding: 44px 48px; }
-.line { height: 11px; background: #f4f4f5; margin-bottom: 14px; }
-.popup { position: absolute; top: 10px; right: 10px; width: 340px; height: ${popupH}px;
-  border: 1px solid #e4e4e7; box-shadow: 0 24px 48px rgba(24,24,27,.16); background: #fff; }
+.window { width: 620px; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 40px 80px -24px rgba(17,24,39,.18); }
+.bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #e5e7eb; }
+.url { flex: 1; margin: 0 12px; background: #f3f4f6; border-radius: 999px; font-size: 12px; color: #9ca3af; padding: 7px 14px; }
+.bar img { height: 17px; }
+.page { position: relative; height: 640px; padding: 48px 52px; }
+.line { height: 11px; border-radius: 999px; background: #f3f4f6; margin-bottom: 15px; }
+.popup { position: absolute; top: 10px; right: 12px; width: 360px; height: ${popupH}px; border-radius: 14px; overflow: hidden;
+  border: 1px solid #e5e7eb; box-shadow: 0 28px 56px -12px rgba(17,24,39,.28); background: #f3f4f6; }
 .popup iframe { width: 100%; height: 100%; border: 0; }
 </style></head><body>
   <div class="copy">
-    <img src="${star}" alt="">
+    <div class="brand"><img src="${star}" alt=""><span>favorite</span></div>
     <h1>${h1}</h1>
     <p class="sub">${sub}</p>
   </div>
@@ -86,8 +106,8 @@ h1 { font-size: 36px; line-height: 1.35; font-weight: 600; color: #18181b; }
         <img src="${star}" alt="">
       </div>
       <div class="page">
-        <div class="line" style="width:38%;height:16px;margin-bottom:26px"></div>
-        ${Array.from({ length: 14 }, (_, i) => `<div class="line" style="width:${[92, 88, 95, 60, 0, 90, 94, 86, 91, 55, 0, 93, 89, 64][i]}%"></div>`).join("")}
+        <div class="line" style="width:42%;height:18px;margin-bottom:28px"></div>
+        ${Array.from({ length: 15 }, (_, i) => `<div class="line" style="width:${[92, 88, 95, 60, 0, 90, 94, 86, 91, 55, 0, 93, 89, 64, 80][i]}%"></div>`).join("")}
         <div class="popup"><iframe src="${popupSrc}"></iframe></div>
       </div>
     </div>
@@ -96,39 +116,37 @@ h1 { font-size: 36px; line-height: 1.35; font-weight: 600; color: #18181b; }
 
 // ---- the promo tiles (440×280 small, 1400×560 marquee) ----
 const promo = ({ w, h, star: starH, word, tag, gap, text }) => `<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face { font-family: "Geist Mono"; src: url("file://${root}extension/fonts/GeistMono-Regular.ttf"); font-weight: 400; }
-@font-face { font-family: "Geist Mono"; src: url("file://${root}extension/fonts/GeistMono-SemiBold.ttf"); font-weight: 600; }
+@font-face { font-family: "Inter"; src: url("${inter}") format("woff2"); font-weight: 100 900; }
 * { margin: 0; }
-body { width: ${w}px; height: ${h}px; background: #101010; overflow: hidden;
-  font-family: "Geist Mono", monospace; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: ${gap}px; }
-img { height: ${starH}px; }
-.word { font-size: ${word}px; font-weight: 600; letter-spacing: .22em; color: #fbfbfa; }
-.tag { font-size: ${tag}px; letter-spacing: .04em; color: #a1a1aa; }
+body { width: ${w}px; height: ${h}px; background: #f3f4f6; overflow: hidden; -webkit-font-smoothing: antialiased;
+  font-family: Inter, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: ${gap}px; }
+.brand { display: flex; align-items: center; gap: ${Math.round(starH * 0.28)}px; }
+.brand img { width: ${starH}px; height: ${starH}px; }
+.brand span { font-size: ${word}px; font-weight: 700; letter-spacing: -0.055em; color: #111827; line-height: 1; }
+.tag { font-size: ${tag}px; color: #6b7280; letter-spacing: -0.01em; }
 </style></head><body>
-  <img src="${star}" alt="">
-  <div class="word">FAVORITE</div>
+  <div class="brand"><img src="${star}" alt=""><span>favorite</span></div>
   <div class="tag">${text}</div>
 </body></html>`;
 
 const PROMOS = [
-  { out: "tile", w: 440, h: 280, star: 54, word: 15, tag: 10, gap: 18, text: "One-click save to your library" },
-  { out: "marquee", w: 1400, h: 560, star: 96, word: 26, tag: 14, gap: 30,
-    text: "One click and the page you're on becomes a favorite in your library." },
+  { out: "tile", w: 440, h: 280, star: 40, word: 46, tag: 15, gap: 16, text: "Save anything to your lists" },
+  { out: "marquee", w: 1400, h: 560, star: 84, word: 96, tag: 26, gap: 30,
+    text: "Save the page you're on to any list, or favorite it, in one click." },
 ];
 
 const SHOTS = [
   {
     out: "screenshot-1",
-    state: "form",
-    h1: "One click, and the page you're on becomes a favorite.",
-    sub: "Hit the star on anything worth keeping. Title and artwork come along on their own.",
+    state: "lists",
+    h1: "Save anything you find to a list.",
+    sub: "Read-later, watch-later, 10/10 albums. Tick a list and the page is in it, with its title and artwork.",
   },
   {
     out: "screenshot-2",
     state: "saved",
-    h1: "Add your why. It's what makes it yours.",
-    sub: "⌘⇧F opens it from any page. Everything lands in your library at myfavoriteapp.com.",
+    h1: "Or make it a favorite, in one click.",
+    sub: "⌘⇧F opens it from any page. Everything lands on your page at myfavoriteapp.com.",
   },
 ];
 
@@ -142,13 +160,16 @@ const jpeg = (png, out, w, h) => {
 for (const s of SHOTS) {
   const stateFile = join(tmp, `popup-${s.state}.html`);
   writeFileSync(stateFile, popupBody(s.state));
+  await page.setViewportSize({ width: 360, height: 800 });
   await page.goto(`file://${stateFile}`);
+  await page.waitForTimeout(300);
   const popupH = await page.evaluate(() => document.body.scrollHeight);
 
   const sceneFile = join(tmp, `scene-${s.out}.html`);
   writeFileSync(sceneFile, scene(`file://${stateFile}`, popupH, s.h1, s.sub));
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`file://${sceneFile}`);
-  await page.waitForTimeout(400); // fonts + iframe
+  await page.waitForTimeout(600); // fonts + iframe
   const png = join(tmp, `${s.out}.png`);
   await page.screenshot({ path: png });
   jpeg(png, join(store, `${s.out}.jpg`), 1280, 800);

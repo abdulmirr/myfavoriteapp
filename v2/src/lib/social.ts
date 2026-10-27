@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import type { Item, MediaType, Profile } from "./types";
 
-export const PROFILE_COLS = "id, user_id, username, display_name, bio, avatar_url, socials";
+export const PROFILE_COLS = "id, user_id, username, display_name, bio, avatar_url, socials, header_url";
 
 /**
  * A safe outbound href for a social link. Users type bare domains

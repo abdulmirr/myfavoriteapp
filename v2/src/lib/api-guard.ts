@@ -30,6 +30,24 @@ export async function requireUser(
   return { db, userId: data.user.id };
 }
 
+/**
+ * requireUser for type-ahead: the session JWT is checked locally against the
+ * project's signing keys (ES256, JWKS cached in memory) instead of a round
+ * trip to the auth server — ~150ms saved per keystroke search. Use the
+ * stricter requireUser where money or writes are on the line.
+ */
+export async function requireClaims(
+  req: NextRequest
+): Promise<{ db: SupabaseClient; userId: string } | null> {
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const db = userClient(token);
+  const { data, error } = await db.auth.getClaims(token);
+  const sub = data?.claims?.sub;
+  if (error || !sub || data.claims.role !== "authenticated") return null;
+  return { db, userId: sub };
+}
+
 /** True while the caller is within their daily budget for this route. */
 export async function withinLimit(
   db: SupabaseClient,

@@ -17,12 +17,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { username, slug } = await params;
   const data = await getList(decodeURIComponent(username), decodeURIComponent(slug));
   if (!data) return { title: "List", robots: { index: false } };
-  const { list, owner } = data;
+  const { list, owner, items } = data;
   const description = list.description?.trim() || `${list.count} ${list.count === 1 ? "item" : "items"} by @${owner.username} on Favorite.`;
+  // an openGraph block without images would drop the site card, so fall back
+  // to the newest cover in the list, then to the site card itself
+  const image = list.cover_image_url ?? items.find((i) => i.image_url)?.image_url ?? "/opengraph-image";
   return {
     title: `${list.title} by @${owner.username}`,
     description,
-    openGraph: { title: list.title, description, ...(list.cover_image_url ? { images: [list.cover_image_url] } : {}) },
+    openGraph: { title: list.title, description, images: [image] },
     alternates: { canonical: `/${owner.username}/lists/${list.slug}` },
   };
 }
