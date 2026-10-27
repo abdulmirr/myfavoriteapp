@@ -1,0 +1,12 @@
+# Never upload to Vercel builds
+node_modules
+.next
+.git
+
+# secrets + local-only
+.env
+.env.*
+.vercel
+
+.DS_Store
+*.tsbuildinfo

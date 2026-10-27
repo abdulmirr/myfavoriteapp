@@ -1,0 +1,190 @@
+@import "tailwindcss";
+
+/* Favorite v2 — antislop's design system. Tailwind's default gray / neutral /
+   yellow scales are exactly what antislop ships, so the palette is the stock
+   one; this file only adds type, dark mode, the pre-paint auth switch, a few
+   keyframes, and Favorite's object frames for the wall. */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@theme {
+  --color-star: #f7a71e;
+  --animate-caret: caret 1s steps(1) infinite;
+}
+
+@keyframes caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: light;
+}
+html.dark { color-scheme: dark; }
+
+body {
+  @apply bg-gray-100 font-sans text-gray-900 antialiased dark:bg-neutral-900 dark:text-neutral-100;
+}
+
+img { -webkit-user-drag: none; }
+
+/* ── pre-paint auth switch ──────────────────────────────────────────────────
+   The session lives in localStorage, so the server can't know who's looking.
+   An inline script in <head> sets html[data-auth] from the stored session
+   before first paint; these two classes pick the right skeleton for the
+   signed-in or signed-out view, so neither ever flashes the other. */
+html[data-auth="in"] .signed-out-only { display: none !important; }
+html:not([data-auth="in"]) .signed-in-only { display: none !important; }
+
+/* ── small motion vocabulary (antislop keeps motion nearly silent) ───────── */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.pop-in { animation: pop-in 0.18s cubic-bezier(0.2, 0, 0, 1) both; }
+
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+.star-pop { animation: star-pop 0.32s cubic-bezier(0.2, 0, 0, 1); }
+
+/* onboarding beats: a short rise as each one arrives */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.rise-in { animation: rise-in 0.26s cubic-bezier(0.2, 0, 0, 1) both; }
+
+/* dialogs + menus: a 150ms fade/settle, nothing more */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes settle-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.dialog-overlay[data-state="open"] { animation: fade-in 0.15s ease-out; }
+.dialog-content[data-state="open"] { animation: settle-in 0.15s cubic-bezier(0.2, 0, 0, 1); }
+.menu-content[data-state="open"] { animation: settle-in 0.12s cubic-bezier(0.2, 0, 0, 1); transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
+.popover-content[data-state="open"] { animation: settle-in 0.12s cubic-bezier(0.2, 0, 0, 1); transform-origin: var(--radix-popover-content-transform-origin); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── the wall: Favorite's object frames ─────────────────────────────────────
+   Each medium keeps one physical cue — vinyl peeking from the sleeve, the
+   fore-edge of a book's pages, a poster in a thin snap frame, a polaroid, a
+   paused screen. Sized in container units (the tile sets container-type), so
+   the cue keeps its scale at any tile size. Retuned from v1 for the gray-100
+   page and the neutral dark palette. */
+.obj-shadow { box-shadow: 0 1px 2px rgb(16 24 40 / 0.08), 0 6px 18px rgb(16 24 40 / 0.07); }
+.dark .obj-shadow { box-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.35); }
+
+.polaroid {
+  background: #fff;
+  padding: 5.5% 5.5% 15% 5.5%;
+}
+
+.screenframe {
+  position: relative;
+  background: #111;
+  padding: 1.6cqw;
+  overflow: hidden;
+}
+.dark .screenframe { background: #262626; }
+.screenframe--yt::after {
+  content: "";
+  position: absolute;
+  right: 3cqw;
+  bottom: 3cqw;
+  width: 9cqw;
+  aspect-ratio: 28 / 20;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Cpath fill='%23FF0000' d='M27.4 3.1A3.5 3.5 0 0 0 24.9.6C22.7 0 14 0 14 0S5.3 0 3.1.6A3.5 3.5 0 0 0 .6 3.1C0 5.3 0 10 0 10s0 4.7.6 6.9a3.5 3.5 0 0 0 2.5 2.5C5.3 20 14 20 14 20s8.7 0 10.9-.6a3.5 3.5 0 0 0 2.5-2.5C28 14.7 28 10 28 10s0-4.7-.6-6.9z'/%3E%3Cpath fill='%23FFFFFF' d='M11.2 14.3 18.5 10l-7.3-4.3z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
+.bookframe { position: relative; }
+.bookframe::before {
+  /* hinge shading along the spine */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 11%;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.03) 55%, transparent);
+  pointer-events: none;
+}
+.bookframe::after {
+  /* the page block, cream in both themes like real paper */
+  content: "";
+  position: absolute;
+  top: 0.8cqw;
+  bottom: 0.8cqw;
+  right: -2.2cqw;
+  width: 2.2cqw;
+  background: repeating-linear-gradient(
+    90deg,
+    #fbfaf6 0,
+    #fbfaf6 0.32cqw,
+    #e4e1d8 0.32cqw,
+    #e4e1d8 0.42cqw
+  );
+}
+
+.vinylframe { position: relative; }
+.vinylframe::before {
+  /* the record behind the sleeve, a grooved crescent at the right */
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 3.5%;
+  bottom: 3.5%;
+  right: -5.5cqw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  --disc: #1d1d20;
+  background:
+    repeating-radial-gradient(
+      circle,
+      transparent 0,
+      transparent 0.9cqw,
+      rgba(255, 255, 255, 0.06) 0.9cqw,
+      rgba(255, 255, 255, 0.06) 1.1cqw
+    ),
+    var(--disc);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.dark .vinylframe::before { --disc: #2b2b2b; }
+
+.posterframe {
+  position: relative;
+  background: #fff;
+  padding: 1.6cqw;
+  overflow: hidden;
+}
+.posterframe::after {
+  /* faint diagonal glare — the glass over the one-sheet */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.14), transparent 40%);
+  pointer-events: none;
+}
+.dark .posterframe { background: #2a2a2a; }
+
+/* hide scrollbars on horizontal pill rows only */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

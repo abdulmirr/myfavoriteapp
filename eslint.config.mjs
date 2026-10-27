@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // the v2 redesign is its own app with its own lint run
+    "v2/**",
   ]),
 ]);
 

@@ -6,6 +6,9 @@ node_modules
 # design reference only — third-party mirror, not part of the app
 natural-selection
 
+# the v2 redesign is a separate app — never part of v1's deploy
+v2
+
 # secrets + local-only
 .env
 .env.*
