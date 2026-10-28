@@ -116,6 +116,45 @@ export function slugify(title: string, max = 60): string {
   return s || "list";
 }
 
+/** "now", "12m", "5h", "3d", then "26 Oct" (and the year once it isn't this one). */
+export function timeAgo(iso: string, now = Date.now()): string {
+  const s = Math.max(0, (now - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "now";
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  if (s < 7 * 86400) return `${Math.floor(s / 86400)}d`;
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(d.getFullYear() !== new Date(now).getFullYear() ? { year: "numeric" as const } : {}),
+  });
+}
+
+/** "an album", "a book", "a film" — what someone favorited, said in passing. */
+export function aWork(w: Pick<Work, "media_type" | "canonical_id">): string {
+  const t = typeLabel(w);
+  return (
+    {
+      Album: "an album",
+      Song: "a song",
+      Music: "some music",
+      Book: "a book",
+      Film: "a film",
+      "TV show": "a show",
+      Podcast: "a podcast",
+      Video: "a video",
+      Link: "a link",
+      Photo: "a photo",
+    } as Record<string, string>
+  )[t] ?? "something";
+}
+
+/** Did this happen in the last `days` days? */
+export function isRecent(iso: string | null | undefined, days = 3): boolean {
+  return !!iso && Date.now() - new Date(iso).getTime() < days * 864e5;
+}
+
 /** Is this work new on Favorite (first favorited in the last 3 days)? */
 export function isNew(firstAt: string | null | undefined): boolean {
   if (!firstAt) return false;

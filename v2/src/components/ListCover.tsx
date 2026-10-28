@@ -18,11 +18,13 @@ export default function ListCover({
   covers: string[];
   title?: string;
   className?: string;
-  /** dialog thumbnail (≈85px wide) */
+  /** row thumbnail, 86×48 (the save dialog, the lists panel) */
   small?: boolean;
   priority?: boolean;
 }) {
-  const box = cn("relative aspect-video w-full overflow-hidden rounded-md", className);
+  // the width lives here, not in className: `cn` joins without merging, so a
+  // caller's w-auto lost to w-full and a thumbnail swallowed its whole row
+  const box = cn("relative aspect-video overflow-hidden rounded-md", small ? "w-[86px] shrink-0" : "w-full", className);
   const loading = priority ? ("eager" as const) : ("lazy" as const);
 
   if (coverImage) {

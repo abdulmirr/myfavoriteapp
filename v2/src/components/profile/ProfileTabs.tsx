@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, List } from "lucide-react";
+import { List } from "lucide-react";
 import Star from "../ui/Star";
 import { cn, drawer } from "../ui/styles";
 
@@ -13,7 +13,6 @@ export default function ProfileTabs({ username }: { username: string }) {
   const tabs = [
     { href: base, label: "Favorites", icon: <Star className="size-4 text-star" /> },
     { href: `${base}/lists`, label: "Lists", icon: <List className="size-4" /> },
-    { href: `${base}/activity`, label: "Activity", icon: <History className="size-4" /> },
   ];
   return (
     <nav aria-label="Profile" className={cn(drawer, "px-2 pt-6 pb-2")}>

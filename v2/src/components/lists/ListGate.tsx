@@ -68,11 +68,15 @@ export default function ListGate({ username, slug }: { username: string; slug: s
   }, [mine, key]);
 
   if (data === null) {
-    return <div className={cn(card, "h-40 animate-pulse")} aria-busy />;
+    return (
+      <div className="mx-auto max-w-3xl px-4 pt-4 sm:px-6 sm:pt-10">
+        <div className={cn(card, "h-40 animate-pulse")} aria-busy />
+      </div>
+    );
   }
   if (data === "none") {
     return (
-      <div className={cn(card, "px-6 py-12 text-center")}>
+      <div className={cn(card, "mx-4 mt-4 max-w-3xl px-6 py-12 text-center sm:mx-auto sm:mt-10")}>
         <p className="text-base font-semibold text-gray-900 dark:text-neutral-100">This list is private or doesn&apos;t exist.</p>
         <Link href={`/${username}/lists`} className="mt-2 inline-block text-sm text-gray-500 underline underline-offset-4 hover:text-gray-900 dark:text-neutral-400">
           See @{username}&apos;s lists

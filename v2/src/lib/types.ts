@@ -136,6 +136,8 @@ export interface ListItem extends Work {
   position: number;
   work_key: string;
   via_profile_id: string | null;
+  /** when the owner marked it finished (watched, read, listened); null = still to check out */
+  done_at: string | null;
   created_at: string;
 }
 

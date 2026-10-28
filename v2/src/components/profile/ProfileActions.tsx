@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Ban, Copy, Flag, MoreHorizontal, Settings, Share } from "lucide-react";
+import { Ban, Check, Copy, Flag, MoreHorizontal, Settings, Share } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import {
   approveTaste,
@@ -20,30 +20,52 @@ import { playUi } from "@/lib/sfx";
 import Star from "../ui/Star";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu";
 import { toast } from "../ui/Toast";
-import { cn, primaryButton, quietButton } from "../ui/styles";
+import { cn, iconButton, primaryButton, quietButton } from "../ui/styles";
 
 const h9 = "h-9 px-3";
 
-/** Copy (or natively share) a link, flipping the label to "Copied" without a width jump. */
-export function ShareLinkButton({ path, label = "Share", className }: { path: string; label?: string; className?: string }) {
+/**
+ * Copy (or natively share) a link, flipping the label to "Copied" without a
+ * width jump. `icon` makes it a bare share glyph that sits beside ★ and 🔖.
+ */
+export function ShareLinkButton({
+  path,
+  label = "Share",
+  className,
+  icon = false,
+}: {
+  path: string;
+  label?: string;
+  className?: string;
+  icon?: boolean;
+}) {
   const [done, setDone] = useState(false);
+  const share = async () => {
+    const url = `${window.location.origin}${path}`;
+    try {
+      if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+        await navigator.share({ url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setDone(true);
+      if (icon) toast("Link copied");
+      setTimeout(() => setDone(false), 1600);
+    } catch {
+      /* share sheet dismissed */
+    }
+  };
+  if (icon) {
+    return (
+      <button type="button" onClick={share} aria-label={label} title={done ? "Copied" : label} className={className ?? iconButton}>
+        {done ? <Check className="size-4" strokeWidth={2.2} /> : <Share className="size-4" strokeWidth={2.2} />}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
-      onClick={async () => {
-        const url = `${window.location.origin}${path}`;
-        try {
-          if (navigator.share && matchMedia("(pointer: coarse)").matches) {
-            await navigator.share({ url });
-            return;
-          }
-          await navigator.clipboard.writeText(url);
-          setDone(true);
-          setTimeout(() => setDone(false), 1600);
-        } catch {
-          /* share sheet dismissed */
-        }
-      }}
+      onClick={share}
       className={cn(quietButton, h9, className)}
     >
       <Share className="size-4" />
@@ -55,7 +77,23 @@ export function ShareLinkButton({ path, label = "Share", className }: { path: st
   );
 }
 
-export function FollowButton({ profile, className, small = false }: { profile: Profile; className?: string; small?: boolean }) {
+/** a compact follow for people lists (Friends' suggestions) — its own full recipes, so nothing fights the size */
+const chipFollow =
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gray-900 px-3.5 text-xs font-semibold text-white outline-none transition-colors hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300";
+const chipFollowing =
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-semibold text-gray-500 outline-none transition-colors hover:bg-gray-900/5 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100";
+
+export function FollowButton({
+  profile,
+  className,
+  small = false,
+  chip = false,
+}: {
+  profile: Profile;
+  className?: string;
+  small?: boolean;
+  chip?: boolean;
+}) {
   const v = useViewer();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -82,11 +120,11 @@ export function FollowButton({ profile, className, small = false }: { profile: P
           setBusy(false);
         }
       }}
-      className={cn(
-        following ? quietButton : primaryButton,
-        small ? "h-8 px-3 text-xs" : h9,
-        className
-      )}
+      className={
+        chip
+          ? cn(following ? chipFollowing : chipFollow, className)
+          : cn(following ? quietButton : primaryButton, small ? "h-8 px-3 text-xs" : h9, className)
+      }
     >
       {following ? "Following" : "Follow"}
     </button>

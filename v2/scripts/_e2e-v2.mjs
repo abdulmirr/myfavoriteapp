@@ -243,11 +243,11 @@ try {
   );
   check("new list created public and holds the save", shelf[0]?.is_public === true && Number(shelf[0]?.n) === 1, JSON.stringify(shelf));
 
-  step("profile, lists, activity, list page, settings");
+  step("profile, lists, list page, friends, settings");
   for (const [path, name] of [
     [`/${handle}`, "d-profile"],
     [`/${handle}/lists`, "d-profile-lists"],
-    [`/${handle}/activity`, "d-profile-activity"],
+    ["/friends", "d-friends"],
     [`/${handle}/lists/check-later`, "d-list-private"],
     [`/${handle}/lists/e2e-shelf`, "d-list-public"],
     ["/settings", "d-settings"],
@@ -263,7 +263,7 @@ try {
   })();
   check("owner sees their private list", (privText ?? "").includes(savedTitle), (privText ?? "").slice(0, 120));
 
-  step("header: add dialog + notifications");
+  step("header: add dialog");
   await page.goto(`${APP}/feed`, { waitUntil: "load" });
   await sleep(1500);
   await page.getByRole("button", { name: "Add a favorite" }).click();

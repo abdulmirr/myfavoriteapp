@@ -3,13 +3,13 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ImagePlus, Link2, Search } from "lucide-react";
-import type { MediaType, SearchResult, Work } from "@/lib/types";
+import type { ListItem, MediaType, SearchResult, Work } from "@/lib/types";
 import { ADD_TYPES } from "@/lib/categories";
 import { supabase, authHeaders } from "@/lib/supabase";
 import { useLiveSearch } from "@/lib/use-live-search";
 import { thumbCover } from "@/lib/img";
 import { playUi } from "@/lib/sfx";
-import { favorite, isFavorited, useViewer, viewer } from "@/lib/viewer";
+import { addToList, favorite, isFavorited, listsHolding, useViewer, viewer } from "@/lib/viewer";
 import { metaLine, typeLabel } from "@/lib/work";
 import Dialog from "../ui/Dialog";
 import Star from "../ui/Star";
@@ -67,8 +67,21 @@ async function upload(file: File): Promise<string> {
  * ＋ — put anything on Favorite: search the catalogs, paste a link, upload a
  * photo, or type it in. Ends in the two verbs: ★ Favorite (with an optional
  * thought) or 🔖 Save to a list. Stays open so you can add a few in a row.
+ *
+ * Opened from one of your lists (`list`), it builds that list instead: one
+ * button, "Add to list", with an optional note — playlist-making speed.
  */
-export default function AddDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export default function AddDialog({
+  open,
+  onOpenChange,
+  list,
+  onAdded,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  list?: { id: string; title: string };
+  onAdded?: (row: ListItem) => void;
+}) {
   const v = useViewer();
   const [type, setType] = useState<MediaType>("book");
   const [query, setQuery] = useState("");
@@ -166,6 +179,26 @@ export default function AddDialog({ open, onOpenChange }: { open: boolean; onOpe
     }
   };
 
+  const doAdd = async () => {
+    if (!draft || busy || !list) return;
+    setBusy(true);
+    setError("");
+    try {
+      const work = await materialize(draft);
+      const row = await addToList(work, list.id, thought);
+      playUi("confirm");
+      onAdded?.(row);
+      toast(`Added to ${list.title}`);
+      setDraft(null);
+      setQuery("");
+      setThought("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add it — try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const doSave = async () => {
     if (!draft || busy) return;
     setBusy(true);
@@ -193,11 +226,17 @@ export default function AddDialog({ open, onOpenChange }: { open: boolean; onOpe
     });
   };
 
-  const already = draft ? isFavorited(v, draft) : false;
+  const already = draft ? (list ? listsHolding(v, draft).has(list.id) : isFavorited(v, draft)) : false;
 
   return (
     <>
-      <Dialog open={open && !saving} onOpenChange={onOpenChange} title="Add something" busy={busy} className="max-w-lg">
+      <Dialog
+        open={open && !saving}
+        onOpenChange={onOpenChange}
+        title={list ? `Add to ‘${list.title.length > 40 ? `${list.title.slice(0, 38)}…` : list.title}’` : "Add something"}
+        busy={busy}
+        className="max-w-lg"
+      >
         <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
           {ADD_TYPES.map((t) => (
             <button
@@ -234,26 +273,32 @@ export default function AddDialog({ open, onOpenChange }: { open: boolean; onOpe
             </div>
             {already ? (
               <p className="rounded-lg bg-gray-100 px-3 py-2.5 text-sm text-gray-600 dark:bg-neutral-700/50 dark:text-neutral-300">
-                Already on your wall.
+                {list ? "Already in this list." : "Already on your wall."}
               </p>
             ) : (
               <textarea
                 value={thought}
                 onChange={(e) => setThought(e.target.value)}
-                placeholder="A thought, if you have one…"
-                maxLength={1000}
-                aria-label="Your thought"
+                placeholder={list ? "A note, if you have one…" : "A thought, if you have one…"}
+                maxLength={list ? 280 : 1000}
+                aria-label={list ? "Note" : "Your thought"}
                 className={cn(textarea, "min-h-20")}
               />
             )}
-            <div className="flex gap-2">
-              <button type="button" onClick={doSave} disabled={busy} className={cn(quietButton, "flex-1")}>
-                Save to a list
+            {list ? (
+              <button type="button" onClick={doAdd} disabled={busy || already} className={primaryButton}>
+                {busy ? "Adding…" : "Add to list"}
               </button>
-              <button type="button" onClick={doFavorite} disabled={busy || already} className={cn(primaryButton, "flex-1")}>
-                <Star className="size-4 text-star" /> {busy ? "Adding…" : "Favorite"}
-              </button>
-            </div>
+            ) : (
+              <div className="flex gap-2">
+                <button type="button" onClick={doSave} disabled={busy} className={cn(quietButton, "flex-1")}>
+                  Save to a list
+                </button>
+                <button type="button" onClick={doFavorite} disabled={busy || already} className={cn(primaryButton, "flex-1")}>
+                  <Star className="size-4 text-star" /> {busy ? "Adding…" : "Favorite"}
+                </button>
+              </div>
+            )}
           </div>
         ) : mode === "search" ? (
           <div className="flex flex-col gap-2">

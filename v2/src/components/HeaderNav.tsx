@@ -5,37 +5,75 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useViewer } from "@/lib/viewer";
+import { setUnread, useViewer } from "@/lib/viewer";
+import { unreadCount } from "@/lib/social";
 import { cn, headerIcon, pill, pillActive, pillIdle } from "./ui/styles";
 import Avatar from "./ui/Avatar";
-import NotificationsButton from "./NotificationsButton";
+import ListsButton from "./ListsButton";
 
 // the add flow (catalog search, links, uploads) loads on first open only
 const AddDialog = dynamic(() => import("./add/AddDialog"));
 
 const NAV = [
-  { href: "/", label: "Home", hideOnPhone: true },
-  { href: "/feed", label: "Feed", hideOnPhone: false },
+  { href: "/", label: "Home", hideOnPhone: true, members: false },
+  { href: "/feed", label: "Feed", hideOnPhone: false, members: false },
+  // what your people are up to + your notifications (members only)
+  { href: "/friends", label: "Friends", hideOnPhone: false, members: true },
 ];
 
-function NavPills({ pathname }: { pathname: string | null }) {
+/**
+ * Home · Feed · Friends. Friends is for members: hidden for visitors, and
+ * while the session check runs the pre-paint auth switch decides. Its badge
+ * is the unread count the bell used to carry.
+ */
+function NavPills({ pathname, status, unread }: { pathname: string | null; status: string; unread: number }) {
   return (
     <nav aria-label="Main" className="flex items-center gap-1 sm:gap-1.5">
       {NAV.map((n) => {
+        if (n.members && status === "signed-out") return null;
         const active = pathname === n.href;
+        const badge = n.members && unread > 0;
         return (
           <Link
             key={n.href}
             href={n.href}
             aria-current={active ? "page" : undefined}
-            className={cn(pill, active ? pillActive : pillIdle, n.hideOnPhone && "max-sm:hidden")}
+            aria-label={badge ? `${n.label}, ${unread} new` : undefined}
+            className={cn(
+              pill,
+              "relative max-sm:px-2.5",
+              active ? pillActive : pillIdle,
+              n.hideOnPhone && "max-sm:hidden",
+              n.members && status === "unknown" && "signed-in-only"
+            )}
           >
             {n.label}
+            {badge && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-gray-100 dark:ring-neutral-900">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
           </Link>
         );
       })}
     </nav>
   );
+}
+
+/** The unread count behind the Friends badge — refreshed each minute while the tab is visible. */
+function useUnreadPoll(profileId: string | null) {
+  useEffect(() => {
+    if (!profileId) return;
+    const poll = () => {
+      if (document.visibilityState === "visible") void unreadCount(profileId).then(setUnread);
+    };
+    const t = setInterval(poll, 60_000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", poll);
+    };
+  }, [profileId]);
 }
 
 /** Pre-hydration skeleton for the personal zone (antislop pulses here too). */
@@ -79,6 +117,7 @@ export default function HeaderNav() {
   const pathname = usePathname();
   const v = useViewer();
   const [adding, setAdding] = useState(false);
+  useUnreadPoll(v.status === "signed-in" ? (v.profile?.id ?? null) : null);
 
   // members: fetch the add dialog's code once the page settles, so ＋ opens instantly
   useEffect(() => {
@@ -89,7 +128,7 @@ export default function HeaderNav() {
 
   return (
     <div className="flex items-center gap-1 sm:gap-1.5">
-      <NavPills pathname={pathname} />
+      <NavPills pathname={pathname} status={v.status} unread={v.unread} />
       {v.status === "unknown" ? (
         // first frame: the pre-paint data-auth attribute picks the right one
         <>
@@ -113,7 +152,7 @@ export default function HeaderNav() {
           >
             <Plus className="size-4" strokeWidth={2.25} />
           </button>
-          <NotificationsButton />
+          <ListsButton />
           <YouLink pathname={pathname} />
           {adding && <AddDialog open={adding} onOpenChange={setAdding} />}
         </div>
@@ -126,7 +165,7 @@ export default function HeaderNav() {
 export function HeaderNavFallback() {
   return (
     <div className="flex items-center gap-1 sm:gap-1.5">
-      <NavPills pathname={null} />
+      <NavPills pathname={null} status="unknown" unread={0} />
       <span className="signed-out-only">
         <LogIn pathname={null} />
       </span>

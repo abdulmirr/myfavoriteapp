@@ -158,13 +158,9 @@ export default function FeedView({ initial }: { initial: FeedWork[] }) {
   });
   const searchMode = q.trim().length >= 2;
 
-  // "Following" is members-only; while the session check runs the pre-paint
-  // CSS switch shows it exactly when a session exists
+  // what your people are into lives on Friends; the feed filters by medium
   const filters: { key: string; label: string; className?: string }[] = [
     { key: "all", label: "All" },
-    ...(v.status === "signed-out"
-      ? []
-      : [{ key: "following", label: "Following", className: v.status === "unknown" ? "signed-in-only" : undefined }]),
     ...TYPE_FILTERS.map((f) => ({ key: f.key, label: f.label })),
   ];
 
@@ -225,13 +221,7 @@ export default function FeedView({ initial }: { initial: FeedWork[] }) {
         ) : !feed ? (
           <MasonrySkeleton label="Loading the feed…" />
         ) : feed.works.length === 0 ? (
-          <p className="py-16 text-center text-sm text-gray-500 dark:text-neutral-400">
-            {filter === "following"
-              ? v.following.length
-                ? "Nothing from the people you follow here yet."
-                : "Follow a few people and what they love lands here."
-              : "Nothing here yet."}
-          </p>
+          <p className="py-16 text-center text-sm text-gray-500 dark:text-neutral-400">Nothing here yet.</p>
         ) : (
           <>
             <Masonry

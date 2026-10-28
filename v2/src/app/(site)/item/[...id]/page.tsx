@@ -8,12 +8,15 @@ import { itemHref, metaLine, typeLabel } from "@/lib/work";
 import { NaturalCover } from "@/components/Cover";
 import FavoriteButton from "@/components/FavoriteButton";
 import SaveButton from "@/components/SaveButton";
-import PeopleLine from "@/components/PeopleLine";
 import ListCover from "@/components/ListCover";
+import CoverGlow from "@/components/CoverGlow";
 import Avatar from "@/components/ui/Avatar";
 import { ShareLinkButton } from "@/components/profile/ProfileActions";
-import { FavoritedBy, FavoritedList, YourCopyBar } from "@/components/item/ItemExtras";
-import { card, cn, drawer, quietButton } from "@/components/ui/styles";
+import { FavoritedBy, FavoritedList, YourEntry } from "@/components/item/ItemExtras";
+import { cn, iconButton, primaryButton } from "@/components/ui/styles";
+
+/** ★ 🔖 ⤴ as round glass over the cover's glow */
+const glass = "border border-gray-900/10 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5";
 
 type Params = { params: Promise<{ id: string[] }> };
 
@@ -77,97 +80,120 @@ async function Work({ params }: Params) {
   const path = itemHref(work) ?? `/item/${key}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="relative">
-        <section className={cn(card, "relative z-10 overflow-hidden")}>
-          <div className="flex flex-col gap-5 p-4 sm:flex-row sm:gap-6 sm:p-6">
-            <div className="mx-auto w-44 shrink-0 sm:mx-0 sm:w-48 sm:self-start">
-              <NaturalCover work={work} priority sizes="(max-width: 639px) 176px, 192px" />
+    <>
+      <CoverGlow covers={work.image_url ? [work.image_url] : []} />
+      <div className="relative mx-auto max-w-5xl px-4 pt-6 sm:px-6 sm:pt-12">
+        <div className="md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-16">
+          {/* the work: what it is, and what you can do with it */}
+          <section className="flex flex-col items-center text-center md:items-start md:text-left">
+            <div className="w-48 sm:w-56 md:w-full">
+              <div className="overflow-hidden rounded-md shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+                <NaturalCover work={work} priority sizes="(max-width: 767px) 224px, 300px" />
+              </div>
             </div>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <p className="text-xs font-semibold text-gray-500 dark:text-neutral-400">{typeLabel(work)}</p>
-              <h1 className="mt-1 text-2xl font-semibold leading-tight tracking-tight text-gray-900 sm:text-[28px] dark:text-neutral-100">
-                {work.title}
-              </h1>
-              {meta && <p className="mt-1.5 text-sm text-gray-500 dark:text-neutral-400">{meta}</p>}
+            <p className="mt-6 text-xs font-semibold text-gray-600 dark:text-neutral-300">{typeLabel(work)}</p>
+            <h1 className="mt-1 text-[28px] font-bold leading-[1.1] tracking-[-0.03em] break-words text-gray-950 sm:text-[32px] dark:text-white">
+              {work.title}
+            </h1>
+            {meta && <p className="mt-2 text-[15px] text-gray-600 dark:text-neutral-300">{meta}</p>}
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
               {work.view_url && (
                 <a
                   href={work.view_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={cn(quietButton, "mt-4 h-9 w-fit")}
+                  className={cn(primaryButton, "h-9 px-4")}
                 >
                   {sourceLabel(work.view_url, work.media_type)} <ArrowUpRight className="size-4" />
                 </a>
               )}
-              <div className="mt-5 flex items-center gap-1.5 sm:mt-auto sm:pt-6">
-                <FavoriteButton work={work} />
-                <SaveButton work={work} />
-                <ShareLinkButton path={path} />
+              <div className="flex items-center gap-1.5">
+                <FavoriteButton work={work} className={glass} />
+                <SaveButton work={work} className={glass} />
+                <ShareLinkButton icon path={path} className={cn(iconButton, glass)} />
               </div>
             </div>
+          </section>
+
+          {/* the people: who loves it, what they said, where it's kept */}
+          <div className="mt-12 md:mt-0">
+            {favorites.length > 0 ? (
+              <section aria-labelledby="favorited-by">
+                <h2 id="favorited-by" className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
+                  Favorited by {favorites.length} {favorites.length === 1 ? "person" : "people"}
+                </h2>
+                <div className="mt-1 divide-y divide-gray-200 dark:divide-neutral-800">
+                  <YourEntry work={work} />
+                  <Suspense fallback={<FavoritedList favorites={favorites} />}>
+                    <FavoritedBy favorites={favorites} />
+                  </Suspense>
+                </div>
+              </section>
+            ) : (
+              <section>
+                <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">Favorited by</h2>
+                <div className="mt-1 divide-y divide-gray-200 dark:divide-neutral-800">
+                  <YourEntry work={work} />
+                  <p className="py-4 text-[15px] text-gray-500 dark:text-neutral-400">
+                    No one yet — tap ★ if it&apos;s one of yours.
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {lists.length > 0 && (
+              <section aria-labelledby="in-lists" className="mt-10">
+                <h2 id="in-lists" className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
+                  In {lists.length} {lists.length === 1 ? "list" : "lists"}
+                </h2>
+                <ul className="-mx-2 mt-2 flex flex-col">
+                  {lists.map((l) => (
+                    <li key={l.id}>
+                      <Link
+                        href={`/${l.owner.username}/lists/${l.slug}`}
+                        className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-gray-900/[0.04] dark:hover:bg-white/[0.04]"
+                      >
+                        <ListCover covers={work.image_url ? [work.image_url] : []} small />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold text-gray-900 dark:text-neutral-100">{l.title}</span>
+                          <span className="flex items-center gap-1.5 text-[13px] text-gray-500 dark:text-neutral-400">
+                            <Avatar p={l.owner} className="size-4" /> {l.owner.display_name || `@${l.owner.username}`}
+                          </span>
+                          {l.note?.trim() && (
+                            <span className="mt-1 block truncate text-[13px] text-gray-600 dark:text-neutral-300">“{l.note.trim()}”</span>
+                          )}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
-        </section>
-        {(work.fav_count > 0 || work.save_count > 0) && (
-          <div className={cn(drawer, "px-4 pt-6 pb-2.5 sm:px-6")}>
-            <PeopleLine work={work} />
-          </div>
-        )}
+        </div>
       </div>
-
-      <YourCopyBar work={work} />
-
-      {favorites.length > 0 && (
-        <section>
-          <h2 className="mb-3 px-1 text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
-            Favorited by {favorites.length} {favorites.length === 1 ? "person" : "people"}
-          </h2>
-          <Suspense fallback={<FavoritedList favorites={favorites} work={work} />}>
-            <FavoritedBy favorites={favorites} work={work} />
-          </Suspense>
-        </section>
-      )}
-
-      {lists.length > 0 && (
-        <section>
-          <h2 className="mb-3 px-1 text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
-            In {lists.length} {lists.length === 1 ? "list" : "lists"}
-          </h2>
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {lists.map((l) => (
-              <li key={l.id}>
-                <Link
-                  href={`/${l.owner.username}/lists/${l.slug}`}
-                  className={cn(card, "flex items-center gap-3 p-3 transition-colors hover:bg-gray-50 dark:hover:bg-neutral-700/40")}
-                >
-                  <ListCover covers={work.image_url ? [work.image_url] : []} className="h-12 w-auto shrink-0" small />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-gray-900 dark:text-neutral-100">{l.title}</span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400">
-                      <Avatar p={l.owner} className="size-4 text-[9px]" /> @{l.owner.username}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
+    </>
   );
 }
 
 export default function ItemPage({ params }: Params) {
   return (
-    <main className="mx-auto max-w-2xl px-4 pt-2 pb-16 sm:px-6 sm:pt-8">
+    <main className="relative pb-20">
       <Suspense
         fallback={
-          <div className={cn(card, "flex gap-6 p-6")} aria-busy>
-            <span className="aspect-[2/3] w-48 animate-pulse rounded-md bg-gray-200 dark:bg-neutral-700" />
-            <div className="flex flex-1 flex-col gap-3">
-              <span className="h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-neutral-700" />
-              <span className="h-7 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-neutral-700" />
-              <span className="h-4 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-neutral-700" />
+          <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6 sm:pt-12" aria-busy>
+            <div className="md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-16">
+              <div className="flex flex-col items-center gap-3 md:items-start">
+                <span className="aspect-square w-48 animate-pulse rounded-md bg-gray-200 sm:w-56 md:w-full dark:bg-neutral-800" />
+                <span className="mt-3 h-3 w-14 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+                <span className="h-7 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+                <span className="h-4 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+              </div>
+              <div className="mt-12 flex flex-col gap-4 md:mt-0">
+                <span className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+                <span className="h-16 w-full animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+                <span className="h-16 w-full animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+              </div>
             </div>
           </div>
         }

@@ -110,7 +110,7 @@ function Row({
         className="absolute inset-0 cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-inset disabled:pointer-events-none dark:focus-visible:ring-neutral-400"
       />
       <div className="pointer-events-none relative z-10 flex items-center gap-3">
-        <ListCover coverImage={list.cover_image_url} covers={list.covers} className="h-12 w-auto shrink-0" small />
+        <ListCover coverImage={list.cover_image_url} covers={list.covers} small />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-semibold text-gray-900 dark:text-neutral-100">{list.title}</span>
           <span className="min-w-0 truncate text-xs text-gray-500 dark:text-neutral-400">

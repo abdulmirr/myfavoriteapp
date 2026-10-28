@@ -193,47 +193,86 @@ export async function getPublicListParams(): Promise<{ username: string; slug: s
     .map((r) => ({ username: r.owner!.username, slug: r.slug }));
 }
 
-/* ── activity ─────────────────────────────────────────────────────────────── */
+/* ── friends ──────────────────────────────────────────────────────────────── */
 
-export type ActivityEvent =
-  | { kind: "favorite"; at: string; item: Item }
-  | { kind: "list"; at: string; item: ListItem; list: Pick<ListRow, "id" | "title" | "slug"> };
+/** One work inside a Friends group: a favorite (note = their thought) or a list save (note = theirs). */
+export interface FriendWork {
+  id: string;
+  profile_id: string;
+  media_type: MediaType;
+  title: string;
+  creator: string;
+  image_url: string | null;
+  view_url: string | null;
+  canonical_id: string | null;
+  metadata: Item["metadata"];
+  note: string;
+  created_at: string;
+}
 
-/** Favorites and public-list adds, newest first, keyset-paged by timestamp. */
-export async function getActivity(
-  profileId: string,
-  before: string | null = null,
+/** A burst of one person's activity: their favorites that day, or their saves to one list. */
+export interface FriendGroup {
+  who: ProfileLite;
+  kind: "favorite" | "save";
+  list: { id: string; title: string; slug: string; created_at: string } | null;
+  day: string;
+  /** how many works the group holds (items carries the newest four) */
+  n: number;
+  last_at: string;
+  items: FriendWork[];
+}
+
+/**
+ * The Friends timeline for one viewer: what the people they follow favorited
+ * and saved to public lists, grouped (friends_activity, migration31). All of
+ * it is public, so it's cached like the feed and refreshed by the same tags —
+ * anyone's favorite or save ("feed"), or the viewer following someone.
+ */
+export async function getFriendsActivity(
+  viewer: string,
+  offset = 0,
   limit = 20
-): Promise<{ events: ActivityEvent[]; hasMore: boolean }> {
+): Promise<{ groups: FriendGroup[]; hasMore: boolean }> {
   "use cache";
   cacheLife("minutes");
-  cacheTag(`profile:${profileId}`);
-  const db = supabaseServer();
-  let favQ = db
-    .from("items")
-    .select("*")
-    .eq("profile_id", profileId)
-    .order("created_at", { ascending: false })
-    .limit(limit + 1);
-  let listQ = db
-    .from("list_items")
-    .select("*, list:lists!inner(id, title, slug, is_public)")
-    .eq("profile_id", profileId)
-    .eq("list.is_public", true)
-    .order("created_at", { ascending: false })
-    .limit(limit + 1);
-  if (before) {
-    favQ = favQ.lt("created_at", before);
-    listQ = listQ.lt("created_at", before);
-  }
-  const [favs, adds] = await Promise.all([favQ, listQ]);
-  const events: ActivityEvent[] = [
-    ...((favs.data ?? []) as Item[]).map((item) => ({ kind: "favorite" as const, at: item.created_at, item })),
-    ...((adds.data ?? []) as (ListItem & { list: Pick<ListRow, "id" | "title" | "slug"> })[]).map(
-      ({ list, ...item }) => ({ kind: "list" as const, at: item.created_at, item: item as ListItem, list })
-    ),
-  ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  return { events: events.slice(0, limit), hasMore: events.length > limit };
+  cacheTag("feed", `profile:${viewer}`);
+  const { data, error } = await supabaseServer().rpc("friends_activity", {
+    p_viewer: viewer,
+    p_limit: limit + 1,
+    p_offset: offset,
+  });
+  if (error) throw new Error(error.message);
+  type Row = {
+    profile_id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    kind: "favorite" | "save";
+    list_id: string | null;
+    list_title: string | null;
+    list_slug: string | null;
+    list_created_at: string | null;
+    day: string;
+    n: number;
+    last_at: string;
+    items: FriendWork[];
+  };
+  const rows = (data ?? []) as Row[];
+  return {
+    groups: rows.slice(0, limit).map((r) => ({
+      who: { id: r.profile_id, username: r.username, display_name: r.display_name, avatar_url: r.avatar_url },
+      kind: r.kind,
+      list:
+        r.list_id && r.list_slug
+          ? { id: r.list_id, title: r.list_title ?? "", slug: r.list_slug, created_at: r.list_created_at ?? r.last_at }
+          : null,
+      day: r.day,
+      n: r.n,
+      last_at: r.last_at,
+      items: r.items ?? [],
+    })),
+    hasMore: rows.length > limit,
+  };
 }
 
 /* ── feed ─────────────────────────────────────────────────────────────────── */

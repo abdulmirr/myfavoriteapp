@@ -4,55 +4,68 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Pin, PinOff, Quote } from "lucide-react";
+import { Pin, PinOff, Plus } from "lucide-react";
 import type { Item, ProfileLite, Work } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { myItemId, revalidate, useViewer } from "@/lib/viewer";
+import { dayStamp } from "@/lib/work";
 import Avatar from "../ui/Avatar";
 import { toast } from "../ui/Toast";
-import { card, cn, quietButton } from "../ui/styles";
+import { cn } from "../ui/styles";
 
 const ThoughtDialog = dynamic(() => import("../ThoughtDialog"));
 
-/** When the viewer has this on their wall: edit the thought, pin to Top four. */
-export function YourCopyBar({ work }: { work: Work }) {
+type Fav = Item & { profile: ProfileLite };
+
+const chip =
+  "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-gray-700 outline-none transition-colors hover:bg-gray-900/5 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white";
+
+/**
+ * Your own line in "Favorited by", first: your thought (or a prompt to write
+ * one) and the Top four pin, right where everyone else's thoughts are — it
+ * replaces the old "On your wall" bar.
+ */
+export function YourEntry({ work }: { work: Work }) {
   const v = useViewer();
   const id = myItemId(v, work);
-  const [pinned, setPinned] = useState<number | null | undefined>(undefined);
+  const real = !!id && id !== "pending";
+  const [row, setRow] = useState<{ id: string; description: string; created_at: string; pinned_order: number | null } | null>(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!id || id === "pending") return;
+    if (!real) return;
     let stale = false;
     supabase()
       .from("items")
-      .select("pinned_order")
+      .select("id, description, created_at, pinned_order")
       .eq("id", id)
       .maybeSingle()
-      .then(({ data }) => !stale && setPinned((data as { pinned_order: number | null } | null)?.pinned_order ?? null));
+      .then(({ data }) => !stale && setRow((data as typeof row) ?? null));
     return () => {
       stale = true;
     };
-  }, [id]);
+  }, [real, id]);
 
-  if (!id || id === "pending" || !v.profile) return null;
+  if (!id || !v.profile) return null;
+  const mine = row && row.id === id ? row : null;
+  const thought = mine?.description?.trim();
 
   const togglePin = async () => {
-    if (busy || pinned === undefined) return;
+    if (busy || !mine || !v.profile) return;
     setBusy(true);
     try {
       const db = supabase();
-      if (pinned) {
-        const { error } = await db.from("items").update({ pinned_order: null }).eq("id", id);
+      if (mine.pinned_order) {
+        const { error } = await db.from("items").update({ pinned_order: null }).eq("id", mine.id);
         if (error) throw error;
-        setPinned(null);
+        setRow({ ...mine, pinned_order: null });
         toast("Unpinned from your Top four");
       } else {
         const { data } = await db
           .from("items")
           .select("pinned_order")
-          .eq("profile_id", v.profile!.id)
+          .eq("profile_id", v.profile.id)
           .not("pinned_order", "is", null);
         const used = new Set(((data ?? []) as { pinned_order: number }[]).map((r) => r.pinned_order));
         const slot = [1, 2, 3, 4].find((s) => !used.has(s));
@@ -60,12 +73,12 @@ export function YourCopyBar({ work }: { work: Work }) {
           toast("Your Top four is full — unpin one first.");
           return;
         }
-        const { error } = await db.from("items").update({ pinned_order: slot }).eq("id", id);
+        const { error } = await db.from("items").update({ pinned_order: slot }).eq("id", mine.id);
         if (error) throw error;
-        setPinned(slot);
+        setRow({ ...mine, pinned_order: slot });
         toast("Pinned to your Top four");
       }
-      revalidate([`profile:${v.profile!.id}`]);
+      revalidate([`profile:${v.profile.id}`]);
     } catch {
       toast("Couldn't update — try again.");
     } finally {
@@ -74,105 +87,118 @@ export function YourCopyBar({ work }: { work: Work }) {
   };
 
   return (
-    <div className={cn(card, "flex flex-wrap items-center justify-between gap-3 px-4 py-3")}>
-      <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">On your wall</p>
-      <div className="flex gap-1.5">
-        <button type="button" onClick={() => setEditing(true)} className={cn(quietButton, "h-8 px-2.5 text-[13px]")}>
-          <Quote className="size-3.5" /> Your thought
-        </button>
-        <button
-          type="button"
-          onClick={togglePin}
-          disabled={busy || pinned === undefined}
-          className={cn(quietButton, "h-8 px-2.5 text-[13px]")}
-        >
-          {pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-          {pinned ? "Unpin" : "Pin to Top four"}
-        </button>
+    <div className="flex gap-3 py-4 sm:gap-4">
+      <Avatar p={v.profile} className="size-10" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 flex-1 text-sm text-gray-500 dark:text-neutral-400">
+            <span className="font-semibold text-gray-900 dark:text-neutral-100">You</span>
+            {mine && <> · {dayStamp(mine.created_at)}</>}
+          </p>
+          <button type="button" onClick={togglePin} disabled={busy || !mine} className={cn(chip, "-my-1")}>
+            {mine?.pinned_order ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+            {mine?.pinned_order ? "Unpin" : "Pin to Top four"}
+          </button>
+        </div>
+        {thought ? (
+          <p className="mt-1 text-[15px] leading-relaxed whitespace-pre-line text-gray-800 dark:text-neutral-200">
+            “{thought}”{" "}
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="cursor-pointer text-sm font-semibold text-gray-500 underline-offset-2 hover:text-gray-900 hover:underline dark:text-neutral-400 dark:hover:text-neutral-100"
+            >
+              Edit
+            </button>
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            disabled={!mine}
+            className="mt-1 inline-flex cursor-pointer items-center gap-1 text-[15px] text-gray-500 hover:text-gray-900 disabled:cursor-default dark:text-neutral-400 dark:hover:text-neutral-100"
+          >
+            <Plus className="size-4" /> Add your thought — what makes it one of yours?
+          </button>
+        )}
       </div>
-      {editing && (
+      {editing && mine && (
         <ThoughtDialog
-          itemId={id}
+          itemId={mine.id}
           title={work.title}
           open={editing}
           onOpenChange={setEditing}
-          onSaved={() => revalidate([`work:${work.work_key ?? work.canonical_id ?? ""}`])}
+          onSaved={(text) => {
+            setRow({ ...mine, description: text });
+            revalidate([`work:${work.work_key ?? work.canonical_id ?? ""}`]);
+          }}
         />
       )}
     </div>
   );
 }
 
-/** Everyone who has it, their thought in the card — `?from=` puts that person first. */
-export function FavoritedBy({ favorites, work }: { favorites: (Item & { profile: ProfileLite })[]; work: Work }) {
+/**
+ * Everyone who has it. People who wrote something get a line each, newest
+ * first — `?from=` (the wall you came from) leads, then people you follow;
+ * the rest gather as faces. Your own copy is YourEntry, so it's left out here.
+ */
+export function FavoritedBy({ favorites }: { favorites: Fav[] }) {
   const from = useSearchParams().get("from");
-  const ordered = from
-    ? [...favorites].sort((a, b) => (a.profile.username === from ? -1 : b.profile.username === from ? 1 : 0))
-    : favorites;
-  return <FavoritedList favorites={ordered} work={work} />;
+  return <FavoritedList favorites={favorites} from={from} />;
 }
 
-export function FavoritedList({ favorites, work }: { favorites: (Item & { profile: ProfileLite })[]; work: Work }) {
-  // people who wrote something get the full card; the rest gather in one row
-  const said = favorites.filter((f) => f.description?.trim());
-  const quiet = favorites.filter((f) => !f.description?.trim());
+export function FavoritedList({ favorites, from = null }: { favorites: Fav[]; from?: string | null }) {
+  const v = useViewer();
+  const me = v.profile?.id;
+  const rank = (f: Fav) => (f.profile.username === from ? 0 : v.followingIds.has(f.profile_id) ? 1 : 2);
+  const others = favorites
+    .filter((f) => f.profile_id !== me)
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => rank(a.f) - rank(b.f) || a.i - b.i)
+    .map((x) => x.f);
+  const said = others.filter((f) => f.description?.trim());
+  const quiet = others.filter((f) => !f.description?.trim());
+
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
+    <>
       {said.map((f) => (
-        <ThoughtCard key={f.id} f={f} work={work} />
+        <article key={f.id} className="flex gap-3 py-4 sm:gap-4">
+          <Link href={`/${f.profile.username}`} aria-label={f.profile.display_name || f.profile.username} className="shrink-0">
+            <Avatar p={f.profile} className="size-10" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-gray-500 dark:text-neutral-400">
+              <Link href={`/${f.profile.username}`} className="font-semibold text-gray-900 hover:underline dark:text-neutral-100">
+                {f.profile.display_name || `@${f.profile.username}`}
+              </Link>{" "}
+              · <time dateTime={f.created_at}>{dayStamp(f.created_at)}</time>
+            </p>
+            <p className="mt-1 text-[15px] leading-relaxed whitespace-pre-line text-gray-800 dark:text-neutral-200">
+              “{f.description.trim()}”
+            </p>
+          </div>
+        </article>
       ))}
       {quiet.length > 0 && (
-        <div className={cn(card, "p-4")}>
-          <p className="mb-3 text-xs font-semibold text-gray-500 dark:text-neutral-400">
-            {said.length ? "Also on" : "On"} {quiet.length} {quiet.length === 1 ? "wall" : "walls"}
+        <div className="py-4">
+          <p className="text-sm text-gray-500 dark:text-neutral-400">
+            {said.length || me ? "Also on" : "On"} {quiet.length} {quiet.length === 1 ? "wall" : "walls"}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-x-1 gap-y-2">
             {quiet.map((f) => (
               <Link
                 key={f.id}
                 href={`/${f.profile.username}`}
-                className="flex items-center gap-1.5 rounded-lg bg-gray-100 py-1 pr-2.5 pl-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-neutral-700/60 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-900/5 hover:text-gray-900 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
               >
-                <Avatar p={f.profile} className="size-5 text-[9px]" />
+                <Avatar p={f.profile} className="size-7" />
                 {f.profile.display_name?.split(" ")[0] || f.profile.username}
               </Link>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
-
-function ThoughtCard({ f, work }: { f: Item & { profile: ProfileLite }; work: Work }) {
-  const thought = f.description?.trim();
-  const date = new Date(f.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  return (
-    <article className="relative">
-      <div className="mx-2 -mb-4 rounded-t-2xl border border-b-0 border-gray-200 bg-gray-50 px-4 pt-2.5 pb-[26px] dark:border-neutral-700 dark:bg-neutral-800/60">
-        <div className="flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-neutral-400">
-          <p className="min-w-0 truncate">
-            <Link href={`/${f.profile.username}`} className="font-medium text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-neutral-400">
-              {f.profile.display_name || f.profile.username}
-            </Link>{" "}
-            favorited it
-          </p>
-          <time dateTime={f.created_at} className="shrink-0">
-            {date}
-          </time>
-        </div>
-      </div>
-      <div className={cn(card, "relative z-10 p-4")}>
-        <p className="whitespace-pre-line text-[15px] leading-relaxed text-gray-800 dark:text-neutral-200">“{thought}”</p>
-        <Link
-          href={`/${f.profile.username}`}
-          className="mt-3 inline-block text-xs font-medium text-gray-500 hover:text-gray-900 hover:underline dark:text-neutral-400 dark:hover:text-neutral-100"
-        >
-          See @{f.profile.username}&apos;s wall →
-        </Link>
-        <span className="sr-only">{work.title}</span>
-      </div>
-    </article>
-  );
-}
-

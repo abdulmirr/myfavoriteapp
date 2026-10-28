@@ -15,6 +15,8 @@ Design base: [antislop.xyz](https://antislop.xyz). The current site at the repo 
 4. **Preview:** localhost first. v2 runs at `http://localhost:3000`. Since 2026-10-27 there is also a Vercel preview at https://myfavoriteapp-v2.vercel.app (see "Swapping v2 in" below).
 5. **AI picks model (2026-10-27):** Sonnet 5.5, because cost matters.
 6. **Sounds stay.** Load them lazily so they never compete with covers.
+7. **Three pages (2026-10-27, third batch):** Home · Feed · **Friends**. Feed is discovery; Friends is your people — their activity, your notifications (the bell is gone), people with your taste, and Invite a friend. The profile keeps two tabs (Favorites, Lists); the Activity tab folded into Friends, and the Feed's Following filter went with it.
+8. **Lists are playlists and queues (2026-10-27):** numbered rows, drag to reorder (no Reorder button), ○ to mark something finished with "Loved it?" to favorite it, and + Add on your own list.
 
 Environment notes:
 - The Xcode license is accepted (2026-10-27, through a macOS admin dialog), so git works.
@@ -451,7 +453,7 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
 1. **Check v1 routes v2 doesn't have.** Only these are missing:
    - `/recap`, `/api/recap`: unlinked, and their cron is off.
    - `/api/recommendations`: replaced by `/api/picks`.
-   - `/explore`, `/friends`, `/profile`: these redirect.
+   - `/explore`, `/profile`: these redirect. `/friends` is a real page again, and v1's `/?feed=following` link redirects to it. `/<user>/activity` redirects to the profile.
 
    Email unsubscribe links, `/auth/callback`, `/auth/reset`, the Spotify callback, `/extension` and `/item` all exist in v2.
 2. **Add the preview to Supabase's redirect allowlist.** Do this first so Google sign-in can be tested on the preview. Production (`https://myfavoriteapp.com/**`) is already allowed.
@@ -501,8 +503,26 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
   - the newsletter flow: 19 checks
   - The preview was browser-checked signed out and signed in. tsc and eslint are clean, and `next build` produced 387 pages.
 
+### 2026-10-27, third batch (lists, Friends, the item page)
+
+- [x] **Fixed:** the save dialog's list names were invisible. `cn` joins classes without merging, so ListCover's `w-full` beat the caller's `w-auto` and the thumbnail filled the row. The width now lives inside ListCover (`small` = 86px).
+- [x] Header: Home · Feed · **Friends** (members; the unread badge moved onto it), then ＋, **🔖 Your lists** (a panel of your lists, newest first, plus New list) and your avatar. The bell is deleted. On phones the wordmark steps down a size under 390px and hides under 370px so everything fits.
+- [x] **Friends** (`/friends`):
+  - What the people you follow favorited and saved to public lists, grouped per person, per day, per list (`friends_activity`, migration31) — a bulk import is one line with "+ N more". Favoriting from it credits the friend.
+  - Your notifications (Follow back, Approve back, your reach), marked read after a beat.
+  - "Your people" faces, with gold rings on whoever was active in the last three days.
+  - People with your taste (shared favorites), with their covers and a Follow chip.
+  - Invite a friend: Messages on Apple devices, the share sheet on phones, a copied message elsewhere; the link is your own page.
+  - Desktop has a right rail (notifications, suggestions); phones stack them.
+- [x] **List page**, playlist-style: the cover, its color as a glow, the title big, owner · count · updated, then numbered rows (cover, title, "Creator · Year · Type", the note).
+  - Owner: drag handles (on hover; always on touch screens; arrow keys work too), ○ marks finished (`list_items.done_at`, migration30) with a "Loved it" toast, a Finished section with "Loved it?" on each row, ⋯ for note / move to top / save to another list / remove (with Undo), and + Add (search straight into the list).
+  - Visitors: 🔖 ★ on every row; signed-out visitors get "Make your own lists".
+  - New share card for lists (title, owner, count, the first covers in their frames, or the list's own image).
+- [x] **Item page**, Letterboxd-style: the work on the left (cover, type, title, creator, Listen on…, ★ 🔖 and Share as round icons), the people on the right: **You** first (your thought or "Add your thought", Pin to Top four — replacing the "On your wall" bar), then everyone's thoughts (people you follow first), then the rest as faces, then the lists it's in.
+- [x] QA: `_e2e-batch3` (41 checks) plus `_e2e-v2` (23) and `_e2e-profile` (13), all against the real DB; tsc, eslint and `next build` clean.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.
-- Say when to swap. Upload `favorite-extension-v1.1.0.zip` to the Chrome Web Store after the swap, because its lists only show in v2.
+- Say when to swap. Submit `favorite-extension-v1.1.0.zip` to the Chrome Web Store with automatic publishing unchecked, then press Publish after the swap — its lists only show in v2.
 - Newsletter: Resend's free plan sends 100 emails a day. Past roughly 90 subscribers, the daily send needs a paid plan.
