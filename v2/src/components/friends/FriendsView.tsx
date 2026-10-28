@@ -10,7 +10,7 @@ import { TypedTitle } from "../Typewriter";
 import WorkRow, { WorkRowSkeleton } from "../WorkRow";
 import Avatar from "../ui/Avatar";
 import InviteButton from "./InviteButton";
-import FriendNotifications, { useNotifications } from "./FriendNotifications";
+import { NotificationRow, Reach, useNotifications } from "./FriendNotifications";
 import PeopleToFollow, { useDiscover } from "./PeopleToFollow";
 import { cn, inlineLink, pageTitle, primaryButton } from "../ui/styles";
 
@@ -174,9 +174,11 @@ function YourPeople({ people, lastSeen }: { people: Profile[]; lastSeen: Map<str
 }
 
 /**
- * Friends: Feed is for discovering, this is your people. What the people you
- * follow favorited and saved lately (grouped, so a bulk import is one line),
- * your notifications, people with your taste, and the invite button.
+ * Friends: Discover is for finding things, this is your people. One
+ * timeline — what the people you follow favorited and saved (grouped, so a
+ * bulk import is one line) and what happened to you (follows, favorites from
+ * your wall, taste approvals) — plus people with your taste, your reach, and
+ * the invite button.
  */
 export default function FriendsView() {
   const v = useViewer();
@@ -255,36 +257,54 @@ export default function FriendsView() {
 
   const following = v.following;
   const groups = page?.groups ?? null;
+  const notes = notifications.list;
+  const alone = following.length === 0 && !v.stale && v.status === "signed-in";
+
+  // one timeline, newest first: what your people did and what happened to
+  // you. While more of their activity can load, a notification older than
+  // the last loaded entry waits its turn, so the order never jumps.
+  const floor = !alone && page?.hasMore && groups?.length ? Date.parse(groups[groups.length - 1].last_at) : -Infinity;
+  const entries = [
+    ...(alone ? [] : (groups ?? [])).map((g, i) => ({
+      at: Date.parse(g.last_at),
+      key: `g:${groupKey(g)}`,
+      node: <Group g={g} priority={i < 3} />,
+    })),
+    ...(notes ?? [])
+      .filter((n) => Date.parse(n.created_at) >= floor)
+      .map((n) => ({ at: Date.parse(n.created_at), key: `n:${n.id}`, node: <NotificationRow n={n} data={notifications} /> })),
+  ].sort((a, b) => b.at - a.at);
+  const loading = !pid || notes === null || (!alone && !groups);
 
   const timeline =
-    error && !groups ? (
+    error && !groups && !alone ? (
       <p className="py-12 text-center text-sm text-red-600 dark:text-red-400">Couldn&apos;t load your friends. Refresh to try again.</p>
-    ) : following.length === 0 && !v.stale && v.status === "signed-in" ? (
-      <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center dark:border-neutral-700">
-        <p className="text-base font-semibold text-gray-900 dark:text-neutral-100">You&apos;re not following anyone yet.</p>
-        <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-gray-500 dark:text-neutral-400">
-          Follow a few people and what they love and save shows up here. Or bring your friends with you.
-        </p>
-      </div>
-    ) : !pid || !groups ? (
+    ) : loading ? (
       <div className="flex flex-col gap-2" aria-busy>
         {[0, 1, 2, 3].map((i) => (
           <WorkRowSkeleton key={i} />
         ))}
       </div>
-    ) : groups.length === 0 ? (
-      <p className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm leading-relaxed text-gray-500 dark:border-neutral-700 dark:text-neutral-400">
-        Quiet so far. When the people you follow favorite or save something, it lands here.
-      </p>
+    ) : entries.length === 0 ? (
+      alone ? null : (
+        <p className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm leading-relaxed text-gray-500 dark:border-neutral-700 dark:text-neutral-400">
+          Quiet so far. When the people you follow favorite or save something, it lands here.
+        </p>
+      )
     ) : (
       <div className="flex flex-col gap-8">
-        {groups.map((g, i) => (
-          <Group key={groupKey(g)} g={g} priority={i < 3} />
+        {entries.map((e) => (
+          <div key={e.key}>{e.node}</div>
         ))}
-        {page?.hasMore && <div ref={sentinel} aria-hidden className="h-px w-full" />}
+        {!alone && page?.hasMore && <div ref={sentinel} aria-hidden className="h-px w-full" />}
         {loadingMore && <p className="py-4 text-center text-sm text-gray-500 dark:text-neutral-400">Loading more…</p>}
       </div>
     );
+  const reach = notifications.reach && notifications.reach.pieces > 0 && (
+    <div className="border-t border-gray-200 pt-3.5 dark:border-neutral-800">
+      <Reach reach={notifications.reach} />
+    </div>
+  );
 
   return (
     <div className="px-4 pt-12 pb-20 sm:px-6 sm:pt-16 lg:px-8">
@@ -297,23 +317,35 @@ export default function FriendsView() {
 
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
           <div className="min-w-0">
-            <div className="mb-10 lg:hidden">
-              <FriendNotifications data={notifications} limit={3} />
-            </div>
             {following.length > 0 && <YourPeople people={following} lastSeen={lastSeen} />}
-            <section aria-label="Latest from your people">
-              {following.length > 0 && (
+            {alone && (
+              <>
+                <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center dark:border-neutral-700">
+                  <p className="text-base font-semibold text-gray-900 dark:text-neutral-100">You&apos;re not following anyone yet.</p>
+                  <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-gray-500 dark:text-neutral-400">
+                    Follow a few people and what they love and save shows up here. Or bring your friends with you.
+                  </p>
+                </div>
+                {/* on phones, the people to follow come right after — that's the next step */}
+                <div className="mt-10 lg:hidden">
+                  <PeopleToFollow people={discover} />
+                </div>
+              </>
+            )}
+            <section aria-label="Latest" className={cn(alone && entries.length > 0 && "mt-12")}>
+              {entries.length > 0 && (
                 <h2 className="mb-4 px-1 text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">Latest</h2>
               )}
               {timeline}
             </section>
-            <div className="mt-12 lg:hidden">
-              <PeopleToFollow people={discover} />
+            <div className="mt-12 flex flex-col gap-10 lg:hidden">
+              {!alone && <PeopleToFollow people={discover} />}
+              {reach}
             </div>
           </div>
           <aside className="hidden lg:flex lg:flex-col lg:gap-10">
-            <FriendNotifications data={notifications} limit={6} />
             <PeopleToFollow people={discover} />
+            {reach}
           </aside>
         </div>
       </div>

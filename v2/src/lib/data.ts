@@ -15,7 +15,6 @@ import type {
   Profile,
   ProfileLite,
   RankedWork,
-  TastePerson,
 } from "./types";
 import { TYPE_FILTERS, titleKey } from "./work";
 
@@ -319,10 +318,10 @@ const viaCopy = <T extends DiscoverWork>(w: T): T => ({
 });
 
 /**
- * Discover's "Most loved" (discover_works, migration34): every work, the ones
- * favorited most in the last 30 days first, then the rest by favorites of
- * all time — with who, for both. `exclude` leaves out one person's favorites
- * (the viewer's, so their pages stay full).
+ * Discover's "Most loved" (discover_works, migration35): every work by how
+ * many people have it, people interleaved within a count, with who.
+ * `exclude` leaves out one person's favorites (the viewer's, so their pages
+ * stay full).
  */
 export async function getDiscoverWorks(opts: {
   types: MediaType[] | null;
@@ -344,22 +343,19 @@ export async function getDiscoverWorks(opts: {
 }
 
 /**
- * Discover for one person (discover_for): what the people they follow
- * favorited, newest first; three "Because you love …" rows — a different
- * three of their favorites each day, different kinds of things where
- * possible, no work in two rows — every work with who has it; and the people
- * who share most of their taste. Public data only, so it's cached like the feed; the page also
- * hides what's in their private lists.
+ * Discover for one person (discover_for): three "Because you love …" rows —
+ * a different three of their favorites each day, different kinds where
+ * possible, each row holding its favorite's own kind, no work in two rows,
+ * every work with who has it. Public data only, so it's cached like the
+ * feed; the page also hides what's in their private lists.
  */
-export async function getDiscoverFor(
-  viewer: string
-): Promise<{ friends: DiscoverWork[]; because: BecauseRow[]; people: TastePerson[] }> {
+export async function getDiscoverFor(viewer: string): Promise<{ because: BecauseRow[] }> {
   "use cache";
   cacheLife("minutes");
   cacheTag("feed", `profile:${viewer}`);
   const { data, error } = await supabaseServer().rpc("discover_for", { p_viewer: viewer });
   if (error) throw new Error(error.message);
-  const d = data as { friends: DiscoverWork[]; seeds: BecauseRow[]; people: TastePerson[] };
+  const d = data as { seeds: BecauseRow[] };
 
   const day = new Date().toISOString().slice(0, 10);
   const kind = (w: DiscoverWork) => TYPE_FILTERS.find((f) => f.types.includes(w.media_type))?.key ?? w.media_type;
@@ -376,10 +372,7 @@ export async function getDiscoverFor(
       return { ...s, seed: viaCopy(s.seed), works: works.map(viaCopy) };
     })
     .filter((s) => s.works.length >= 6);
-  const people = d.people
-    .filter((p) => p.works.length >= 3)
-    .map((p) => ({ ...p, works: p.works.map(viaCopy) }));
-  return { friends: d.friends.map(viaCopy), because, people };
+  return { because };
 }
 
 /* ── item pages ───────────────────────────────────────────────────────────── */

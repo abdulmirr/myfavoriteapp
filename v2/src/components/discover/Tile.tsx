@@ -63,7 +63,7 @@ export default function Tile({
   const kept = isFavorited(v, work) || listsHolding(v, work).size > 0;
   const to = href === undefined ? itemHref(work) : href;
   return (
-    <div className="@container min-w-0">
+    <div className="min-w-0">
       <div className="group/tile group relative">
         <To href={to} hidden className="block outline-none">
           <Framed

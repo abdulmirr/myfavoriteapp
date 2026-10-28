@@ -1,12 +1,12 @@
 // Discover (2026-10-28), against the dev server (:3000) and the real DB. A
-// visitor gets "Most loved" — everything, what was favorited most this month
-// first, each tile with how many and who — and a nudge to start a library.
-// A member who loves a few widely-loved things gets "Because you love …"
-// rows and people with their taste, a friend they follow named under what
-// the friend loves, and nowhere on the page anything that's already theirs
-// (a private save included) or anything twice. /feed still stands. Two
-// throwaway members (one follows the other), deleted afterwards; nothing
-// here follows or favorites a real person.
+// visitor gets "Most loved" — everything by favorites, each tile with the
+// number and faces — and a nudge to start a library. A member who loves a
+// few widely-loved things gets "Because you love …" rows, each holding works
+// of its favorite's own kind, a friend they follow first among the faces,
+// and nowhere on the page anything that's already theirs (a private save
+// included) or anything twice. /feed still stands. Two throwaway members (one
+// follows the other), deleted afterwards; nothing here follows or favorites
+// a real person.
 //   node scripts/_e2e-discover.mjs
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -81,11 +81,20 @@ const workAlts = (page, sections, framed = false) =>
   );
 const sectionOf = (page, name) => page.locator("section").filter({ has: page.getByRole("heading", { name, exact: true }) });
 // the grid in DOM order: a divider's label, or a tile's favorites count
-const gridSeq = (section) =>
+// the grid's tiles in order, each as its favorites count
+const gridCounts = (section) =>
   section.evaluate((s) =>
-    [...s.querySelector(".grid").children].map((c) =>
-      c.querySelector("h3")?.textContent ?? parseInt(c.querySelector(".sr-only")?.textContent ?? "0", 10)
-    )
+    [...s.querySelector(".grid").children].map((c) => parseInt(c.querySelector(".sr-only")?.textContent ?? "0", 10))
+  );
+// what a who line shows: a number, then faces — nothing else
+const lineShapes = (scope) =>
+  scope.evaluate((s) =>
+    [...s.querySelectorAll("p:has(> .sr-only)")].map((p) => {
+      const [count, faces, ...rest] = [...p.children].filter((c) => !c.classList.contains("sr-only"));
+      return /^\d+$/.test(count?.textContent ?? "") && (!faces || !!faces.querySelector("[class*='-space-x']")) && rest.length === 0
+        ? "ok"
+        : p.textContent;
+    })
   );
 
 try {
@@ -105,14 +114,13 @@ try {
   const gone = await Promise.all(["Fresh thoughts", "Loved most this month", "Browse everything"].map((n) => vp.getByRole("heading", { name: n, exact: true }).count()));
   check("the old rows are gone", gone.every((n) => n === 0));
   const most = sectionOf(vp, "Most loved");
-  const seq = await gridSeq(most);
-  const counts = seq.filter((x) => typeof x === "number");
-  const labels = seq.filter((x) => typeof x === "string");
+  const counts = await gridCounts(most);
   check("most loved, as a grid", counts.length >= 24, `${counts.length} tiles`);
-  check("…this month first", labels[0] === "This month", labels.join(" → "));
   check("…every tile says how many", counts.every((n) => n >= 1));
-  const month = seq.slice(1, seq.indexOf("All time") > 0 ? seq.indexOf("All time") : undefined).filter((x) => typeof x === "number");
-  check("…most this month first", month.every((n, i) => i === 0 || n <= month[i - 1]), month.slice(0, 12).join(" "));
+  check("…most favorites first", counts.every((n, i) => i === 0 || n <= counts[i - 1]), counts.slice(0, 12).join(" "));
+  check("…no month split", (await most.locator("h3").count()) === 0);
+  const shapes = await lineShapes(most);
+  check("…each line just a number and faces", shapes.length === counts.length && shapes.every((x) => x === "ok"), shapes.filter((x) => x !== "ok").slice(0, 3).join(" | "));
   // a face per line at least (photos, or a letter where there's none)
   const faced = await most.evaluate((s) => [...s.querySelectorAll(".grid p")].filter((p) => p.querySelector("[class*='-space-x']")?.children.length > 0).length);
   check("…and who (faces)", faced === counts.length, `${faced}/${counts.length} lines`);
@@ -136,7 +144,7 @@ try {
   const A = await throwaway("disc");
   const owned = [];
   for (const [i, k] of LOVES.entries()) owned.push(await favorite(A.pid, k, i));
-  // the friend favorites the top five of A's "Most loved" this month
+  // the friend favorites the top five of A's "Most loved"
   const B = await throwaway("discfriend");
   await q("update profiles set display_name = $2 where id = $1", [B.pid, FRIEND]);
   const picks = await q("select work_key, title from public.discover_works(null, $1, 5, 0)", [A.pid]);
@@ -151,8 +159,8 @@ try {
   check("…never what they have", !rowWorks.some((w) => owned.includes(w.title)));
   check("…no work in two rows", new Set(rowWorks.map((w) => w.work_key)).size === rowWorks.length);
   check("…each work with who has it", rowWorks.every((w) => w.fav_count >= 1 && w.favoriter_ids?.length >= 1 && Array.isArray(w.top_profiles)));
-  check("…and what the people they follow favorited", mine.friends?.length === 5 && mine.friends.every((w) => w.favoriter_ids.includes(B.pid)), `${mine.friends?.length}`);
-  check("…and people with their taste", mine.people?.length >= 1, `${mine.people?.length}`);
+  check("…each row one kind: its favorite's", mine.because.every((r) => r.works.every((w) => w.media_type === r.seed.media_type)), mine.because.map((r) => `${r.seed.title} (${r.seed.media_type})`).join(", "));
+  check("…and no friends or people rows (Friends has those)", !("friends" in mine) && !("people" in mine));
   check("…for real ids only", (await fetch(`${APP}/api/discover?viewer=nope`)).status === 400);
   const ranked = await (await fetch(`${APP}/api/discover/works?viewer=${A.pid}`)).json();
   check("most loved leaves out their favorites", ranked.works.length > 0 && !ranked.works.some((w) => owned.includes(w.title)));
@@ -180,14 +188,18 @@ try {
   await page.goto(`${APP}/discover`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: /^Because you love/ }).first().waitFor({ timeout: 20000 });
   await page.waitForTimeout(1500);
-  const circle = sectionOf(page, "From people you follow");
-  check("from people you follow, first", (await page.locator("section h2").first().textContent()) === "From people you follow" && (await circle.locator("img[alt]:not([alt=''])").count()) === 5);
-  check("…each named", (await circle.locator("p span[aria-hidden]", { hasText: FRIEND.split(" ")[0] }).count()) === 5);
+  const absent = await Promise.all(["From people you follow", "People with your taste"].map((n) => page.getByRole("heading", { name: n, exact: true }).count()));
+  check("no friends or people rows", absent.every((n) => n === 0));
   const rows = await page.getByRole("heading", { name: /^Because you love/ }).allInnerTexts();
   check("Because you love … rows", rows.length >= 1, rows.join(" | "));
   const firstRow = page.locator("section").filter({ has: page.getByRole("heading", { name: /^Because you love/ }) }).first();
   check("…each work says who loves it", (await firstRow.locator("p .sr-only").filter({ hasText: /favorite/ }).count()) >= 4);
-  check("people with your taste, each with Follow", (await sectionOf(page, "People with your taste").getByRole("button", { name: "Follow" }).count()) >= 1);
+  const kinds = await page.evaluate(() =>
+    [...document.querySelectorAll("section")]
+      .filter((s) => (s.querySelector("h2")?.textContent ?? "").startsWith("Because you love"))
+      .map((s) => new Set([...s.querySelectorAll("img[alt]:not([alt=''])")].map((i) => i.closest("[class*=frame]")?.className.split(" ")[0] ?? "bare")).size)
+  );
+  check("…each row one kind of thing", kinds.length > 0 && kinds.every((n) => n === 1), kinds.join(" "));
   check("no nudges for a member with rows", (await page.getByRole("link", { name: "Start your library" }).count()) === 0 && (await page.getByText(/rows picked from your taste/).count()) === 0);
   for (let y = 0; y < 4000; y += 800) {
     await page.mouse.wheel(0, 800);
@@ -198,20 +210,11 @@ try {
   const leaks = shown.filter((t) => owned.includes(t) || t === secret.title);
   check("nothing on the page is already theirs", shown.length > 30 && leaks.length === 0, leaks.length ? leaks.join(", ") : `${shown.length} works shown`);
   check("…not even their private save", !shown.includes(secret.title), secret.title);
-  const listed = await workAlts(page, ["From people you follow", "Because you love", "Most loved"], true);
+  const listed = await workAlts(page, ["Because you love", "Most loved"], true);
   const twice = listed.filter((t, i) => listed.indexOf(t) !== i);
   check("no work twice on the page", twice.length === 0, twice.join(", ") || `${listed.length} works`);
-  const named = await page.evaluate(
-    ([title, name]) =>
-      [...document.querySelectorAll("img[alt]")]
-        .filter((i) => i.alt === title)
-        .some((img) => {
-          const tile = img.closest("[class*='@container']");
-          return !!tile && [...tile.querySelectorAll("p span")].some((sp) => sp.textContent === name && getComputedStyle(sp).display !== "none");
-        }),
-    [top.title, FRIEND.split(" ")[0]]
-  );
-  check("a friend's favorite names them", named, `${top.title} → ${FRIEND.split(" ")[0]}`);
+  const led = await page.evaluate((name) => [...document.querySelectorAll("p[title]")].filter((p) => p.title.startsWith(name)).length, FRIEND.split(" ")[0]);
+  check("a friend's face comes first", led >= 1, `${led} lines lead with ${FRIEND.split(" ")[0]}`);
 
   // 🔖 ★ wait for the mouse (nothing gets clicked — these are real people's copies)
   await page.evaluate(() => window.scrollTo(0, 0));

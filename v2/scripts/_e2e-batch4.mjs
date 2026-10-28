@@ -2,8 +2,8 @@
 // the real DB: the centered header and antislop's account menu (lists,
 // settings, theme, log out), the add dialog (chips on one row, keyboard
 // picks, a pasted link), one link = one work (a pasted address joins
-// everyone's copy), "Favorite?" on finished rows, the Friends rail ("See
-// all" opens a window), and the boxless profile (banner, underline tabs,
+// everyone's copy), "Favorite?" on finished rows, Friends (notifications in
+// the one timeline; the rail), and the boxless profile (banner, underline tabs,
 // list tiles, the Add pill). Two throwaway users who only follow each other;
 // everything is deleted afterwards. Screenshots land in $SHOTS.
 //   node scripts/_e2e-batch4.mjs
@@ -169,17 +169,14 @@ try {
   await page.getByRole("button", { name: /^Finished/ }).waitFor({ timeout: 15000 });
   check("finished rows ask “Favorite?”", (await page.getByRole("button", { name: "Favorite?" }).count()) === 1 && (await page.getByText("Loved it").count()) === 0);
 
-  /* ── Friends: the rail ──────────────────────────────────────────────────── */
+  /* ── Friends: one timeline, the rail ───────────────────────────────────── */
   await page.goto(`${APP}/friends`, { waitUntil: "networkidle" });
+  const latest = page.locator('section[aria-label="Latest"]');
+  await latest.getByText("followed you").first().waitFor({ timeout: 15000 });
+  const follows = await latest.getByText("followed you").count();
+  check("notifications sit in the timeline", follows === 7, `${follows} rows`);
+  check("…no separate box, no See all", (await page.locator("section[aria-label=Notifications]").count()) === 0 && (await page.getByRole("button", { name: /See all/ }).count()) === 0);
   const rail = page.locator("aside");
-  await rail.getByText("followed you").first().waitFor({ timeout: 15000 });
-  check("notifications aren't boxed", (await rail.locator("section[aria-label=Notifications] .rounded-2xl").count()) === 0);
-  await rail.getByRole("button", { name: /See all/ }).click();
-  const all = page.getByRole("dialog");
-  await all.getByRole("heading", { name: "Notifications" }).waitFor({ timeout: 5000 });
-  check("See all opens its own window", (await all.locator("li").count()) === 7, `${await all.locator("li").count()} rows`);
-  await page.screenshot({ path: join(SHOTS, "b4-friends-seeall.png") });
-  await page.keyboard.press("Escape");
   const people = rail.locator("section[aria-label='People with your taste'] li").first();
   if (await people.count()) {
     const grid = await people.locator("a.grid").boundingBox().catch(() => null);

@@ -579,6 +579,18 @@ Abdul: "under or over the items… put which friends you follow also favorited i
 - [x] Known limit: 11–12 of most members' 12 seeds are onboarding picks, so "Because you love" leans on classics until people add their own favorites.
 - [x] QA: `_e2e-discover` (34 checks, with a second throwaway member as the friend), `_e2e-batch4`, `_e2e-v2`; tsc, eslint, `next build`.
 
+### 2026-10-28, eighth batch (Discover and Friends, simpler)
+
+Abdul: drop the star and the names ("just number and the profile pictures"); "From people you follow" is what Friends is for; "Because you love" rows should hold the same type; keep "People with your taste" in one place; merge Friends' "Latest" with the notifications; Most loved of all time only.
+- [x] **Who line** = the number, then faces (people you follow first). No star, no names on the page; names are in the hover title.
+- [x] **Discover** = "Because you love X" rows + "Most loved". Each row holds X's own type: albums for an album, films for a film, shows for a show (`discover_for` compares media types). "From people you follow" and "People with your taste" are gone from Discover; people live on Friends.
+- [x] **Most loved** is all time: by favorites, people interleaved within a count. No month block.
+- [x] One work across catalogs, take two: a title only one creator carries (blank creators don't count) is one work. *Modern Wisdom* saved with and without "Chris Williamson" now has 3 favorites. Creator spelling variants (Viktor Frankl / Viktor E. Frankl) stay two works in the data, and the page shows a title once per kind.
+- [x] **Friends** = one "Latest" timeline: what your people favorited and saved, and what happened to you (follows, favorites from your wall, taste approvals, with Follow back / Approve back), newest first. While older activity is still loading, older notifications wait so the order never jumps. The notifications box and its "See all" window are gone. People with your taste and your reach sit in the rail (on phones: below the timeline, or first if you follow nobody yet).
+- [x] The onboarding already asks to follow people (beat 4, "People whose walls look like yours"). Today's members came through v1's onboarding, which never did.
+- [x] Data: migration35 — `discover_for` (seeds only, same-type rows) and `discover_works` (all time, without the month columns).
+- [x] QA: `_e2e-discover` (34 checks), `_e2e-batch3`, `_e2e-batch4`; tsc, eslint, `next build`.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

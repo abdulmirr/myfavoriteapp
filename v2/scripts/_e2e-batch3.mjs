@@ -256,7 +256,9 @@ try {
   for (const w of [360, 375, 390]) {
     const p2 = await ctx.newPage();
     await p2.setViewportSize({ width: w, height: 800 });
-    await p2.goto(`${APP}/feed`, { waitUntil: "networkidle" });
+    // "load", not "networkidle": in a production build the feed's cards prefetch
+    // item pages, and one prefetch can stay open — the header is what's tested
+    await p2.goto(`${APP}/feed`, { waitUntil: "load" });
     await p2.getByRole("link", { name: "Your profile" }).waitFor({ timeout: 15000 });
     const fit = await p2.evaluate(() => {
       const r = document.querySelector('a[aria-label="Your profile"]').getBoundingClientRect();

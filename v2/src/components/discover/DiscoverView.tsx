@@ -3,22 +3,20 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
-import type { BecauseRow, DiscoverWork, RankedWork, TastePerson } from "@/lib/types";
+import type { BecauseRow, DiscoverWork, RankedWork } from "@/lib/types";
 import { thumbCover } from "@/lib/img";
 import { searchEverything, type SearchHits } from "@/lib/search";
-import { supabase } from "@/lib/supabase";
 import { useLiveSearch } from "@/lib/use-live-search";
 import { useOwned } from "@/lib/use-owned";
 import { useViewer } from "@/lib/viewer";
-import { itemHref } from "@/lib/work";
+import { itemHref, titleKey } from "@/lib/work";
 import { TypedTitle } from "../Typewriter";
 import { pageTitle, primaryButton } from "../ui/styles";
 import DiscoverSearch from "./DiscoverSearch";
 import MostLoved from "./MostLoved";
 import Shelf, { SectionHead, ShelfSkeleton } from "./Shelf";
-import TastePeople from "./TastePeople";
 
-type Mine = { friends: DiscoverWork[]; because: BecauseRow[]; people: TastePerson[] };
+type Mine = { because: BecauseRow[] };
 
 function BecauseShelf({ row, priority = false }: { row: BecauseRow; priority?: boolean }) {
   const href = itemHref(row.seed);
@@ -82,13 +80,12 @@ const visitorNudge = (
 );
 
 /**
- * Discover (2026-10-28): things to find, each with its reason. For members
- * (loaded here, from /api/discover): what the people they follow favorited,
- * "Because you love …" rows, and people with their taste — three shelves at
- * most, every work showing who loves it, people they follow by name. For
- * everyone, "Most loved": everything, what was favorited most this month
- * first. Nothing that's already theirs is offered back. The old
- * feed still lives at /feed (lib/discover.ts).
+ * Discover (2026-10-28): things to find, each with its reason. For members,
+ * three "Because you love …" rows (loaded here, from /api/discover), each
+ * holding works of its favorite's own type; for everyone, "Most loved" —
+ * everything, by favorites. Every work shows how many love it and their
+ * faces, people you follow first. Nothing that's already theirs is offered
+ * back. People live on Friends; the old feed at /feed (lib/discover.ts).
  */
 export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   const v = useViewer();
@@ -96,7 +93,6 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   const isOwned = useOwned();
   // rows: null when the personal rows couldn't load (then the page just goes without)
   const [mine, setMine] = useState<{ pid: string; rows: Mine | null } | null>(null);
-  const [blocked, setBlocked] = useState<{ pid: string; ids: Set<string> } | null>(null);
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -106,14 +102,6 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
       .then((r) => (r.ok ? (r.json() as Promise<Mine>) : Promise.reject(new Error(`discover ${r.status}`))))
       .then((rows) => !stale && setMine({ pid, rows }))
       .catch(() => !stale && setMine({ pid, rows: null }));
-    // people they've blocked never come up (blocks are private, so only their browser can ask)
-    supabase()
-      .from("blocks")
-      .select("blocked_id")
-      .eq("blocker_id", pid)
-      .then(({ data }) => {
-        if (!stale) setBlocked({ pid, ids: new Set((data ?? []).map((b) => b.blocked_id as string)) });
-      });
     return () => {
       stale = true;
     };
@@ -127,35 +115,26 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   const searchMode = q.trim().length >= 2;
 
   const rows = pid && mine?.pid === pid ? mine.rows : undefined;
-  const hidden = pid && blocked?.pid === pid ? blocked.ids : null;
   // the rows in the order they show; each skips what's theirs and what an
-  // earlier row already showed (so does Most loved), puts what people they
-  // follow love first, and hides with under four left
+  // earlier row already showed (so does Most loved) — by work, and by title
+  // within a kind, for the odd copy two catalogs spell differently — puts
+  // what people they follow love first, and hides with under four left
   const seen = new Set<string>();
   const byFriends = (w: DiscoverWork) => ((w.favoriter_ids ?? []).some((id) => v.followingIds.has(id)) ? 0 : 1);
   const keep = (works: DiscoverWork[] | undefined) => {
     const out = (works ?? [])
-      .filter((w) => !isOwned(w) && !seen.has(w.work_key))
+      .filter((w) => !isOwned(w) && !seen.has(w.work_key) && !seen.has(titleKey(w.media_type, w.title)))
       .sort((a, b) => byFriends(a) - byFriends(b))
       .slice(0, 12);
     if (out.length < 4) return null;
-    for (const w of out) seen.add(w.work_key);
+    for (const w of out) seen.add(w.work_key).add(titleKey(w.media_type, w.title));
     return out;
   };
   const because = (row: BecauseRow | undefined) => {
     const works = keep(row?.works);
     return row && works ? { ...row, works } : null;
   };
-  const circle = keep(rows?.friends);
-  const first = because(rows?.because[0]);
-  const second = because(rows?.because[1]);
-  const last = circle ? null : because(rows?.because[2]);
-  const people = hidden
-    ? (rows?.people ?? [])
-        .filter((p) => !hidden.has(p.profile.id))
-        .map((p) => ({ ...p, works: p.works.filter((w) => !isOwned(w)) }))
-        .filter((p) => p.works.length >= 3)
-    : [];
+  const shelves = (rows?.because ?? []).map(because).filter((r) => r !== null);
 
   // before the personal rows: a placeholder while they load, or a nudge
   // when there's nothing to pick from yet
@@ -171,7 +150,7 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
       visitorNudge
     ) : rows === undefined ? (
       <ShelfSkeleton />
-    ) : rows && !circle && !first && !second && !last && people.length === 0 ? (
+    ) : rows && shelves.length === 0 ? (
       <Nudge>
         Favorite a few things (the ★ on anything below) and rows picked from your taste start showing up here.
       </Nudge>
@@ -214,17 +193,9 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
         ) : (
           <div className="flex flex-col gap-16 sm:gap-20">
             {lead}
-            {circle && (
-              <Shelf
-                priority
-                works={circle}
-                head={<SectionHead title="From people you follow" sub="What they’ve favorited lately." />}
-              />
-            )}
-            {first && <BecauseShelf row={first} priority={!circle} />}
-            {second && <BecauseShelf row={second} />}
-            {people.length > 0 && <TastePeople people={people} />}
-            {last && <BecauseShelf row={last} />}
+            {shelves.map((row, i) => (
+              <BecauseShelf key={row.seed.work_key} row={row} priority={i === 0} />
+            ))}
             <MostLoved initial={initial} isOwned={isOwned} skip={seen} />
           </div>
         )}

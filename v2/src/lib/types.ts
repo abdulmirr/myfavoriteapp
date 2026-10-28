@@ -121,11 +121,8 @@ export interface DiscoverWork extends Work {
   top_profiles?: ProfileLite[];
 }
 
-/** A work in "Most loved": who favorited it this month, and of all time. */
+/** A work in "Most loved": how many have it, and who. */
 export interface RankedWork extends DiscoverWork {
-  this_month: number;
-  month_ids: string[];
-  month_profiles: ProfileLite[];
   fav_count: number;
   favoriter_ids: string[];
   top_profiles: ProfileLite[];
