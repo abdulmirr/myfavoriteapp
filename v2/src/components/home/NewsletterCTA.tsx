@@ -32,6 +32,12 @@ const onFlag = (cb: () => void) => {
   };
 };
 
+// the landing's line: a white field and a button with the landing's tighter corners
+const lineField =
+  "h-10 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-base text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-400 disabled:opacity-50 sm:text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-500";
+const lineButton =
+  "inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
+
 function Note({ title, note, compact }: { title: string; note: string; compact?: boolean }) {
   if (compact) {
     return (
@@ -143,9 +149,9 @@ export default function NewsletterCTA({ compact = false }: { compact?: boolean }
             aria-label="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={cn(field, "min-w-0 flex-1")}
+            className={lineField}
           />
-          <button type="submit" disabled={phase === "busy"} className={primaryButton}>
+          <button type="submit" disabled={phase === "busy"} className={lineButton}>
             {phase === "busy" ? "…" : "Subscribe"}
           </button>
         </form>

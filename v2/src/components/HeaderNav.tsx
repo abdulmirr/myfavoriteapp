@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
+import { BROWSE } from "@/lib/discover";
 import { setUnread, useViewer } from "@/lib/viewer";
 import { unreadCount } from "@/lib/social";
 import { cn, headerIcon, pill, pillActive, pillIdle } from "./ui/styles";
@@ -16,13 +17,14 @@ const AddDialog = dynamic(() => import("./add/AddDialog"));
 
 const NAV = [
   { href: "/", label: "Home", hideOnPhone: true, members: false },
-  { href: "/feed", label: "Feed", hideOnPhone: false, members: false },
+  // Discover, or the feed when it's switched back (lib/discover.ts)
+  { href: BROWSE.href, label: BROWSE.label, hideOnPhone: false, members: false },
   // what your people are up to + your notifications (members only)
   { href: "/friends", label: "Friends", hideOnPhone: false, members: true },
 ];
 
 /**
- * Home · Feed · Friends — centered in the bar from tablet width up. Friends
+ * Home · Discover · Friends — centered in the bar from tablet width up. Friends
  * is for members: hidden for visitors, and while the session check runs the
  * pre-paint auth switch decides. Its badge is the unread notification count.
  */

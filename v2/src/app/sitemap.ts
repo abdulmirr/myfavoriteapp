@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { cacheLife } from "next/cache";
 import { supabaseServer } from "@/lib/supabase";
+import { BROWSE } from "@/lib/discover";
 
 type Rows = {
   profiles: { username: string; created_at: string | null }[];
@@ -41,7 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { profiles, canonicals, lists } = await sitemapRows();
   return [
     { url: base, changeFrequency: "daily", priority: 1 },
-    { url: `${base}/feed`, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${base}${BROWSE.href}`, changeFrequency: "hourly", priority: 0.9 },
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },
     ...profiles.map((p) => ({

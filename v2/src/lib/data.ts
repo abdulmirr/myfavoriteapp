@@ -2,7 +2,11 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { supabaseServer } from "./supabase";
 import { PROFILE_COLS } from "./social";
+import { hashRange } from "./rand";
 import type {
+  BecauseRow,
+  DiscoverThought,
+  DiscoverWork,
   FeedWork,
   Item,
   ListItem,
@@ -11,8 +15,9 @@ import type {
   MediaType,
   Profile,
   ProfileLite,
+  TastePerson,
 } from "./types";
-import { titleKey } from "./work";
+import { TYPE_FILTERS, titleKey } from "./work";
 
 /**
  * The public read layer. Everything here is anonymous (RLS hides private
@@ -302,6 +307,69 @@ export async function getFeed(opts: {
     source_item_id: r.item_id,
     source_profile_id: r.item_profile_id,
   }));
+}
+
+/* ── discover ─────────────────────────────────────────────────────────────── */
+
+// favoriting from Discover credits the copy the card came from ("via @user")
+const viaCopy = (w: DiscoverWork): DiscoverWork => ({
+  ...w,
+  source_item_id: w.item_id,
+  source_profile_id: w.item_profile_id,
+});
+
+/**
+ * Discover for everyone (discover_public, migration33): what's loved most
+ * this month — favorites and public saves — and the newest favorites that
+ * came with a thought.
+ */
+export async function getDiscoverPublic(): Promise<{ loved: DiscoverWork[]; thoughts: DiscoverThought[] }> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("feed");
+  const { data, error } = await supabaseServer().rpc("discover_public", { p_limit: 30 });
+  if (error) throw new Error(error.message);
+  const d = data as { loved: DiscoverWork[]; thoughts: DiscoverThought[] };
+  return {
+    loved: d.loved.map(viaCopy),
+    thoughts: d.thoughts.map((t) => ({ ...t, work: viaCopy(t.work) })),
+  };
+}
+
+/**
+ * Discover for one person (discover_for): three "Because you love …" rows —
+ * a different three of their favorites each day, different kinds of things
+ * where possible, no work in two rows — and the people who share most of
+ * their taste. Public data only, so it's cached like the feed; the page also
+ * hides what's in their private lists.
+ */
+export async function getDiscoverFor(viewer: string): Promise<{ because: BecauseRow[]; people: TastePerson[] }> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("feed", `profile:${viewer}`);
+  const { data, error } = await supabaseServer().rpc("discover_for", { p_viewer: viewer });
+  if (error) throw new Error(error.message);
+  const d = data as { seeds: BecauseRow[]; people: TastePerson[] };
+
+  const day = new Date().toISOString().slice(0, 10);
+  const kind = (w: DiscoverWork) => TYPE_FILTERS.find((f) => f.types.includes(w.media_type))?.key ?? w.media_type;
+  const order = [...d.seeds].sort((a, b) => hashRange(day + a.seed.work_key) - hashRange(day + b.seed.work_key));
+  const picked: BecauseRow[] = [];
+  for (const s of order) if (picked.length < 3 && !picked.some((p) => kind(p.seed) === kind(s.seed))) picked.push(s);
+  for (const s of order) if (picked.length < 3 && !picked.includes(s)) picked.push(s);
+
+  const shown = new Set<string>();
+  const because = picked
+    .map((s) => {
+      const works = s.works.filter((w) => !shown.has(w.work_key)).slice(0, 14);
+      for (const w of works) shown.add(w.work_key);
+      return { ...s, seed: viaCopy(s.seed), works: works.map(viaCopy) };
+    })
+    .filter((s) => s.works.length >= 6);
+  const people = d.people
+    .filter((p) => p.works.length >= 3)
+    .map((p) => ({ ...p, works: p.works.map(viaCopy) }));
+  return { because, people };
 }
 
 /* ── item pages ───────────────────────────────────────────────────────────── */

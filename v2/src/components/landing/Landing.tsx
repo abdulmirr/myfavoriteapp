@@ -1,104 +1,159 @@
 import Link from "next/link";
-import { ArrowRight, Bookmark } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Item, MediaType } from "@/lib/types";
 import Framed from "../profile/Framed";
 import NewsletterCTA from "../home/NewsletterCTA";
-import Avatar from "../ui/Avatar";
-import { bigButton } from "../ui/styles";
+import { cn } from "../ui/styles";
+import Drift from "./Drift";
 
 /*
- * The front door for visitors (members get Home): what this is, in one
- * screen. A line that says it, one example of it — a page, its Top four, a
- * save landing — and one button. The covers are the old landing's shelf.
+ * The front door for visitors (members get Home), in one screen: the line in
+ * the middle, a shelf of favorites floating around it, one button. The
+ * covers sit at three depths — near ones bigger and moving most with the
+ * mouse, far ones smaller and fainter — so it reads as a room, not a grid.
+ * Phones and tablets get the shelf as a band above the words.
  */
 
 type Cover = Pick<Item, "id" | "media_type" | "title" | "image_url" | "view_url">;
+// through the image optimizer: the originals are up to 600px and 200KB
 const c = (file: string, title: string, media_type: MediaType): Cover => ({
   id: file,
   media_type,
   title,
-  image_url: `/landing/covers/${file}`,
+  image_url: `/_next/image?url=${encodeURIComponent(`/landing/covers/${file}`)}&w=384&q=75`,
   view_url: null,
 });
 
-const FOUR = [
-  c("album-blonde.jpg", "Blonde", "music"),
-  c("book-the-secret-history.jpg", "The Secret History", "book"),
-  c("film-her.jpg", "Her", "movie"),
-  c("album-in-rainbows.jpg", "In Rainbows", "music"),
+type Depth = "near" | "mid" | "far";
+/** how far each depth travels with the mouse (--d), and how much of it shows */
+const DEPTH: Record<Depth, { d: number; fade: number }> = {
+  near: { d: 1, fade: 1 },
+  mid: { d: 0.6, fade: 0.95 },
+  far: { d: 0.3, fade: 0.75 },
+};
+/** around the words — by the screen's shorter side, so short laptops don't pile them up */
+const AROUND: Record<Depth, string> = {
+  near: "clamp(92px,min(10.5vw,17svh),168px)",
+  mid: "clamp(70px,min(7.8vw,12.5svh),124px)",
+  far: "clamp(52px,min(5.4vw,8.6svh),86px)",
+};
+/** above the words, in a band that's its own container */
+const ABOVE: Record<Depth, string> = { near: "27cqw", mid: "21cqw", far: "15cqw" };
+
+type Piece = {
+  cover: Cover;
+  depth: Depth;
+  /** from its own side of the screen, and from the top */
+  x: string;
+  y: string;
+  /** the innermost spots, only where the screen is wide enough */
+  wide?: boolean;
+  dur: number;
+  delay: number;
+  tilt: number;
+};
+
+const LEFT: Piece[] = [
+  { cover: c("album-blonde.jpg", "Blonde", "music"), depth: "near", x: "3%", y: "5%", dur: 7.4, delay: -1.8, tilt: -2 },
+  { cover: c("book-meditations.jpg", "Meditations", "book"), depth: "far", x: "17%", y: "2%", dur: 8.6, delay: -3.2, tilt: 2 },
+  { cover: c("book-the-secret-history.jpg", "The Secret History", "book"), depth: "mid", x: "14%", y: "25%", dur: 8.2, delay: -4.1, tilt: 1.5 },
+  { cover: c("film-interstellar.jpg", "Interstellar", "movie"), depth: "near", x: "2.5%", y: "40%", dur: 6.6, delay: -0.6, tilt: 0 },
+  { cover: c("tv-severance.jpg", "Severance", "tv"), depth: "far", x: "18%", y: "54%", dur: 7.1, delay: -2.6, tilt: -1 },
+  { cover: c("album-in-rainbows.jpg", "In Rainbows", "music"), depth: "mid", x: "6%", y: "72%", dur: 8.4, delay: -2.3, tilt: 1 },
+  { cover: c("podcast-acquired.jpg", "Acquired", "podcast"), depth: "far", x: "24%", y: "80%", wide: true, dur: 7.6, delay: -5.2, tilt: 0 },
+];
+const RIGHT: Piece[] = [
+  { cover: c("film-her.jpg", "Her", "movie"), depth: "mid", x: "4%", y: "4%", dur: 6.9, delay: -5, tilt: 1.5 },
+  { cover: c("album-currents.jpg", "Currents", "music"), depth: "far", x: "22%", y: "6%", wide: true, dur: 7.7, delay: -1.2, tilt: -1 },
+  { cover: c("book-norwegian-wood.jpg", "Norwegian Wood", "book"), depth: "near", x: "13%", y: "21%", dur: 8.1, delay: -3.6, tilt: 0 },
+  { cover: c("album-random-access-memories.jpg", "Random Access Memories", "music"), depth: "mid", x: "3%", y: "40%", dur: 7.2, delay: -0.4, tilt: -1.5 },
+  { cover: c("film-spirited-away.jpg", "Spirited Away", "movie"), depth: "far", x: "17%", y: "50%", dur: 8.8, delay: -4.4, tilt: 1 },
+  { cover: c("film-the-dark-knight.jpg", "The Dark Knight", "movie"), depth: "near", x: "8%", y: "66%", dur: 6.8, delay: -4.6, tilt: 2 },
+  { cover: c("book-dune.jpg", "Dune", "book"), depth: "far", x: "25%", y: "84%", wide: true, dur: 7.9, delay: -2.9, tilt: -1 },
+];
+const BAND: Piece[] = [
+  { ...LEFT[1], x: "3%", y: "40%" },
+  { ...LEFT[0], x: "17%", y: "4%" },
+  { ...LEFT[3], depth: "mid", x: "44%", y: "34%" },
+  { ...LEFT[2], depth: "near", x: "62%", y: "0%" },
+  { ...RIGHT[1], wide: false, x: "84%", y: "44%" },
 ];
 
-/** an example page — someone's taste, and something they just saved */
-function Example() {
+// far ones first, so a near cover passes in front where two meet
+const RANK: Record<Depth, number> = { far: 0, mid: 1, near: 2 };
+const byDepth = <T extends { p: Piece }>(a: T, b: T) => RANK[a.p.depth] - RANK[b.p.depth];
+
+function Float({ p, at, width, order }: { p: Piece; at: React.CSSProperties; width: string; order: number }) {
+  const { d, fade } = DEPTH[p.depth];
   return (
-    <div aria-hidden className="relative pb-6 lg:pb-0">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.12)] dark:border-neutral-800 dark:bg-neutral-800">
-        <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 dark:border-neutral-700/70">
-          <span className="flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <span key={i} className="size-2.5 rounded-full bg-gray-200 dark:bg-neutral-700" />
-            ))}
-          </span>
-          <span className="mx-auto rounded-md bg-gray-100 px-3 py-1 text-xs text-gray-500 dark:bg-neutral-700/70 dark:text-neutral-400">
-            myfavoriteapp.com/<span className="font-semibold text-gray-800 dark:text-neutral-200">maya</span>
-          </span>
-          <span className="w-[42px]" />
-        </div>
-        <div className="relative h-24 overflow-hidden sm:h-28">
-          <div className="absolute -inset-10 flex scale-110 opacity-80 blur-2xl saturate-[1.6] dark:opacity-50">
-            {FOUR.slice(0, 3).map((cv) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={cv.id} src={cv.image_url!} alt="" className="h-full min-w-0 flex-1 object-cover" />
-            ))}
-          </div>
-          <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-b from-transparent to-white dark:to-neutral-800" />
-        </div>
-        <div className="relative px-6 pb-8 sm:px-8">
-          <Avatar
-            p={{ username: "maya", display_name: "Maya", avatar_url: null }}
-            className="-mt-10 size-20 text-3xl ring-4 ring-white dark:ring-neutral-800"
-          />
-          <p className="mt-3 text-2xl font-bold tracking-tight text-gray-950 dark:text-white">Maya Ortiz</p>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-neutral-400">Slow films, sad books, loud records.</p>
-          <p className="mt-7 text-sm font-semibold text-gray-900 dark:text-neutral-100">Top four</p>
-          <div className="mt-3 grid grid-cols-4 gap-4 sm:gap-6">
-            {FOUR.map((cv) => (
-              <Framed key={cv.id} item={cv} eager rush={false} sizes="(max-width: 639px) 22vw, 130px" />
-            ))}
-          </div>
-        </div>
-      </div>
-      {/* the other half of the app: something saved for later */}
-      <div className="absolute bottom-0 left-5 flex items-center gap-3 rounded-xl bg-gray-900 py-2 pr-4 pl-2 text-white shadow-[0_12px_40px_rgba(0,0,0,0.25)] lg:-bottom-6 lg:-left-8 dark:bg-neutral-100 dark:text-neutral-900">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/landing/covers/book-project-hail-mary.jpg" alt="" className="h-11 w-auto rounded-[3px]" />
-        <span>
-          <span className="flex items-center gap-1.5 text-xs text-white/70 dark:text-neutral-500">
-            <Bookmark className="size-3" strokeWidth={2.4} /> Saved to Check later
-          </span>
-          <span className="block text-sm font-semibold">Project Hail Mary</span>
-        </span>
+    <div
+      className={cn("landing-depth absolute", p.wide && "hidden xl:block")}
+      style={{ ...at, width, "--d": d, animationDelay: `${150 + order * 60}ms` } as React.CSSProperties}
+    >
+      <div
+        className="landing-float"
+        style={
+          {
+            opacity: fade,
+            animationDuration: `${p.dur}s`,
+            animationDelay: `${p.delay}s`,
+            "--tilt": `${p.tilt}deg`,
+          } as React.CSSProperties
+        }
+      >
+        <Framed item={p.cover} rush={false} />
       </div>
     </div>
   );
 }
 
+// bigButton's shape with the landing's tighter corners
+const start =
+  "inline-flex h-12 cursor-pointer items-center justify-center rounded-md bg-gray-900 px-7 text-base font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
+
 export default function Landing() {
+  const around = [
+    ...LEFT.map((p, i) => ({ p, side: "left" as const, order: i * 2 })),
+    ...RIGHT.map((p, i) => ({ p, side: "right" as const, order: i * 2 + 1 })),
+  ].sort(byDepth);
+  const band = BAND.map((p, i) => ({ p, order: i })).sort(byDepth);
+
   return (
-    <div className="flex min-h-[calc(100svh-64px)] flex-col">
-      <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-14 px-4 pt-8 pb-16 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:gap-20 lg:px-8 lg:py-12">
-        <div>
-          <h1 className="text-[44px] font-bold leading-[1.02] tracking-[-0.045em] text-gray-950 sm:text-[64px] lg:text-[72px] dark:text-white">
+    // one screen under the sticky header (67px: its 34px row, py-4 and the hairline)
+    <div className="relative flex min-h-[calc(100svh-67px)] flex-col overflow-hidden">
+      <section className="relative flex flex-1 flex-col items-center justify-center pt-6 pb-8 lg:py-16">
+        <Drift className="pointer-events-none absolute inset-0 hidden lg:block">
+          {around.map(({ p, side, order }) => (
+            <Float
+              key={p.cover.id}
+              p={p}
+              order={order}
+              width={AROUND[p.depth]}
+              at={side === "left" ? { left: p.x, top: p.y } : { right: p.x, top: p.y }}
+            />
+          ))}
+        </Drift>
+        <div
+          aria-hidden
+          className="pointer-events-none relative mb-6 aspect-[100/36] w-full max-w-[560px] [container-type:inline-size] sm:mb-10 lg:hidden"
+        >
+          {band.map(({ p, order }) => (
+            <Float key={p.cover.id} p={p} order={order} width={ABOVE[p.depth]} at={{ left: p.x, top: p.y }} />
+          ))}
+        </div>
+
+        <div className="relative flex flex-col items-center px-4 text-center">
+          <h1 className="text-[46px] font-bold leading-[1.02] tracking-[-0.045em] text-gray-950 sm:text-[64px] lg:text-[76px] dark:text-white">
             Your taste,
             <br />
             in one place.
           </h1>
-          <p className="mt-6 max-w-md text-[17px] leading-relaxed text-gray-600 sm:text-lg dark:text-neutral-300">
+          <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-balance text-gray-600 sm:text-lg dark:text-neutral-300">
             Keep a page of the books, films and music that made you. Save what you want to get to next. Find new
             favorites from people with taste.
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
-            <Link href="/signin?mode=signup" className={bigButton}>
+          <div className="mt-9 flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
+            <Link href="/signin?mode=signup" className={start}>
               Start your library
             </Link>
             <Link
@@ -109,12 +164,14 @@ export default function Landing() {
             </Link>
           </div>
         </div>
-        <Example />
       </section>
 
-      <footer className="border-t border-gray-200 px-4 py-8 dark:border-neutral-800">
-        <NewsletterCTA compact />
-        <p className="mt-6 flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+      <footer className="relative px-4 pt-2 pb-7">
+        {/* the line arrives after hydration — hold its room so nothing jumps */}
+        <div className="min-h-[84px] lg:min-h-10">
+          <NewsletterCTA compact />
+        </div>
+        <p className="mt-5 flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
           <Link href="/privacy" className="hover:text-gray-900 dark:hover:text-neutral-100">
             Privacy
           </Link>

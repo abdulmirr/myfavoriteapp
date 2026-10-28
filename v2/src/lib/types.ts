@@ -108,6 +108,41 @@ export interface FeedWork extends Work {
   top_profiles: ProfileLite[];
 }
 
+/** A work on Discover: what a card needs, plus the library copy it comes through. */
+export interface DiscoverWork extends Work {
+  work_key: string;
+  item_id: string;
+  item_profile_id: string;
+  /** how many of the row's people love it (this month, or the seed's people) */
+  n?: number;
+}
+
+/** A favorite that came with a few words. */
+export interface DiscoverThought {
+  work: DiscoverWork;
+  by: ProfileLite;
+  text: string;
+  at: string;
+}
+
+/** "Because you love {seed}": what the other people who love it love too. */
+export interface BecauseRow {
+  seed: DiscoverWork;
+  /** the other people who love the seed */
+  people: number;
+  works: DiscoverWork[];
+}
+
+/** Someone who shares the viewer's taste, with things they love that the viewer doesn't have. */
+export interface TastePerson {
+  profile: Profile;
+  /** favorites they have in common */
+  shared: number;
+  /** favorites in their library */
+  count: number;
+  works: DiscoverWork[];
+}
+
 export interface ListRow {
   id: string;
   profile_id: string;

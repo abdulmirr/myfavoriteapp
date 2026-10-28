@@ -6,8 +6,9 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CommunityPick } from "@/lib/data";
 import type { DailyPick, Work } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
+import { useOwned } from "@/lib/use-owned";
 import { useViewer, viewer } from "@/lib/viewer";
-import { titleKey, workKeys } from "@/lib/work";
+import { titleKey } from "@/lib/work";
 import { TypedLine, TypedTitle } from "../Typewriter";
 import NewsletterCTA from "./NewsletterCTA";
 import PickCard, { PickSkeleton } from "./PickCard";
@@ -105,14 +106,8 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
     setAi(cached ? { state: "ready", picks: cached } : { state: "loading", picks: [] });
   }
 
-  // what's already theirs when Home opens — favorites and saves — is never
-  // offered back as a pick. Taken once (and once more when the fresh library
-  // replaces the cached one), so a pick favorited right here stays on screen.
-  const [owned, setOwned] = useState<{ pid: string; fresh: boolean; keys: Set<string> } | null>(null);
-  if (v.status === "signed-in" && pid && (owned?.pid !== pid || (!owned.fresh && !v.stale))) {
-    setOwned({ pid, fresh: !v.stale, keys: new Set([...v.favorites.keys(), ...v.membership.keys()]) });
-  }
-  const isOwned = (w: Work) => !!owned && workKeys(w).some((k) => owned.keys.has(k));
+  // what's already theirs when Home opens is never offered back as a pick
+  const isOwned = useOwned();
 
   useEffect(() => {
     if (setup) router.replace("/welcome");

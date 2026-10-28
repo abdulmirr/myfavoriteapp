@@ -100,7 +100,7 @@ try {
   await page.getByRole("button", { name: "Account menu" }).waitFor({ timeout: 15000 });
   const nav = await page.locator('nav[aria-label="Main"]').boundingBox();
   const mid = nav.x + nav.width / 2;
-  check("Home · Feed · Friends sit centered", Math.abs(mid - 640) <= 6, `center ${Math.round(mid)} of 640`);
+  check("Home · Discover · Friends sit centered", Math.abs(mid - 640) <= 6, `center ${Math.round(mid)} of 640`);
   check("the 🔖 header button is gone", (await page.getByRole("button", { name: "Your lists" }).count()) === 0);
   check("avatar still goes to your profile", (await page.getByRole("link", { name: "Your profile" }).getAttribute("href")) === `/${A.username}`);
   await page.getByRole("button", { name: "Account menu" }).click();

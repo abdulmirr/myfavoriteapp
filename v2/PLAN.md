@@ -552,6 +552,19 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
   - On the page, a snapshot taken as Home opens, so a pick you favorite right there stays on screen.
   - Matching is by catalog id and by normalized title within a shelf (films and shows together). `_e2e-owned` covers it without an AI call; `_e2e-picks` still passes with a real one.
 
+### 2026-10-28, sixth batch (landing take three, Discover)
+
+- [x] **Landing page, take three** (Abdul: "I really liked the previous hero with the text in the middle and the floating media all around… the profile preview looks too cheap… I don't like how the rectangles have such big radius corners"): the centered line again, with fourteen covers floating around it in the wall's frames at three depths — near ones larger and leaning furthest from the mouse (`Drift`; off for touch screens and reduced motion), far ones smaller and fainter. Phones and tablets get five as a band above the words. One screen, one button; the button and the email line have tighter corners; no product mock. The covers go through the image optimizer (Currents: 209KB → 41KB). `book-east-of-eden.jpg` was actually *River of Shadows* (onboarding showed it too); replaced in v2 only. `_e2e-landing` checks eight screen sizes, light and dark: one screen tall, no cover ever touching the words, every cover on screen, the parallax.
+- [x] **Discover** (direction A) takes the feed's place in the nav, reversibly: set `DISCOVER = false` in `lib/discover.ts` and the nav, the 404 pages and the sitemap go back to the feed. `/feed` itself is untouched. Rows, each with its reason, never anything you already have (favorited, or saved to any list, private ones included):
+  - **Because you love X**: three a day, rotating among your twelve strongest favorites, different kinds of things where possible. What the other people who love X also love: works several of them share first, discounted by how common they are everywhere. No work in two rows.
+  - **People with your taste**: people you don't follow, by favorites in common, each with six things they love that you don't have, and Follow.
+  - **Loved most this month** (favorites and public saves, 30 days), **Fresh thoughts** (the newest favorites with a note, quote first), **Browse everything** (the feed's pages as a dense grid of frames, by medium).
+  - Visitors, and members with nothing to pick from yet, get the shared rows and a nudge. Search sits at the top (people, works, catalog finds) and shows tiles.
+  - Tiles are the wall's frames. 🔖 ★ show on hover and stay once used; on phones a tap opens the work's page.
+  - Data: migration33 adds `discover_public()` and `discover_for(viewer)` (read-only, public data only, the same work grouping as `feed_works`), cached like the feed (`getDiscoverPublic`, and `getDiscoverFor` through `/api/discover`). Private saves and blocks are filtered in the browser, so they never reach the API. Home and Discover share `useOwned()`.
+  - On phones under 414px, a member's header shows the star alone (Discover · Friends · ＋ · you fill the bar); visitors keep the wordmark.
+- [x] QA: `_e2e-discover` (24 checks), `_e2e-landing`, `_e2e-owned`, `_e2e-batch4`, `_e2e-v2` — all against the real DB; tsc, eslint and `next build` clean.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.
