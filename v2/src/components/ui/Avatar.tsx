@@ -49,18 +49,17 @@ export default function Avatar({
 export function AvatarStack({
   people,
   size = "size-5",
+  ring = "ring-2 ring-gray-50 dark:ring-neutral-800",
 }: {
   people: Pick<ProfileLite, "id" | "username" | "display_name" | "avatar_url">[];
   size?: string;
+  /** the gap between faces — the color of whatever they sit on */
+  ring?: string;
 }) {
   return (
     <span className="flex shrink-0 -space-x-1.5">
       {people.slice(0, 3).map((p) => (
-        <Avatar
-          key={p.id}
-          p={p}
-          className={cn(size, "ring-2 ring-gray-50 dark:ring-neutral-800")}
-        />
+        <Avatar key={p.id} p={p} className={cn(size, ring)} />
       ))}
     </span>
   );

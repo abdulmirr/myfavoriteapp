@@ -565,6 +565,20 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
   - On phones under 414px, a member's header shows the star alone (Discover · Friends · ＋ · you fill the bar); visitors keep the wordmark.
 - [x] QA: `_e2e-discover` (24 checks), `_e2e-landing`, `_e2e-owned`, `_e2e-batch4`, `_e2e-v2` — all against the real DB; tsc, eslint and `next build` clean.
 
+### 2026-10-28, seventh batch (Discover: who loves it)
+
+Abdul: "under or over the items… put which friends you follow also favorited it"; "Loved most this month… how many favorites each item got and by who"; "fresh thoughts… cleaner or removed"; "browse everything is just a collection of random items with no reason" — merge it with Loved most, "without overwhelming the items". Then a second analysis (a review agent stopped on the usage limit; its read-only replay of six members' Discover was the useful part).
+- [x] **Every tile says who loves it** (`Who`): ★ count, up to three faces, and by name the people you follow — they come first. Everyone's name is in the hover title; names give way on narrow tiles (a container query), the count and faces stay.
+- [x] **"Most loved"** replaces "Loved most this month" and "Browse everything": the same dense grid and filters, ordered by favorites this month, then by favorites of all time, under "This month" / "All time" labels; each count and its faces belong to the period. Within a count, people interleave (one person's burst doesn't fill a screen). Works already on a shelf above are skipped, and the viewer's own favorites are left out server-side so pages stay full.
+- [x] **"From people you follow"** leads for members who follow anyone: what those people favorited, newest first, each named. The replay showed why it matters and why it's not enough: 4 of 6 sampled members follow nobody, so for most people the names appear only once they follow someone ("People with your taste" is the way in, and a new follow names them immediately).
+- [x] "Because you love" works that people you follow love move to the front of their row; at most three personal shelves (the third "Because you love" gives way to the friends row).
+- [x] **Fresh thoughts removed** (thoughts stay on item pages and Friends). `discover_public()` stays in the DB, unused.
+- [x] **One work across catalogs:** copies with the same type, title and creator are one work on Discover (Graduation on Apple and on Deezer was showing twice, with its favorites split 3 + 2). Applies to the rows, the grid, and "what you already have".
+- [x] Fixed: on phones the who line's screen-reader text escaped the sideways-scrolling shelves and made a member's page 1,822px wide (now `relative`).
+- [x] Data: migration34 — `discover_works(types, exclude, limit, offset)` and a new `discover_for` (same signature) with who-data and friends. `/api/discover/works`; `MOST_LOVED_PAGE` = 48.
+- [x] Known limit: 11–12 of most members' 12 seeds are onboarding picks, so "Because you love" leans on classics until people add their own favorites.
+- [x] QA: `_e2e-discover` (34 checks, with a second throwaway member as the friend), `_e2e-batch4`, `_e2e-v2`; tsc, eslint, `next build`.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

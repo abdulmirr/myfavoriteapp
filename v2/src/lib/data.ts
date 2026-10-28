@@ -5,7 +5,6 @@ import { PROFILE_COLS } from "./social";
 import { hashRange } from "./rand";
 import type {
   BecauseRow,
-  DiscoverThought,
   DiscoverWork,
   FeedWork,
   Item,
@@ -15,6 +14,7 @@ import type {
   MediaType,
   Profile,
   ProfileLite,
+  RankedWork,
   TastePerson,
 } from "./types";
 import { TYPE_FILTERS, titleKey } from "./work";
@@ -312,44 +312,54 @@ export async function getFeed(opts: {
 /* ── discover ─────────────────────────────────────────────────────────────── */
 
 // favoriting from Discover credits the copy the card came from ("via @user")
-const viaCopy = (w: DiscoverWork): DiscoverWork => ({
+const viaCopy = <T extends DiscoverWork>(w: T): T => ({
   ...w,
   source_item_id: w.item_id,
   source_profile_id: w.item_profile_id,
 });
 
 /**
- * Discover for everyone (discover_public, migration33): what's loved most
- * this month — favorites and public saves — and the newest favorites that
- * came with a thought.
+ * Discover's "Most loved" (discover_works, migration34): every work, the ones
+ * favorited most in the last 30 days first, then the rest by favorites of
+ * all time — with who, for both. `exclude` leaves out one person's favorites
+ * (the viewer's, so their pages stay full).
  */
-export async function getDiscoverPublic(): Promise<{ loved: DiscoverWork[]; thoughts: DiscoverThought[] }> {
+export async function getDiscoverWorks(opts: {
+  types: MediaType[] | null;
+  exclude: string | null;
+  offset: number;
+  limit: number;
+}): Promise<RankedWork[]> {
   "use cache";
   cacheLife("minutes");
   cacheTag("feed");
-  const { data, error } = await supabaseServer().rpc("discover_public", { p_limit: 30 });
+  const { data, error } = await supabaseServer().rpc("discover_works", {
+    p_types: opts.types,
+    p_exclude: opts.exclude,
+    p_limit: opts.limit,
+    p_offset: opts.offset,
+  });
   if (error) throw new Error(error.message);
-  const d = data as { loved: DiscoverWork[]; thoughts: DiscoverThought[] };
-  return {
-    loved: d.loved.map(viaCopy),
-    thoughts: d.thoughts.map((t) => ({ ...t, work: viaCopy(t.work) })),
-  };
+  return ((data ?? []) as RankedWork[]).map(viaCopy);
 }
 
 /**
- * Discover for one person (discover_for): three "Because you love …" rows —
- * a different three of their favorites each day, different kinds of things
- * where possible, no work in two rows — and the people who share most of
- * their taste. Public data only, so it's cached like the feed; the page also
+ * Discover for one person (discover_for): what the people they follow
+ * favorited, newest first; three "Because you love …" rows — a different
+ * three of their favorites each day, different kinds of things where
+ * possible, no work in two rows — every work with who has it; and the people
+ * who share most of their taste. Public data only, so it's cached like the feed; the page also
  * hides what's in their private lists.
  */
-export async function getDiscoverFor(viewer: string): Promise<{ because: BecauseRow[]; people: TastePerson[] }> {
+export async function getDiscoverFor(
+  viewer: string
+): Promise<{ friends: DiscoverWork[]; because: BecauseRow[]; people: TastePerson[] }> {
   "use cache";
   cacheLife("minutes");
   cacheTag("feed", `profile:${viewer}`);
   const { data, error } = await supabaseServer().rpc("discover_for", { p_viewer: viewer });
   if (error) throw new Error(error.message);
-  const d = data as { seeds: BecauseRow[]; people: TastePerson[] };
+  const d = data as { friends: DiscoverWork[]; seeds: BecauseRow[]; people: TastePerson[] };
 
   const day = new Date().toISOString().slice(0, 10);
   const kind = (w: DiscoverWork) => TYPE_FILTERS.find((f) => f.types.includes(w.media_type))?.key ?? w.media_type;
@@ -369,7 +379,7 @@ export async function getDiscoverFor(viewer: string): Promise<{ because: Because
   const people = d.people
     .filter((p) => p.works.length >= 3)
     .map((p) => ({ ...p, works: p.works.map(viaCopy) }));
-  return { because, people };
+  return { friends: d.friends.map(viaCopy), because, people };
 }
 
 /* ── item pages ───────────────────────────────────────────────────────────── */

@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
-import { getDiscoverPublic, getFeed } from "@/lib/data";
-import { FEED_PAGE } from "@/lib/work";
+import { getDiscoverWorks } from "@/lib/data";
+import { MOST_LOVED_PAGE } from "@/lib/discover";
 import DiscoverView from "@/components/discover/DiscoverView";
 
 export const metadata: Metadata = {
   title: "Discover",
   description:
-    "Find your next favorite: books, films, music and more, each with a reason — from people with your taste, what’s loved this month, and what people said.",
+    "Find your next favorite: books, films, music and more, from people with your taste and what's loved most this month.",
 };
 
-/** Discover — the rows everyone sees and the first page of everything come cached in the static shell; the personal rows load in the browser. */
+/** Discover — the first page of "Most loved" comes cached in the static shell; the personal rows load in the browser. */
 export default async function DiscoverPage() {
-  const [{ loved, thoughts }, initial] = await Promise.all([
-    getDiscoverPublic(),
-    getFeed({ viewer: null, types: null, followingOnly: false, offset: 0, limit: FEED_PAGE }),
-  ]);
-  return <DiscoverView loved={loved} thoughts={thoughts} initial={initial} />;
+  const initial = await getDiscoverWorks({ types: null, exclude: null, offset: 0, limit: MOST_LOVED_PAGE });
+  return <DiscoverView initial={initial} />;
 }

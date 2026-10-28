@@ -113,16 +113,22 @@ export interface DiscoverWork extends Work {
   work_key: string;
   item_id: string;
   item_profile_id: string;
-  /** how many of the row's people love it (this month, or the seed's people) */
+  /** how many of the row's people love it (the seed's people) */
   n?: number;
+  /** who has it: how many, everyone (newest first), the newest three */
+  fav_count?: number;
+  favoriter_ids?: string[];
+  top_profiles?: ProfileLite[];
 }
 
-/** A favorite that came with a few words. */
-export interface DiscoverThought {
-  work: DiscoverWork;
-  by: ProfileLite;
-  text: string;
-  at: string;
+/** A work in "Most loved": who favorited it this month, and of all time. */
+export interface RankedWork extends DiscoverWork {
+  this_month: number;
+  month_ids: string[];
+  month_profiles: ProfileLite[];
+  fav_count: number;
+  favoriter_ids: string[];
+  top_profiles: ProfileLite[];
 }
 
 /** "Because you love {seed}": what the other people who love it love too. */

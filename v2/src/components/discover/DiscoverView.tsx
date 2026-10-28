@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
-import type { BecauseRow, DiscoverThought, DiscoverWork, FeedWork, TastePerson } from "@/lib/types";
+import type { BecauseRow, DiscoverWork, RankedWork, TastePerson } from "@/lib/types";
 import { thumbCover } from "@/lib/img";
 import { searchEverything, type SearchHits } from "@/lib/search";
 import { supabase } from "@/lib/supabase";
@@ -13,13 +13,12 @@ import { useViewer } from "@/lib/viewer";
 import { itemHref } from "@/lib/work";
 import { TypedTitle } from "../Typewriter";
 import { pageTitle, primaryButton } from "../ui/styles";
-import Browse from "./Browse";
 import DiscoverSearch from "./DiscoverSearch";
+import MostLoved from "./MostLoved";
 import Shelf, { SectionHead, ShelfSkeleton } from "./Shelf";
 import TastePeople from "./TastePeople";
-import Thoughts from "./Thoughts";
 
-type Mine = { because: BecauseRow[]; people: TastePerson[] };
+type Mine = { friends: DiscoverWork[]; because: BecauseRow[]; people: TastePerson[] };
 
 function BecauseShelf({ row, priority = false }: { row: BecauseRow; priority?: boolean }) {
   const href = itemHref(row.seed);
@@ -83,21 +82,15 @@ const visitorNudge = (
 );
 
 /**
- * Discover (2026-10-28): rows of things to find, each with its reason. For
- * members, three "Because you love …" rows and people with their taste
- * (loaded here, from /api/discover); for everyone, what's loved most this
- * month, fresh thoughts, and everything as a grid. Nothing that's already
- * theirs is offered back. The old feed still lives at /feed (lib/discover.ts).
+ * Discover (2026-10-28): things to find, each with its reason. For members
+ * (loaded here, from /api/discover): what the people they follow favorited,
+ * "Because you love …" rows, and people with their taste — three shelves at
+ * most, every work showing who loves it, people they follow by name. For
+ * everyone, "Most loved": everything, what was favorited most this month
+ * first. Nothing that's already theirs is offered back. The old
+ * feed still lives at /feed (lib/discover.ts).
  */
-export default function DiscoverView({
-  loved,
-  thoughts,
-  initial,
-}: {
-  loved: DiscoverWork[];
-  thoughts: DiscoverThought[];
-  initial: FeedWork[];
-}) {
+export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   const v = useViewer();
   const pid = v.status === "signed-in" ? (v.profile?.id ?? null) : null;
   const isOwned = useOwned();
@@ -135,30 +128,34 @@ export default function DiscoverView({
 
   const rows = pid && mine?.pid === pid ? mine.rows : undefined;
   const hidden = pid && blocked?.pid === pid ? blocked.ids : null;
-  // shelves in the order they show; each skips what's theirs and what an
-  // earlier shelf already showed, and a shelf left with under four hides
+  // the rows in the order they show; each skips what's theirs and what an
+  // earlier row already showed (so does Most loved), puts what people they
+  // follow love first, and hides with under four left
   const seen = new Set<string>();
-  const shelf = (ws: DiscoverWork[]) => {
-    const out = ws.filter((w) => !isOwned(w) && !seen.has(w.work_key)).slice(0, 12);
+  const byFriends = (w: DiscoverWork) => ((w.favoriter_ids ?? []).some((id) => v.followingIds.has(id)) ? 0 : 1);
+  const keep = (works: DiscoverWork[] | undefined) => {
+    const out = (works ?? [])
+      .filter((w) => !isOwned(w) && !seen.has(w.work_key))
+      .sort((a, b) => byFriends(a) - byFriends(b))
+      .slice(0, 12);
     if (out.length < 4) return null;
     for (const w of out) seen.add(w.work_key);
     return out;
   };
   const because = (row: BecauseRow | undefined) => {
-    const works = row && shelf(row.works);
-    return works ? { ...row, works } : null;
+    const works = keep(row?.works);
+    return row && works ? { ...row, works } : null;
   };
+  const circle = keep(rows?.friends);
   const first = because(rows?.because[0]);
   const second = because(rows?.because[1]);
-  const lovedNow = shelf(loved);
-  const last = because(rows?.because[2]);
+  const last = circle ? null : because(rows?.because[2]);
   const people = hidden
     ? (rows?.people ?? [])
         .filter((p) => !hidden.has(p.profile.id))
         .map((p) => ({ ...p, works: p.works.filter((w) => !isOwned(w)) }))
         .filter((p) => p.works.length >= 3)
     : [];
-  const said = thoughts.filter((t) => !isOwned(t.work) && t.by.id !== pid);
 
   // before the personal rows: a placeholder while they load, or a nudge
   // when there's nothing to pick from yet
@@ -174,7 +171,7 @@ export default function DiscoverView({
       visitorNudge
     ) : rows === undefined ? (
       <ShelfSkeleton />
-    ) : rows && !first && !second && !last && people.length === 0 ? (
+    ) : rows && !circle && !first && !second && !last && people.length === 0 ? (
       <Nudge>
         Favorite a few things (the ★ on anything below) and rows picked from your taste start showing up here.
       </Nudge>
@@ -217,24 +214,18 @@ export default function DiscoverView({
         ) : (
           <div className="flex flex-col gap-16 sm:gap-20">
             {lead}
-            {first && <BecauseShelf row={first} priority />}
-            {second && <BecauseShelf row={second} />}
-            {people.length > 0 && <TastePeople people={people} />}
-            {lovedNow && (
+            {circle && (
               <Shelf
-                priority={!first}
-                works={lovedNow}
-                head={
-                  <SectionHead
-                    title="Loved most this month"
-                    sub="What people favorited and saved most in the last 30 days."
-                  />
-                }
+                priority
+                works={circle}
+                head={<SectionHead title="From people you follow" sub="What they’ve favorited lately." />}
               />
             )}
+            {first && <BecauseShelf row={first} priority={!circle} />}
+            {second && <BecauseShelf row={second} />}
+            {people.length > 0 && <TastePeople people={people} />}
             {last && <BecauseShelf row={last} />}
-            {said.length >= 3 && <Thoughts thoughts={said} />}
-            <Browse initial={initial} isOwned={isOwned} />
+            <MostLoved initial={initial} isOwned={isOwned} skip={seen} />
           </div>
         )}
       </div>

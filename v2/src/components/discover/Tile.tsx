@@ -49,18 +49,21 @@ export default function Tile({
   href,
   priority = false,
   sizes = "(max-width: 639px) 38vw, 180px",
+  who,
 }: {
   work: TileWork;
   /** where it goes: the work's page by default; catalog finds link out (or nowhere) */
   href?: string | null;
   priority?: boolean;
   sizes?: string;
+  /** the line under the title: who loves it */
+  who?: React.ReactNode;
 }) {
   const v = useViewer();
   const kept = isFavorited(v, work) || listsHolding(v, work).size > 0;
   const to = href === undefined ? itemHref(work) : href;
   return (
-    <div className="min-w-0">
+    <div className="@container min-w-0">
       <div className="group/tile group relative">
         <To href={to} hidden className="block outline-none">
           <Framed
@@ -95,6 +98,7 @@ export default function Tile({
         </p>
         <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-neutral-400">{work.creator || typeLabel(work)}</p>
       </To>
+      {who}
     </div>
   );
 }

@@ -1,37 +1,60 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { FeedWork } from "@/lib/types";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { MOST_LOVED_PAGE as PAGE } from "@/lib/discover";
+import type { RankedWork } from "@/lib/types";
 import { useViewer } from "@/lib/viewer";
-import { FEED_PAGE, TYPE_FILTERS } from "@/lib/work";
+import { TYPE_FILTERS } from "@/lib/work";
 import { cn, pill, pillActive, pillIdle } from "../ui/styles";
 import { GridSkeleton, SectionHead, grid } from "./Shelf";
 import Tile from "./Tile";
+import Who from "./Who";
 
-type Page = { key: string; works: FeedWork[]; hasMore: boolean };
+type Page = { key: string; works: RankedWork[]; hasMore: boolean };
 
 async function fetchPage(viewer: string | null, filter: string, offset: number): Promise<Omit<Page, "key">> {
   const p = new URLSearchParams({ filter, offset: String(offset) });
   if (viewer) p.set("viewer", viewer);
-  const res = await fetch(`/api/feed?${p}`);
-  const json = (await res.json()) as { works?: FeedWork[]; hasMore?: boolean };
-  if (!res.ok) throw new Error("feed unavailable");
+  const res = await fetch(`/api/discover/works?${p}`);
+  const json = (await res.json()) as { works?: RankedWork[]; hasMore?: boolean };
+  if (!res.ok) throw new Error("most loved unavailable");
   return { works: json.works ?? [], hasMore: !!json.hasMore };
 }
 
 const FILTERS = [{ key: "all", label: "All" }, ...TYPE_FILTERS.map((f) => ({ key: f.key, label: f.label }))];
 
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="col-span-full flex items-center gap-3">
+      <h3 className="text-[11px] font-semibold tracking-[0.08em] text-gray-500 uppercase dark:text-neutral-400">
+        {label}
+      </h3>
+      <span className="h-px flex-1 bg-gray-200 dark:bg-neutral-800" />
+    </div>
+  );
+}
+
 /**
- * Everything on Favorite as a dense grid of frames, by medium — the feed's
- * pages and order (people you follow first), minus what's already yours.
- * The first "All" page comes with the HTML; members get theirs on arrival.
+ * "Most loved": every work on Favorite as a dense grid of frames — the ones
+ * favorited most in the last 30 days first, then the rest by favorites of
+ * all time — each with how many and who (people you follow by name). By
+ * medium; what's already yours, and what a shelf above already showed, stays
+ * out. The first "All" page comes with the HTML; members get theirs on arrival.
  */
-export default function Browse({ initial, isOwned }: { initial: FeedWork[]; isOwned: (w: FeedWork) => boolean }) {
+export default function MostLoved({
+  initial,
+  isOwned,
+  skip,
+}: {
+  initial: RankedWork[];
+  isOwned: (w: RankedWork) => boolean;
+  skip: Set<string>;
+}) {
   const v = useViewer();
   const viewer = v.status === "signed-in" ? (v.profile?.id ?? null) : null;
   const [filter, setFilter] = useState("all");
   const key = `${viewer ?? "-"}:${filter}`;
-  const [page, setPage] = useState<Page>({ key: "-:all", works: initial, hasMore: initial.length === FEED_PAGE });
+  const [page, setPage] = useState<Page>({ key: "-:all", works: initial, hasMore: initial.length === PAGE });
   const [failed, setFailed] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -76,11 +99,12 @@ export default function Browse({ initial, isOwned }: { initial: FeedWork[]; isOw
     return () => io.disconnect();
   }, [ready, page, loadMore]);
 
-  const works = shown?.works.filter((w) => !isOwned(w)) ?? [];
+  const works = shown?.works.filter((w) => !isOwned(w) && !skip.has(w.work_key)) ?? [];
+  const firstOld = works.findIndex((w) => w.this_month === 0);
 
   return (
     <section>
-      <SectionHead title="Browse everything" />
+      <SectionHead title="Most loved" sub="What people favorited most this month, then of all time." />
       <div className="no-scrollbar -mx-4 mt-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {FILTERS.map((f) => (
           <button
@@ -106,9 +130,26 @@ export default function Browse({ initial, isOwned }: { initial: FeedWork[]; isOw
         <p className="py-16 text-center text-sm text-gray-500 dark:text-neutral-400">Nothing here yet.</p>
       ) : (
         <div className={cn(grid, "mt-6")}>
-          {works.map((w) => (
-            <Tile key={w.work_key} work={w} sizes="(max-width: 639px) 31vw, (max-width: 1279px) 17vw, 160px" />
-          ))}
+          {works.map((w, i) => {
+            const recent = w.this_month > 0;
+            return (
+              <Fragment key={w.work_key}>
+                {i === 0 && recent && <Divider label="This month" />}
+                {i === firstOld && <Divider label="All time" />}
+                <Tile
+                  work={w}
+                  sizes="(max-width: 639px) 31vw, (max-width: 1279px) 17vw, 160px"
+                  who={
+                    recent ? (
+                      <Who count={w.this_month} ids={w.month_ids} people={w.month_profiles} />
+                    ) : (
+                      <Who count={w.fav_count} ids={w.favoriter_ids} people={w.top_profiles} />
+                    )
+                  }
+                />
+              </Fragment>
+            );
+          })}
         </div>
       )}
       {ready && page.hasMore && <div ref={sentinel} aria-hidden className="h-px w-full" />}

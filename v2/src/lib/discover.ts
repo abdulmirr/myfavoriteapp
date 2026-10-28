@@ -9,3 +9,6 @@ export const DISCOVER = true;
 export const BROWSE = DISCOVER
   ? { href: "/discover", label: "Discover" }
   : { href: "/feed", label: "Feed" };
+
+/** "Most loved" loads in pages of 48 — whole rows at 2, 3, 4, 6 and 8 across. */
+export const MOST_LOVED_PAGE = 48;

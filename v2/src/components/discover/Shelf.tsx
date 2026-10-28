@@ -1,6 +1,7 @@
 import type { DiscoverWork } from "@/lib/types";
 import { cn } from "../ui/styles";
 import Tile from "./Tile";
+import Who from "./Who";
 
 /** A row's name and its reason, with an optional picture in front. */
 export function SectionHead({ title, sub, lead }: { title: React.ReactNode; sub?: React.ReactNode; lead?: React.ReactNode }) {
@@ -41,7 +42,15 @@ export default function Shelf({
       <div className={track}>
         {works.slice(0, 12).map((w, i) => (
           <div key={w.work_key} className={slot(i)}>
-            <Tile work={w} priority={priority && i < 7} />
+            <Tile
+              work={w}
+              priority={priority && i < 7}
+              who={
+                w.fav_count ? (
+                  <Who count={w.fav_count} ids={w.favoriter_ids ?? []} people={w.top_profiles ?? []} />
+                ) : undefined
+              }
+            />
           </div>
         ))}
       </div>
