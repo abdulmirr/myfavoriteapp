@@ -547,8 +547,11 @@ export async function getTodayCommunityPicks(): Promise<{ day: string; picks: Co
 }
 
 /**
- * Five real favorites with real thoughts, one per medium where possible,
- * rotated daily (deterministic per day — everyone sees the same five).
+ * Real favorites with real thoughts, one per medium where possible, rotated
+ * daily (deterministic per day — everyone sees the same five). The first
+ * five are the day's picks (Home for visitors, the landing, the email); the
+ * rest are backups, in the same order, so a member's Home can skip what's
+ * already on their wall and still show five.
  */
 export async function getCommunityPicks(day: string): Promise<CommunityPick[]> {
   "use cache";
@@ -579,7 +582,7 @@ export async function getCommunityPicks(day: string): Promise<CommunityPick[]> {
   };
   const workKey = (r: Item) => r.canonical_id ?? titleKey(r.media_type, r.title);
   const buckets: MediaType[][] = [["music"], ["book"], ["movie", "tv"], ["podcast", "article", "video"]];
-  const choose = (d: string, skip: Set<string>): ItemWithProfile[] => {
+  const choose = (d: string, skip: Set<string>, n: number): ItemWithProfile[] => {
     const shuffled = rows
       .filter((r) => !skip.has(workKey(r)))
       .map((r) => ({ r, h: seeded(d + r.id) }))
@@ -600,7 +603,7 @@ export async function getCommunityPicks(day: string): Promise<CommunityPick[]> {
       if (hit) take(hit);
     }
     for (const r of shuffled) {
-      if (picks.length >= 5) break;
+      if (picks.length >= n) break;
       if (!usedPeople.has(r.profile_id) && !usedWorks.has(workKey(r))) take(r);
     }
     return picks;
@@ -610,10 +613,11 @@ export async function getCommunityPicks(day: string): Promise<CommunityPick[]> {
   const recent = new Set<string>();
   for (let n = 1; n <= 14; n++) {
     const prev = new Date(Date.parse(day) - n * 864e5).toISOString().slice(0, 10);
-    for (const r of choose(prev, new Set())) recent.add(workKey(r));
+    for (const r of choose(prev, new Set(), 5)) recent.add(workKey(r));
   }
-  let picks = choose(day, recent);
-  if (picks.length < 5) picks = choose(day, new Set()); // a thin pool repeats rather than comes up short
+  // greedy in a fixed order, so the first five of twelve are exactly the day's five
+  let picks = choose(day, recent, 12);
+  if (picks.length < 5) picks = choose(day, new Set(), 12); // a thin pool repeats rather than comes up short
   return picks.map(({ profile, ...item }) => ({
     item: item as Item,
     by: profile!,

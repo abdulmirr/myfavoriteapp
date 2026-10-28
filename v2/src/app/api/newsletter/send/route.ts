@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   }
   const key = process.env.NEWSLETTER_KEY ?? "";
   const day = new Date().toISOString().slice(0, 10);
-  const picks = await getCommunityPicks(day);
+  const picks = (await getCommunityPicks(day)).slice(0, 5);
   if (!picks.length) return NextResponse.json({ sent: 0, reason: "no picks today" });
 
   if (req.nextUrl.searchParams.has("html")) {

@@ -545,6 +545,11 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
 - [x] **Onboarding** rebuilt in the new look: bigger type; Claim has a live preview of your page beside the form; Picks without boxes; People ranked by the favorites you now share, with cover strips and Invite a friend; the reveal shows your page with its glow and Top four, the three verbs, and a "Today's picks, by email" switch.
 - [x] Friends rail: a hairline under each heading, hairlines between rows, a red count badge; people with your taste as compact six-cover strips.
 - [x] Profile: "N favorites in common · mostly films" and "N approve their taste" became pills under the social links.
+- [x] **Home never recommends what you already have** (favorited or saved), checked three times:
+  - AI picks: the whole library goes into the prompt (the newest 150 in full, the rest as a do-not-suggest list), generated picks matching anything you own are dropped, and every `/api/picks` response is re-checked against your library as it is now (so something favorited since this morning, on any device, stops being a pick).
+  - Community fill: `getCommunityPicks` ranks twelve; the first five are still the day's five (visitors, landing, email), the rest are backups so a member's Home skips their own favorites and saves and still shows five.
+  - On the page, a snapshot taken as Home opens, so a pick you favorite right there stays on screen.
+  - Matching is by catalog id and by normalized title within a shelf (films and shows together). `_e2e-owned` covers it without an AI call; `_e2e-picks` still passes with a real one.
 
 ### Left for Abdul
 

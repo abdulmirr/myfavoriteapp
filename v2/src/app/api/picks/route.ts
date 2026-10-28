@@ -76,6 +76,51 @@ const ASK: Record<RecCategoryKey, string> = {
 
 type Signal = { media_type: string; title: string; creator: string };
 
+/** "The Godfather", "Godfather (1972)", "godfather" — one comparable spelling */
+function normTitle(t: string): string {
+  return t
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\(.*?\)|\[.*?\]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/^the /, "");
+}
+/** films and shows share a shelf, as do links, videos and the rest */
+const FAMILY: Record<string, string> = {
+  movie: "screen",
+  tv: "screen",
+  music: "music",
+  book: "book",
+  podcast: "podcast",
+  article: "web",
+  video: "web",
+  other: "web",
+  photo: "photo",
+};
+const ownKey = (type: string, title: string) => `${FAMILY[type] ?? type}|${normTitle(title)}`;
+
+/**
+ * Everything already theirs — every favorite and every save — as keys a pick
+ * is checked against. A pick for something you own defeats the point.
+ */
+async function ownedKeys(db: SupabaseClient, profileId: string): Promise<Set<string>> {
+  const [{ data: favs }, { data: saves }] = await Promise.all([
+    db.from("items").select("media_type, title, canonical_id").eq("profile_id", profileId).limit(5000),
+    db.from("list_items").select("media_type, title, canonical_id").eq("profile_id", profileId).limit(5000),
+  ]);
+  const keys = new Set<string>();
+  for (const r of [...(favs ?? []), ...(saves ?? [])] as { media_type: string; title: string; canonical_id: string | null }[]) {
+    keys.add(ownKey(r.media_type, r.title));
+    if (r.canonical_id) keys.add(r.canonical_id);
+  }
+  return keys;
+}
+
+const owned = (p: Pick<DailyPick, "media_type" | "title" | "canonical_id">, keys: Set<string>) =>
+  (!!p.canonical_id && keys.has(p.canonical_id)) || keys.has(ownKey(p.media_type, p.title));
+
 /** Load an article and pull its share image; `usable:false` only for confirmed-dead URLs. */
 async function articlePreview(url: string): Promise<{ usable: boolean; image: string | null }> {
   try {
@@ -114,7 +159,7 @@ async function generate(
   items: Item[],
   tasteNote: string,
   eligible: RecCategoryKey[],
-  avoid: { dismissed: Signal[]; saved: Signal[]; recent: Signal[] }
+  avoid: { dismissed: Signal[]; saved: Signal[]; recent: Signal[]; older: Signal[] }
 ): Promise<DailyPick[]> {
   const library = items
     .map((i) => {
@@ -126,6 +171,9 @@ async function generate(
 
   const prompt =
     `Here is everything I've favorited (my notes in quotes):\n\n${library}\n\n` +
+    (avoid.older.length
+      ? `Also in my favorites, from longer ago (never suggest these either):\n${list(avoid.older)}\n\n`
+      : "") +
     (tasteNote ? `A standing note from me about what to pick: ${tasteNote}\n\n` : "") +
     (avoid.dismissed.length
       ? `I passed on these recent suggestions — never suggest them again, and read them as taste signal:\n${list(avoid.dismissed)}\n\n`
@@ -229,8 +277,8 @@ async function claimAndGenerate({ db, profileId, eligible }: Ctx, day: string): 
   try {
     if (!(await withinLimit(db, "picks", 6))) throw new Error("budget");
     const weekAgo = new Date(Date.parse(day) - 7 * 864e5).toISOString().slice(0, 10);
-    const [{ data: items }, { data: priv }, { data: dismissed }, { data: saved }, { data: recent }] = await Promise.all([
-      db.from("items").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(150),
+    const [{ data: items }, { data: priv }, { data: dismissed }, { data: saved }, { data: recent }, keys] = await Promise.all([
+      db.from("items").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(1000),
       db.from("profile_private").select("taste_note").eq("profile_id", profileId).maybeSingle<{ taste_note: string }>(),
       db
         .from("rec_dismissals")
@@ -245,13 +293,21 @@ async function claimAndGenerate({ db, profileId, eligible }: Ctx, day: string): 
         .order("created_at", { ascending: false })
         .limit(30),
       db.from("daily_picks").select("items").eq("profile_id", profileId).gte("day", weekAgo).neq("day", day),
+      ownedKeys(db, profileId),
     ]);
-    const picks = await generate((items ?? []) as Item[], priv?.taste_note?.trim() ?? "", eligible, {
+    // the newest 150 in full (notes and all); the rest as a do-not-suggest list
+    const all = (items ?? []) as Item[];
+    const generated = await generate(all.slice(0, 150), priv?.taste_note?.trim() ?? "", eligible, {
       dismissed: (dismissed ?? []) as Signal[],
       saved: (saved ?? []) as Signal[],
       recent: ((recent ?? []) as { items: DailyPick[] }[]).flatMap((r) => r.items ?? []),
+      older: all.slice(150),
     });
-    if (!picks.length) throw new Error("empty");
+    if (!generated.length) throw new Error("empty");
+    // never what they already have, whatever the model says (an all-owned set is
+    // kept so the claim completes; responses filter it, and Home tops up)
+    const fresh = generated.filter((p) => !owned(p, keys));
+    const picks = fresh.length ? fresh : generated;
     await db.from("daily_picks").update({ items: picks }).eq("profile_id", profileId).eq("day", day);
     // keep two weeks of history (repeat-avoidance + a future "past picks" view)
     const cutoff = new Date(Date.parse(day) - 14 * 864e5).toISOString().slice(0, 10);
@@ -291,7 +347,10 @@ export async function POST(req: NextRequest) {
     .eq("profile_id", profile.id)
     .gte("created_at", new Date(Date.now() - 2 * 864e5).toISOString());
   const passedKeys = new Set(((passed ?? []) as Signal[]).map((d) => `${d.media_type}|${d.title.toLowerCase()}`));
-  const respond = (picks: DailyPick[]) => {
+  const respond = async (picks: DailyPick[]) => {
+    // checked against the library as it is now: favorited or saved since the set
+    // was chosen (on this device or any other) and it's no longer a pick
+    const keys = await ownedKeys(db, profile.id);
     // tomorrow's set brews after the response — mornings open instantly
     after(async () => {
       const tomorrow = localDay(req, 1);
@@ -311,7 +370,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       day,
       counts,
-      picks: picks.filter((p) => !passedKeys.has(`${p.media_type}|${p.title.toLowerCase()}`)),
+      picks: picks.filter((p) => !passedKeys.has(`${p.media_type}|${p.title.toLowerCase()}`) && !owned(p, keys)),
     });
   };
 

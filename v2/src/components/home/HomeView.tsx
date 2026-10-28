@@ -7,7 +7,7 @@ import type { CommunityPick } from "@/lib/data";
 import type { DailyPick, Work } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { useViewer, viewer } from "@/lib/viewer";
-import { titleKey } from "@/lib/work";
+import { titleKey, workKeys } from "@/lib/work";
 import { TypedLine, TypedTitle } from "../Typewriter";
 import NewsletterCTA from "./NewsletterCTA";
 import PickCard, { PickSkeleton } from "./PickCard";
@@ -105,6 +105,15 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
     setAi(cached ? { state: "ready", picks: cached } : { state: "loading", picks: [] });
   }
 
+  // what's already theirs when Home opens — favorites and saves — is never
+  // offered back as a pick. Taken once (and once more when the fresh library
+  // replaces the cached one), so a pick favorited right here stays on screen.
+  const [owned, setOwned] = useState<{ pid: string; fresh: boolean; keys: Set<string> } | null>(null);
+  if (v.status === "signed-in" && pid && (owned?.pid !== pid || (!owned.fresh && !v.stale))) {
+    setOwned({ pid, fresh: !v.stale, keys: new Set([...v.favorites.keys(), ...v.membership.keys()]) });
+  }
+  const isOwned = (w: Work) => !!owned && workKeys(w).some((k) => owned.keys.has(k));
+
   useEffect(() => {
     if (setup) router.replace("/welcome");
   }, [setup, router]);
@@ -201,10 +210,11 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
   const ready = v.status !== "unknown" && weekday !== "";
 
   // the five cards
-  const aiPicks = ai.state === "ready" || ai.state === "loading" ? ai.picks : [];
+  const aiPicks = (ai.state === "ready" || ai.state === "loading" ? ai.picks : []).filter((p) => !isOwned(pickWork(p)));
   const taken = new Set(aiPicks.map((p) => titleKey(p.media_type, p.title)));
+  // the community's ranked backups cover whatever's already on their wall
   const fill = community
-    .filter((c) => !taken.has(titleKey(c.item.media_type, c.item.title)))
+    .filter((c) => !taken.has(titleKey(c.item.media_type, c.item.title)) && !isOwned(communityWork(c)))
     .slice(0, Math.max(0, TOTAL - aiPicks.length));
 
   const memberList =
