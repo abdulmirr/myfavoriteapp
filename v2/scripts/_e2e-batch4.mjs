@@ -233,19 +233,19 @@ try {
   await dp.screenshot({ path: join(SHOTS, "b4-dark-friends.png"), fullPage: true });
   await dark.close();
 
-  // the landing page, for visitors only
+  // the landing page, for visitors only — one screen, one button
   const anon = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const lp = await anon.newPage();
   lp.on("pageerror", (e) => errors.push(e.message));
   await lp.goto(`${APP}/`, { waitUntil: "networkidle" });
   await lp.getByRole("heading", { name: /Your taste,\s*in one place\./ }).waitFor({ timeout: 15000 });
-  check("visitors get the landing page", (await lp.getByRole("heading", { name: "Favorite. Save. Discover." }).count()) === 1);
   const starts = lp.getByRole("link", { name: "Start your library" });
-  check("“Start your library” top and bottom, to sign-up", (await starts.count()) === 2 && (await starts.first().getAttribute("href")) === "/signin?mode=signup");
-  const five = await lp.locator("section").filter({ hasText: "Today's five." }).locator("li").count();
-  check("today's five are live", five === 5, String(five));
-  check("the newsletter sits under them", (await lp.getByRole("textbox", { name: /email/i }).count()) >= 1);
-  await starts.first().click();
+  check("one “Start your library”, to sign-up", (await starts.count()) === 1 && (await starts.getAttribute("href")) === "/signin?mode=signup");
+  check("a quiet email line for the not-ready", (await lp.getByRole("textbox", { name: /email/i }).count()) === 1);
+  check("no message bubble for visitors", (await lp.getByRole("button", { name: /message/i }).count()) === 0);
+  const fold = await lp.evaluate(() => document.documentElement.scrollHeight);
+  check("the landing is about one screen", fold <= 1100, `${fold}px tall`);
+  await starts.click();
   await lp.waitForURL("**/signin?mode=signup", { timeout: 10000 });
   await lp.getByRole("heading", { name: "Join Favorite" }).waitFor({ timeout: 10000 }).then(
     () => check("…which opens on sign-up", true),

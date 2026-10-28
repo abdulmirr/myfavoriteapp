@@ -13,7 +13,7 @@ const TOPICS = [
   { key: "other", label: "Other" },
 ] as const;
 
-/** antislop's "Message" bubble — a direct line to the founder's inbox. */
+/** antislop's "Message" bubble — a direct line to the founder's inbox, for members. */
 export default function FeedbackBubble() {
   const v = useViewer();
   const [open, setOpen] = useState(false);
@@ -43,8 +43,11 @@ export default function FeedbackBubble() {
     }
   };
 
+  // a line to the founder for people using the app — visitors don't need it
+  if (v.status === "signed-out") return null;
+
   return (
-    <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3">
+    <div className={cn("fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3", v.status === "unknown" && "signed-in-only")}>
       <Popover.Root
         open={open}
         onOpenChange={(o) => {

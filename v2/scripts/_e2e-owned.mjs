@@ -26,24 +26,9 @@ const password = "own-" + Math.random().toString(36).slice(2);
 let uid = null;
 let pid = null;
 let browser = null;
+const five = [];
 try {
-  // today's community five, as a visitor sees them on the landing page
   browser = await chromium.launch();
-  const anon = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await anon.goto(`${APP}/`, { waitUntil: "networkidle" });
-  const five = await anon
-    .locator("section")
-    .filter({ hasText: "Today's five." })
-    .locator("li p.truncate.font-semibold")
-    .allInnerTexts();
-  await anon.close();
-  check("read today's community five", five.length === 5, five.join(" | "));
-  const [favTitle, saveTitle] = five;
-  const rowFor = async (title) =>
-    (await q("select media_type::text, title, creator, image_url, canonical_id from items where title = $1 and image_url is not null limit 1", [title]))[0];
-  const favRow = await rowFor(favTitle);
-  const saveRow = await rowFor(saveTitle);
-
   await sb.auth.signUp({ email, password });
   await q("update auth.users set email_confirmed_at = now() where email = $1", [email]);
   uid = (await q("select id from auth.users where email = $1", [email]))[0].id;
@@ -52,6 +37,29 @@ try {
     if (!pid) await wait(700);
   }
   await q("insert into profile_private (profile_id, onboarded_at) values ($1, now()) on conflict (profile_id) do update set onboarded_at = now()", [pid]);
+
+  // today's community five, as a brand-new member's Home shows them (no taste yet)
+  {
+    const { data: si0 } = await sb.auth.signInWithPassword({ email, password });
+    const s0 = si0.session;
+    const c0 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const sbKey0 = `sb-${new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname.split(".")[0]}-auth-token`;
+    await c0.addInitScript(([k, v]) => localStorage.setItem(k, v), [
+      sbKey0,
+      JSON.stringify({ access_token: s0.access_token, refresh_token: s0.refresh_token, expires_at: s0.expires_at, token_type: "bearer", user: s0.user }),
+    ]);
+    const p0 = await c0.newPage();
+    await p0.goto(`${APP}/`, { waitUntil: "networkidle" });
+    await p0.locator("article h2").nth(4).waitFor({ timeout: 20000 });
+    five.push(...(await p0.locator("article h2").allInnerTexts()).map((t) => t.trim()));
+    await c0.close();
+  }
+  check("read today's community five", five.length === 5, five.join(" | "));
+  const [favTitle, saveTitle] = five;
+  const rowFor = async (title) =>
+    (await q("select media_type::text, title, creator, image_url, canonical_id from items where title = $1 and image_url is not null limit 1", [title]))[0];
+  const favRow = await rowFor(favTitle);
+  const saveRow = await rowFor(saveTitle);
 
   // three albums unlock music picks; "Blonde" is one of them
   for (const [i, t] of ["Blonde", "Test Owned Two", "Test Owned Three"].entries()) {

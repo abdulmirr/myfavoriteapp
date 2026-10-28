@@ -188,16 +188,3 @@ html:not([data-auth="in"]) .signed-in-only { display: none !important; }
 /* hide scrollbars on horizontal pill rows only */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
-
-/* the landing page: covers drifting around the headline, a strip that rolls */
-@keyframes landing-float {
-  0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
-  50% { transform: translateY(-9px) rotate(var(--tilt, 0deg)); }
-}
-.landing-float { animation: landing-float 7s ease-in-out infinite; }
-@keyframes landing-roll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.landing-roll { animation: landing-roll 70s linear infinite; }
-.landing-roll:hover { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) {
-  .landing-float, .landing-roll { animation: none; }
-}

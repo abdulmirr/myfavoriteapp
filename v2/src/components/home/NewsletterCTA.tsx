@@ -32,7 +32,14 @@ const onFlag = (cb: () => void) => {
   };
 };
 
-function Note({ title, note }: { title: string; note: string }) {
+function Note({ title, note, compact }: { title: string; note: string; compact?: boolean }) {
+  if (compact) {
+    return (
+      <p className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-neutral-300" aria-live="polite">
+        <Check className="size-4" strokeWidth={2.5} /> {title} {note}
+      </p>
+    );
+  }
   return (
     <section className={cn(card, "mt-14 px-6 py-8 text-center sm:mt-16")} aria-live="polite">
       <span className="mx-auto flex size-9 items-center justify-center rounded-full bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900">
@@ -49,7 +56,7 @@ function Note({ title, note }: { title: string; note: string }) {
  * morning. Visitors type an address and confirm by email; members subscribe
  * their account email in one click. Subscribers never see it.
  */
-export default function NewsletterCTA() {
+export default function NewsletterCTA({ compact = false }: { compact?: boolean }) {
   const v = useViewer();
   const flag = useSyncExternalStore(onFlag, readFlag, () => "ssr");
   const [member, setMember] = useState<{ id: string; status: string; email: string } | null>(null);
@@ -81,8 +88,8 @@ export default function NewsletterCTA() {
   }, [uid]);
 
   if (flag === "ssr" || v.status === "unknown") return null;
-  if (phase === "pending") return <Note title="Check your inbox." note="One click on the link we just sent and you’re in." />;
-  if (phase === "done") return <Note title="You’re in." note="Today’s picks land in your inbox every morning." />;
+  if (phase === "pending") return <Note compact={compact} title="Check your inbox." note="One click on the link we just sent and you’re in." />;
+  if (phase === "done") return <Note compact={compact} title="You’re in." note="Today’s picks land in your inbox every morning." />;
   if (uid) {
     if (!member || member.id !== uid || member.status === "active") return null;
   } else if (flag === "active" || flag === "pending") {
@@ -120,6 +127,36 @@ export default function NewsletterCTA() {
     }
     setPhase("done");
   };
+
+  if (compact && !uid) {
+    // one quiet line for the landing page: the lighter way in
+    return (
+      <div className="flex flex-col items-center gap-3 lg:flex-row lg:justify-center lg:gap-5">
+        <p className="text-center text-sm text-gray-600 dark:text-neutral-300">Not ready yet? Get five picks by email every morning.</p>
+        <form onSubmit={subscribeVisitor} className="flex w-full max-w-sm gap-2">
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            inputMode="email"
+            placeholder="you@email.com"
+            aria-label="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={cn(field, "min-w-0 flex-1")}
+          />
+          <button type="submit" disabled={phase === "busy"} className={primaryButton}>
+            {phase === "busy" ? "…" : "Subscribe"}
+          </button>
+        </form>
+        {error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className={cn(card, "mt-14 px-6 py-8 text-center sm:mt-16 sm:px-10 sm:py-10")}>

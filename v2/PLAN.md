@@ -536,7 +536,8 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
 
 ### 2026-10-28, fifth batch (landing, onboarding, polish)
 
-- [x] **Landing page** for visitors at `/` (members still get Home; `HomeSwitch` picks before paint from the pre-paint auth flag, so neither flashes):
+- [x] **Landing page, take two** (Abdul: "way too repetitive… present the purpose in the simplest way possible"): one screen — "Your taste, in one place.", three short sentences (keep a page / save what's next / find new favorites), **Start your library** + "See an example page", and one example of the product (Maya's page with her Top four, a "Saved to Check later" toast). Underneath, one quiet line for the not-ready ("five picks by email every morning") and Privacy · Terms. The message bubble is for members only now.
+- [x] ~~Landing page, take one~~ (replaced, kept here for the record) for visitors at `/` (members still get Home; `HomeSwitch` picks before paint from the pre-paint auth flag, so neither flashes):
   - Hero: "Your taste, in one place." with the old landing's real covers drifting in their frames around it, "Start your library" and "See an example page".
   - Favorite · Save · Discover, each with a live-looking demo (a wall corner, a ticking list, a morning pick).
   - Today's five, live from the community, with the newsletter signup under them.
