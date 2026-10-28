@@ -596,3 +596,8 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.
 - Say when to swap. Submit `favorite-extension-v1.1.0.zip` to the Chrome Web Store with automatic publishing unchecked, then press Publish after the swap — its lists only show in v2.
 - Newsletter: Resend's free plan sends 100 emails a day. Past roughly 90 subscribers, the daily send needs a paid plan.
+- Test accounts share Supabase's sign-up email limit with real people (one project for v1 and v2). On 2026-10-28 the e2e runs used it up, so sign-ups on the live site got "email rate limit exceeded" for up to an hour. Either raise the limit (Supabase → Authentication → Rate Limits → emails per hour) or put a service-role key in `v2/.env.local` so tests create confirmed accounts without sending email.
+
+### Found, not yet fixed
+
+- In a production build, a signed-in page that lists works (/feed, /friends, list pages) prefetches their item pages, and one prefetch (e.g. `/item/itunes:476023633`) can stay open indefinitely. The page itself renders in 0.5s and pages work normally, but the network never goes idle. Pre-existing (item pages are unchanged since batch 4); worth checking whether a click on that work waits on the open prefetch.
