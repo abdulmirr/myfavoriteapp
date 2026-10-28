@@ -476,6 +476,54 @@ export async function getPopularWorkKeys(): Promise<string[]> {
     .map(([k]) => k);
 }
 
+/* ── the landing page's "walls already up" ──────────────────────────────── */
+
+export interface LandingWall {
+  who: ProfileLite;
+  count: number;
+  /** their Top four (pinned first, then their own order) */
+  covers: Pick<Item, "id" | "media_type" | "title" | "image_url" | "view_url">[];
+}
+
+/**
+ * Three real pages for the landing page, rotated daily among the fullest
+ * walls (a photo, 12+ favorites, four covers to show). Public data only.
+ */
+export async function getLandingWalls(): Promise<LandingWall[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("feed");
+  const day = new Date().toISOString().slice(0, 10);
+  const db = supabaseServer();
+  const { data } = await db
+    .from("items")
+    .select("id, profile_id, media_type, title, image_url, view_url")
+    .not("image_url", "is", null)
+    .neq("media_type", "photo")
+    .order("pinned_order", { ascending: true, nullsFirst: false })
+    .order("sort_order", { ascending: true })
+    .limit(5000);
+  const byPerson = new Map<string, { count: number; covers: LandingWall["covers"] }>();
+  for (const r of (data ?? []) as (LandingWall["covers"][number] & { profile_id: string })[]) {
+    let w = byPerson.get(r.profile_id);
+    if (!w) byPerson.set(r.profile_id, (w = { count: 0, covers: [] }));
+    w.count++;
+    if (w.covers.length < 4) w.covers.push({ id: r.id, media_type: r.media_type, title: r.title, image_url: r.image_url, view_url: r.view_url });
+  }
+  const full = [...byPerson.entries()].filter(([, w]) => w.count >= 12 && w.covers.length === 4).map(([id]) => id);
+  if (!full.length) return [];
+  const { data: people } = await db.from("profiles").select(LITE).in("id", full).not("avatar_url", "is", null);
+  const seeded = (x: string) => {
+    let h = 2166136261;
+    for (let i = 0; i < x.length; i++) h = Math.imul(h ^ x.charCodeAt(i), 16777619);
+    return h >>> 0;
+  };
+  return ((people ?? []) as ProfileLite[])
+    .sort((a, b) => seeded(day + a.id) - seeded(day + b.id))
+    .slice(0, 3)
+    .map((who) => ({ who, count: byPerson.get(who.id)!.count, covers: byPerson.get(who.id)!.covers }));
+}
+
 /* ── community picks (Home for visitors, and the top-up for members) ─────── */
 
 export interface CommunityPick {

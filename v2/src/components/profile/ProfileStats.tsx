@@ -7,39 +7,13 @@ import { fetchTasteMatch, tasteApprovalCount, type TasteMatch } from "@/lib/soci
 import { useViewer } from "@/lib/viewer";
 import { TYPE_PLURAL } from "@/lib/work";
 import type { MediaType } from "@/lib/types";
+import Star from "../ui/Star";
 
 const PeopleDialog = dynamic(() => import("./PeopleDialog"));
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-
-/**
- * "213 favorites · 16 followers · 17 following" — the counts open the people
- * list. Visitors also get the taste match ("You share 12 favorites — mostly
- * music") and how many approve this person's taste.
- */
+/** "213 favorites · 16 followers · 17 following" — the counts open the people list. */
 export default function ProfileStats({ profile }: { profile: ProfilePageData }) {
-  const v = useViewer();
   const [people, setPeople] = useState<"followers" | "following" | null>(null);
-  const [match, setMatch] = useState<TasteMatch | null>(null);
-  const [approvals, setApprovals] = useState(0);
-  const me = v.profile?.id;
-
-  useEffect(() => {
-    let stale = false;
-    tasteApprovalCount(profile.id).then((n) => !stale && setApprovals(n));
-    return () => {
-      stale = true;
-    };
-  }, [profile.id]);
-
-  useEffect(() => {
-    if (!me || me === profile.id) return;
-    let stale = false;
-    fetchTasteMatch(me, profile.id).then((m) => !stale && setMatch(m));
-    return () => {
-      stale = true;
-    };
-  }, [me, profile.id]);
 
   const { favorites, followers, following } = profile.counts;
   const btn =
@@ -61,18 +35,6 @@ export default function ProfileStats({ profile }: { profile: ProfilePageData }) 
           {num(following)} following
         </button>
       </p>
-      {(approvals > 0 || (match && match.shared > 0)) && (
-        <p className="w-full text-xs text-gray-500 dark:text-neutral-400">
-          {match && match.shared > 0 && (
-            <>
-              You share {plural(match.shared, "favorite")}
-              {match.top_type && ` — mostly ${TYPE_PLURAL[match.top_type as MediaType] ?? match.top_type}`}
-            </>
-          )}
-          {match && match.shared > 0 && approvals > 0 && " · "}
-          {approvals > 0 && `${approvals} ${approvals === 1 ? "approves" : "approve"} ${me === profile.id ? "your" : "their"} taste`}
-        </p>
-      )}
       {people && (
         <PeopleDialog
           profile={profile}
@@ -83,5 +45,56 @@ export default function ProfileStats({ profile }: { profile: ProfilePageData }) 
         />
       )}
     </>
+  );
+}
+
+const pill =
+  "inline-flex items-center gap-1.5 rounded-full bg-gray-900/[0.05] px-3 py-1 text-[13px] text-gray-700 dark:bg-white/[0.07] dark:text-neutral-300";
+
+/**
+ * The quiet social signals, as pills under the links: what you share with
+ * this person ("36 favorites in common · mostly films", visitors only) and
+ * how many approve their taste. Nothing renders until there's something.
+ */
+export function TasteBadges({ profile }: { profile: ProfilePageData }) {
+  const v = useViewer();
+  const me = v.profile?.id;
+  const [match, setMatch] = useState<TasteMatch | null>(null);
+  const [approvals, setApprovals] = useState(0);
+
+  useEffect(() => {
+    let stale = false;
+    tasteApprovalCount(profile.id).then((n) => !stale && setApprovals(n));
+    return () => {
+      stale = true;
+    };
+  }, [profile.id]);
+
+  useEffect(() => {
+    if (!me || me === profile.id) return;
+    let stale = false;
+    fetchTasteMatch(me, profile.id).then((m) => !stale && setMatch(m));
+    return () => {
+      stale = true;
+    };
+  }, [me, profile.id]);
+
+  const shared = me && me !== profile.id && match ? match.shared : 0;
+  if (!shared && !approvals) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {shared > 0 && (
+        <span className={pill}>
+          <Star className="size-3.5 text-star" />
+          {shared.toLocaleString()} {shared === 1 ? "favorite" : "favorites"} in common
+          {match?.top_type && <span className="text-gray-500 dark:text-neutral-400">· mostly {TYPE_PLURAL[match.top_type as MediaType] ?? match.top_type}</span>}
+        </span>
+      )}
+      {approvals > 0 && (
+        <span className={pill}>
+          {approvals.toLocaleString()} {approvals === 1 ? "approves" : "approve"} {me === profile.id ? "your" : "their"} taste
+        </span>
+      )}
+    </div>
   );
 }

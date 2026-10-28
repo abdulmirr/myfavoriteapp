@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, UserPlus } from "lucide-react";
 import { useViewer } from "@/lib/viewer";
-import { cn, primaryButton } from "../ui/styles";
+import { cn, primaryButton, quietButton } from "../ui/styles";
 
 /**
  * "Invite a friend" — the old Friends tab's button, back. Apple devices get
@@ -11,7 +11,7 @@ import { cn, primaryButton } from "../ui/styles";
  * sheet, everything else a copied message. The link is your own page, so a
  * friend lands on your taste and can follow you in one tap.
  */
-export default function InviteButton({ className }: { className?: string }) {
+export default function InviteButton({ className, quiet = false }: { className?: string; quiet?: boolean }) {
   const me = useViewer().profile;
   const [copied, setCopied] = useState(false);
 
@@ -36,7 +36,7 @@ export default function InviteButton({ className }: { className?: string }) {
   };
 
   return (
-    <button type="button" onClick={invite} className={cn(primaryButton, "h-10 px-5", className)}>
+    <button type="button" onClick={invite} className={cn(quiet ? quietButton : primaryButton, "h-10 px-5", className)}>
       {copied ? <Check className="size-4" /> : <UserPlus className="size-4" />}
       {copied ? "Invite copied" : "Invite a friend"}
     </button>

@@ -534,6 +534,18 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
 - [x] **One link, one work** (migration32): `url_work_key()` maps a URL to the id search would give it (themoviedb.org/movie/77 → tmdb:movie:77, Apple/Deezer/Open Library too), YouTube/Vimeo/Spotify to their own ids, anything else to `url:` + a hash of the address without scheme, www., trailing slash, fragment or tracking parameters. A trigger applies it on every write (v2, v1, the extension); links take any key, catalog-typed rows only catalog ids. Backfilled: 10 links merged (Paul Graham's Essays across 5 people, Playfighter across Abdul and Ali…), every catalog favorite with a catalog link now carries its id. The extension's RPCs match by the key. `lib/url-key.ts` mirrors the function for instant matching; `scripts/_e2e-url-key.mjs` checks the two agree on all 830 stored addresses and doubles as the migration's dry run.
 - [x] QA: `_e2e-batch4` (25 checks), `_e2e-url-key` (22), `_e2e-batch3` (41), `_e2e-v2` (23), `_e2e-profile` (13), `_e2e-extension` (14) — all against the real DB.
 
+### 2026-10-28, fifth batch (landing, onboarding, polish)
+
+- [x] **Landing page** for visitors at `/` (members still get Home; `HomeSwitch` picks before paint from the pre-paint auth flag, so neither flashes):
+  - Hero: "Your taste, in one place." with the old landing's real covers drifting in their frames around it, "Start your library" and "See an example page".
+  - Favorite · Save · Discover, each with a live-looking demo (a wall corner, a ticking list, a morning pick).
+  - Today's five, live from the community, with the newsletter signup under them.
+  - A slice of Friends; "Walls already up" (three real pages, rotated daily — `getLandingWalls`); "Taste is meant to be shared." + one "Start your library" button and a rolling cover strip.
+  - "Start your library" opens sign-up directly (`/signin?mode=signup`).
+- [x] **Onboarding** rebuilt in the new look: bigger type; Claim has a live preview of your page beside the form; Picks without boxes; People ranked by the favorites you now share, with cover strips and Invite a friend; the reveal shows your page with its glow and Top four, the three verbs, and a "Today's picks, by email" switch.
+- [x] Friends rail: a hairline under each heading, hairlines between rows, a red count badge; people with your taste as compact six-cover strips.
+- [x] Profile: "N favorites in common · mostly films" and "N approve their taste" became pills under the social links.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

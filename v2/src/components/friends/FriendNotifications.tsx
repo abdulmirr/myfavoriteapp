@@ -124,7 +124,7 @@ function Row({ n, data }: { n: Notification; data: NotificationsData }) {
   const note = actor ? data.notes.get(actor.id) : undefined;
   const fresh = data.fresh.has(n.id);
   return (
-    <li className="flex gap-3">
+    <li className="flex gap-3 py-3.5">
       <Link href={actor ? `/${actor.username}` : "#"} className="shrink-0">
         <Avatar p={actor} className="size-9" />
       </Link>
@@ -203,10 +203,14 @@ export default function FriendNotifications({ data, limit = 5 }: { data: Notific
 
   return (
     <section aria-label="Notifications">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
+      <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3 dark:border-neutral-800">
+        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
           Notifications
-          {fresh.size > 0 && <span className="ml-1.5 font-medium text-red-500 tabular-nums">{fresh.size} new</span>}
+          {fresh.size > 0 && (
+            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white tabular-nums">
+              {fresh.size}
+            </span>
+          )}
         </h2>
         {list && list.length > limit && (
           <button
@@ -219,7 +223,7 @@ export default function FriendNotifications({ data, limit = 5 }: { data: Notific
         )}
       </div>
       {list === null ? (
-        <div className="mt-4 flex flex-col gap-4" aria-busy>
+        <div className="mt-4 flex flex-col gap-5" aria-busy>
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-3">
               <span className="size-9 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
@@ -228,24 +232,24 @@ export default function FriendNotifications({ data, limit = 5 }: { data: Notific
           ))}
         </div>
       ) : list.length === 0 ? (
-        <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-neutral-400">
+        <p className="pt-3.5 text-sm leading-relaxed text-gray-500 dark:text-neutral-400">
           Nothing yet. Follows and favorites from your wall show up here.
         </p>
       ) : (
-        <ul className="mt-4 flex flex-col gap-5">
+        <ul className="divide-y divide-gray-200 dark:divide-neutral-800">
           {list.slice(0, limit).map((n) => (
             <Row key={n.id} n={n} data={data} />
           ))}
         </ul>
       )}
       {reach && reach.pieces > 0 && (
-        <div className="mt-5 border-t border-gray-200 pt-4 dark:border-neutral-800">
+        <div className="border-t border-gray-200 pt-3.5 dark:border-neutral-800">
           <Reach reach={reach} />
         </div>
       )}
       {all && list && (
         <Dialog open={all} onOpenChange={setAll} title="Notifications" size="lg">
-          <ul className="flex flex-col gap-5 pb-1">
+          <ul className="-mt-1 divide-y divide-gray-200 dark:divide-neutral-700">
             {list.map((n) => (
               <Row key={n.id} n={n} data={data} />
             ))}

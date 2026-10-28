@@ -4,7 +4,7 @@ import Avatar from "../ui/Avatar";
 import SocialIcon from "./SocialIcon";
 import ProfileActions from "./ProfileActions";
 import ProfileBanner from "./ProfileBanner";
-import ProfileStats from "./ProfileStats";
+import ProfileStats, { TasteBadges } from "./ProfileStats";
 import ProfileTabs from "./ProfileTabs";
 
 /**
@@ -70,6 +70,8 @@ export default function ProfileHeader({ profile }: { profile: ProfilePageData })
             ))}
           </div>
         )}
+
+        <TasteBadges profile={profile} />
 
         <div className="mt-5 sm:hidden">
           <ProfileActions profile={profile} stretch />

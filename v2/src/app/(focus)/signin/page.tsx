@@ -14,8 +14,10 @@ import { card, cn, field, fieldLabel, primaryButton } from "@/components/ui/styl
  */
 function SignIn() {
   const router = useRouter();
-  const next = safeNext(useSearchParams().get("next"));
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"));
+  // "Start your library" lands straight on sign-up
+  const [mode, setMode] = useState<"login" | "signup">(params.get("mode") === "signup" ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);

@@ -36,26 +36,28 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
   if (people !== null && people.length === 0) return null;
   return (
     <section aria-label="People with your taste">
-      <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">People with your taste</h2>
-      <ul className="mt-4 flex flex-col gap-7">
+      <h2 className="border-b border-gray-200 pb-3 text-sm font-semibold tracking-tight text-gray-900 dark:border-neutral-800 dark:text-neutral-100">
+        People with your taste
+      </h2>
+      <ul className="divide-y divide-gray-200 dark:divide-neutral-800">
         {people === null
           ? [0, 1, 2].map((i) => (
-              <li key={i} aria-hidden>
+              <li key={i} aria-hidden className="py-5">
                 <div className="flex items-center gap-3">
                   <span className="size-10 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
                   <span className="h-3 w-2/5 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
                 </div>
-                <div className="mt-3 grid grid-cols-4 gap-1.5">
-                  {[0, 1, 2, 3].map((j) => (
+                <div className="mt-3 grid grid-cols-6 gap-1.5">
+                  {[0, 1, 2, 3, 4, 5].map((j) => (
                     <span key={j} className="aspect-square animate-pulse rounded-[4px] bg-gray-200 dark:bg-neutral-800" />
                   ))}
                 </div>
               </li>
             ))
           : people.slice(0, limit).map((p) => {
-              const covers = p.preview.filter((it) => it.image_url).slice(0, 4);
+              const covers = p.preview.filter((it) => it.image_url).slice(0, 6);
               return (
-                <li key={p.id}>
+                <li key={p.id} className="py-5">
                   <div className="flex items-center gap-3">
                     <Link href={`/${p.username}`} className="flex min-w-0 flex-1 items-center gap-3 outline-none">
                       <Avatar p={p} className="size-10" />
@@ -71,15 +73,15 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                     <FollowButton profile={p} chip />
                   </div>
                   {covers.length > 0 && (
-                    <Link href={`/${p.username}`} aria-hidden tabIndex={-1} className="mt-3 grid grid-cols-4 gap-1.5">
+                    <Link href={`/${p.username}`} aria-hidden tabIndex={-1} className="mt-3 grid grid-cols-6 gap-1.5">
                       {covers.map((it) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={it.id}
-                          src={thumbCover(it.image_url!, 200)}
+                          src={thumbCover(it.image_url!, 100)}
                           alt=""
                           loading="lazy"
-                          className="aspect-square w-full rounded-[4px] bg-gray-200 object-cover transition-opacity hover:opacity-90 dark:bg-neutral-800"
+                          className="aspect-square w-full rounded-[3px] bg-gray-200 object-cover transition-opacity hover:opacity-90 dark:bg-neutral-800"
                         />
                       ))}
                     </Link>

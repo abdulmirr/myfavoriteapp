@@ -31,10 +31,13 @@ type FramedItem = Pick<Item, "id" | "media_type" | "title" | "image_url" | "view
 export default function Framed({
   item,
   eager = false,
+  rush = true,
   sizes = "(max-width: 639px) 30vw, 150px",
 }: {
   item: FramedItem;
   eager?: boolean;
+  /** with eager: also jump the queue (fetchpriority=high). Off for decoration that must load but can wait. */
+  rush?: boolean;
   sizes?: string;
 }) {
   const img = item.image_url
@@ -42,7 +45,7 @@ export default function Framed({
         ...coverSrcSet(item.image_url, sizes),
         decoding: "async" as const,
         loading: eager ? ("eager" as const) : ("lazy" as const),
-        fetchPriority: eager ? ("high" as const) : undefined,
+        fetchPriority: eager && rush ? ("high" as const) : undefined,
       }
     : null;
 

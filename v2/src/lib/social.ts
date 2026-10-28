@@ -286,7 +286,7 @@ export interface DiscoverProfile extends Profile {
   count: number;
   /** distinct canonical favorites you both have */
   shared: number;
-  /** their newest saves — the card's cover strip */
+  /** their newest favorites — the cover strip (up to six) */
   preview: Item[];
 }
 
@@ -341,7 +341,7 @@ export async function fetchDiscover(
     counts.set(r.profile_id, (counts.get(r.profile_id) ?? 0) + 1);
     let pv = previews.get(r.profile_id);
     if (!pv) previews.set(r.profile_id, (pv = []));
-    if (pv.length < 4) pv.push(r as unknown as Item);
+    if (pv.length < 6) pv.push(r as unknown as Item);
     if (r.canonical_id && myCanon.has(r.canonical_id)) {
       let s = overlap.get(r.profile_id);
       if (!s) overlap.set(r.profile_id, (s = new Set()));

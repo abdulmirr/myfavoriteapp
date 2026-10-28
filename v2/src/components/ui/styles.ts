@@ -44,6 +44,9 @@ export const headerIcon =
 /* buttons */
 export const primaryButton =
   "inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
+/** The big call to action (landing, onboarding) — its own recipe; primaryButton's size can't be overridden. */
+export const bigButton =
+  "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 text-base font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
 export const quietButton =
   "inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-gray-200 px-3 text-sm font-semibold text-gray-900 outline-none transition-colors hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600 dark:focus-visible:ring-neutral-400";
 /** A square quiet button for one icon (settings gear, ⋯) — its own recipe, sized like quietButton. */
@@ -58,6 +61,11 @@ export const field =
 export const textarea =
   "min-h-24 w-full resize-none rounded-lg border-0 bg-gray-200 px-3 py-2 text-base font-medium sm:text-sm text-gray-900 shadow-none outline-none placeholder:font-normal placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:opacity-50 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus-visible:ring-neutral-400";
 export const fieldLabel = "text-xs font-semibold text-gray-500 dark:text-neutral-400";
+/** A roomier white field for full pages on the gray (onboarding) — its own recipe, so nothing fights the size. */
+export const bigField =
+  "h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-base text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition-colors placeholder:text-gray-400 focus:border-gray-400 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-500";
+export const bigTextarea =
+  "min-h-24 w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition-colors placeholder:text-gray-400 focus:border-gray-400 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-500";
 
 /* type */
 export const pageTitle =

@@ -14,7 +14,7 @@ import { playUi } from "@/lib/sfx";
 import Framed from "../profile/Framed";
 import Star from "../ui/Star";
 import { toast } from "../ui/Toast";
-import { card, cn, field, primaryButton, quietButton } from "../ui/styles";
+import { bigField, card, cn, primaryButton, quietButton } from "../ui/styles";
 import BeatHeader from "./BeatHeader";
 
 const ThoughtDialog = dynamic(() => import("../ThoughtDialog"));
@@ -182,7 +182,7 @@ export default function PicksStep({ profile, onNext }: { profile: Profile; onNex
       />
 
       <div className="relative mx-auto mt-6 w-full max-w-xl">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-500 dark:text-neutral-400" />
+        <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
         <input
           value={query}
           onChange={(e) => {
@@ -194,7 +194,7 @@ export default function PicksStep({ profile, onNext }: { profile: Profile; onNex
           onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
           placeholder="Search albums, books, films, shows, podcasts…"
           aria-label="Search"
-          className={cn(field, "pl-9")}
+          className={cn(bigField, "pl-11")}
         />
         {showResults && (
           <div className={cn(card, "pop-in absolute inset-x-0 top-full z-40 mt-2 max-h-80 overflow-y-auto p-1.5")}>
@@ -251,11 +251,13 @@ export default function PicksStep({ profile, onNext }: { profile: Profile; onNex
         )}
       </div>
 
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="mt-12 flex flex-col gap-12">
         {STARTER_SECTIONS.map((section, si) => (
-          <section key={section.label} className={cn(card, "p-4 sm:p-6")}>
-            <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">{section.label}</h2>
-            <div className="mt-3 grid grid-cols-4 gap-x-3 gap-y-4 sm:mt-4 sm:grid-cols-6 sm:gap-x-5">
+          <section key={section.label}>
+            <h2 className="border-b border-gray-200 pb-3 text-base font-semibold tracking-tight text-gray-900 dark:border-neutral-800 dark:text-neutral-100">
+              {section.label}
+            </h2>
+            <div className="mt-5 grid grid-cols-4 gap-x-3 gap-y-5 sm:grid-cols-6 sm:gap-x-6">
               {section.picks.map((p, pi) => {
                 const w = wallWork(p);
                 const on = isFavorited(v, w);

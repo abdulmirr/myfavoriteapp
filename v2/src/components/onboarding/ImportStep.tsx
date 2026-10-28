@@ -1,7 +1,7 @@
 "use client";
 
 import ImportLibrary from "../settings/ImportLibrary";
-import { card, cn, primaryButton } from "../ui/styles";
+import { bigButton, cn } from "../ui/styles";
 import BeatHeader from "./BeatHeader";
 
 /**
@@ -11,18 +11,19 @@ import BeatHeader from "./BeatHeader";
  */
 export default function ImportStep({ profileId, onNext }: { profileId: string; onNext: () => void }) {
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div className="mx-auto w-full max-w-lg">
       <BeatHeader
         title="Bring your library"
         sub="Rated things on Goodreads or Letterboxd, or scrobble on Last.fm? Pull them in and pick what makes your page."
       />
-      <div className={cn(card, "mt-6 p-4 sm:p-6")}>
+      <div className="mt-10">
         <ImportLibrary profileId={profileId} spotify={false} />
       </div>
-      <div className="mt-6 flex justify-center">
-        <button type="button" onClick={onNext} className={cn(primaryButton, "min-w-32")}>
+      <div className="mt-10 flex flex-col items-center gap-3">
+        <button type="button" onClick={onNext} className={cn(bigButton, "min-w-48")}>
           Continue
         </button>
+        <p className="text-xs text-gray-500 dark:text-neutral-400">Nothing to import? Continue — you can do it later in Settings.</p>
       </div>
     </div>
   );
