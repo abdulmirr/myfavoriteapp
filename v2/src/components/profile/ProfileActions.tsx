@@ -20,7 +20,7 @@ import { playUi } from "@/lib/sfx";
 import Star from "../ui/Star";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "../ui/Menu";
 import { toast } from "../ui/Toast";
-import { cn, iconButton, primaryButton, quietButton } from "../ui/styles";
+import { cn, iconButton, primaryButton, quietButton, quietIcon } from "../ui/styles";
 
 const h9 = "h-9 px-3";
 
@@ -79,9 +79,9 @@ export function ShareLinkButton({
 
 /** a compact follow for people lists (Friends' suggestions) — its own full recipes, so nothing fights the size */
 const chipFollow =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gray-900 px-3.5 text-xs font-semibold text-white outline-none transition-colors hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300";
+  "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-gray-300 px-3 text-xs font-semibold text-gray-900 outline-none transition-colors hover:border-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-100 dark:hover:border-neutral-300 dark:focus-visible:ring-neutral-400";
 const chipFollowing =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-semibold text-gray-500 outline-none transition-colors hover:bg-gray-900/5 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100";
+  "inline-flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent px-3 text-xs font-semibold text-gray-500 outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-100";
 
 export function FollowButton({
   profile,
@@ -146,7 +146,7 @@ function MoreMenu({ profile }: { profile: Profile }) {
         hasBlocked(me.id, profile.id).then(setBlocked);
       }}
     >
-      <MenuTrigger aria-label="More options" className={cn(quietButton, "size-9 px-0")}>
+      <MenuTrigger aria-label="More options" className={quietIcon}>
         <MoreHorizontal className="size-4" />
       </MenuTrigger>
       <MenuContent>
@@ -234,7 +234,7 @@ export default function ProfileActions({ profile, stretch = false }: { profile: 
     return (
       <div className={cn("flex items-center gap-1.5", stretch && "w-full")}>
         <ShareLinkButton path={`/${profile.username}`} className={stretch ? "flex-1" : undefined} />
-        <Link href="/settings" aria-label="Settings" title="Settings" className={cn(quietButton, h9, "w-9 px-0")}>
+        <Link href="/settings" aria-label="Settings" title="Settings" className={quietIcon}>
           <Settings className="size-4" />
         </Link>
       </div>

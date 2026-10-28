@@ -16,6 +16,7 @@ export default function Dialog({
   children,
   className,
   busy = false,
+  size = "md",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +26,8 @@ export default function Dialog({
   className?: string;
   /** while saving: Escape and outside clicks don't close (no lost writes) */
   busy?: boolean;
+  /** the panel's width (a className can't override it — `cn` joins, it doesn't merge) */
+  size?: "md" | "lg" | "xl";
 }) {
   return (
     <D.Root open={open} onOpenChange={(o) => (busy && !o ? undefined : onOpenChange(o))}>
@@ -36,7 +39,8 @@ export default function Dialog({
           onEscapeKeyDown={(e) => busy && e.preventDefault()}
           className={cn(
             dialogPanel,
-            "dialog-content fixed top-1/2 left-1/2 z-50 flex max-h-[min(86dvh,720px)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto p-5 outline-none sm:p-6",
+            "dialog-content fixed top-1/2 left-1/2 z-50 flex max-h-[min(86dvh,720px)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto p-5 outline-none sm:p-6",
+            size === "xl" ? "max-w-xl" : size === "lg" ? "max-w-lg" : "max-w-md",
             className
           )}
         >

@@ -9,9 +9,9 @@ import { setUnread, useViewer } from "@/lib/viewer";
 import { unreadCount } from "@/lib/social";
 import { cn, headerIcon, pill, pillActive, pillIdle } from "./ui/styles";
 import Avatar from "./ui/Avatar";
-import ListsButton from "./ListsButton";
+import AccountMenu, { AccountMenuSkeleton } from "./AccountMenu";
 
-// the add flow (catalog search, links, uploads) loads on first open only
+// the add flow (catalog search, links) loads on first open only
 const AddDialog = dynamic(() => import("./add/AddDialog"));
 
 const NAV = [
@@ -22,13 +22,13 @@ const NAV = [
 ];
 
 /**
- * Home · Feed · Friends. Friends is for members: hidden for visitors, and
- * while the session check runs the pre-paint auth switch decides. Its badge
- * is the unread count the bell used to carry.
+ * Home · Feed · Friends — centered in the bar from tablet width up. Friends
+ * is for members: hidden for visitors, and while the session check runs the
+ * pre-paint auth switch decides. Its badge is the unread notification count.
  */
 function NavPills({ pathname, status, unread }: { pathname: string | null; status: string; unread: number }) {
   return (
-    <nav aria-label="Main" className="flex items-center gap-1 sm:gap-1.5">
+    <nav aria-label="Main" className="ml-auto flex items-center gap-1 sm:ml-0 sm:gap-1.5 sm:justify-self-center">
       {NAV.map((n) => {
         if (n.members && status === "signed-out") return null;
         const active = pathname === n.href;
@@ -81,13 +81,15 @@ function PersonalSkeleton() {
   return (
     <div className="flex items-center gap-1 sm:gap-1.5" aria-hidden>
       <span className="size-8 animate-pulse rounded-xl bg-gray-200 dark:bg-neutral-800" />
-      <span className="size-8 animate-pulse rounded-xl bg-gray-200 dark:bg-neutral-800" />
-      <span className="size-8 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
+      <span className="flex items-center gap-0.5">
+        <span className="size-8 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
+        <AccountMenuSkeleton />
+      </span>
     </div>
   );
 }
 
-/** Your avatar goes straight to your page; settings live behind its gear. */
+/** Your avatar goes straight to your page; the arrow beside it opens the menu. */
 function YouLink({ pathname }: { pathname: string | null }) {
   const p = useViewer().profile;
   const href = p ? `/${p.username}` : "/settings";
@@ -113,6 +115,11 @@ function LogIn({ pathname }: { pathname: string | null }) {
   );
 }
 
+/**
+ * The bar's middle and right: two grid cells of Header's three (logo · nav ·
+ * you), so the pills sit dead center whatever the sides measure. On phones
+ * the bar is a row and everything after the logo hugs the right edge.
+ */
 export default function HeaderNav() {
   const pathname = usePathname();
   const v = useViewer();
@@ -127,51 +134,57 @@ export default function HeaderNav() {
   }, [v.status]);
 
   return (
-    <div className="flex items-center gap-1 sm:gap-1.5">
+    <>
       <NavPills pathname={pathname} status={v.status} unread={v.unread} />
-      {v.status === "unknown" ? (
-        // first frame: the pre-paint data-auth attribute picks the right one
-        <>
-          <span className="signed-out-only">
-            <LogIn pathname={pathname} />
-          </span>
-          <span className="signed-in-only">
-            <PersonalSkeleton />
-          </span>
-        </>
-      ) : v.status === "signed-out" ? (
-        <LogIn pathname={pathname} />
-      ) : (
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            aria-label="Add a favorite"
-            title="Add something"
-            className={headerIcon}
-          >
-            <Plus className="size-4" strokeWidth={2.25} />
-          </button>
-          <ListsButton />
-          <YouLink pathname={pathname} />
-          {adding && <AddDialog open={adding} onOpenChange={setAdding} />}
-        </div>
-      )}
-    </div>
+      <div className="flex items-center gap-1 sm:gap-1.5 sm:justify-self-end">
+        {v.status === "unknown" ? (
+          // first frame: the pre-paint data-auth attribute picks the right one
+          <>
+            <span className="signed-out-only">
+              <LogIn pathname={pathname} />
+            </span>
+            <span className="signed-in-only">
+              <PersonalSkeleton />
+            </span>
+          </>
+        ) : v.status === "signed-out" ? (
+          <LogIn pathname={pathname} />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              aria-label="Add a favorite"
+              title="Add something"
+              className={headerIcon}
+            >
+              <Plus className="size-4" strokeWidth={2.25} />
+            </button>
+            <span className="flex items-center gap-0.5">
+              <YouLink pathname={pathname} />
+              <AccountMenu />
+            </span>
+            {adding && <AddDialog open={adding} onOpenChange={setAdding} />}
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
 /** Suspense fallback while the pathname resolves during prerender. */
 export function HeaderNavFallback() {
   return (
-    <div className="flex items-center gap-1 sm:gap-1.5">
+    <>
       <NavPills pathname={null} status="unknown" unread={0} />
-      <span className="signed-out-only">
-        <LogIn pathname={null} />
-      </span>
-      <span className="signed-in-only">
-        <PersonalSkeleton />
-      </span>
-    </div>
+      <div className="flex items-center gap-1 sm:gap-1.5 sm:justify-self-end">
+        <span className="signed-out-only">
+          <LogIn pathname={null} />
+        </span>
+        <span className="signed-in-only">
+          <PersonalSkeleton />
+        </span>
+      </div>
+    </>
   );
 }

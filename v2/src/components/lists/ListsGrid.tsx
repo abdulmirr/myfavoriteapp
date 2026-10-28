@@ -6,7 +6,6 @@ import { Plus } from "lucide-react";
 import type { ListSummary } from "@/lib/types";
 import { useViewer } from "@/lib/viewer";
 import ListCard from "./ListCard";
-import { card, cn } from "../ui/styles";
 
 const NewListDialog = dynamic(() => import("./NewListDialog"));
 
@@ -38,30 +37,25 @@ export default function ListsGrid({
 
   return (
     <>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-10">
         {own && (
-          <li className="h-full">
+          <li>
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className={cn(
-                card,
-                "flex h-full min-h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 border-dashed p-3.5 text-center transition-colors hover:bg-gray-50 dark:hover:bg-neutral-700/40"
-              )}
+              className="group block w-full cursor-pointer rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-4 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-900"
             >
-              <span className="flex size-10 items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-700">
-                <Plus className="size-5" />
+              <span className="flex aspect-video w-full items-center justify-center rounded-md border-2 border-dashed border-gray-300 text-gray-400 transition-colors group-hover:border-gray-400 group-hover:text-gray-700 dark:border-neutral-700 dark:text-neutral-500 dark:group-hover:border-neutral-500 dark:group-hover:text-neutral-200">
+                <Plus className="size-6" />
               </span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">New list</span>
-              <span className="max-w-56 text-xs text-gray-500 dark:text-neutral-400">
-                “Fiction books that made me cry”, “10/10 albums”… public or private.
-              </span>
+              <span className="mt-3 block text-[15px] font-semibold tracking-tight text-gray-900 dark:text-neutral-100">New list</span>
+              <span className="mt-0.5 block truncate text-[13px] text-gray-500 dark:text-neutral-400">“10/10 albums”, “Summer reads”…</span>
             </button>
           </li>
         )}
         {shown.map((l, i) => (
-          <li key={l.id} className="h-full">
-            <ListCard list={l} username={username} priority={i < 2} />
+          <li key={l.id}>
+            <ListCard list={l} username={username} priority={i < 3} />
           </li>
         ))}
       </ul>

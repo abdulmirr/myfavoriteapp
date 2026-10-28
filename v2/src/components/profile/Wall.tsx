@@ -9,7 +9,7 @@ import { useViewer } from "@/lib/viewer";
 import { itemHref, TYPE_FILTERS } from "@/lib/work";
 import { playSfx } from "@/lib/sfx";
 import Framed from "./Framed";
-import { card, cn, pill, pillActive, pillIdle, quietButton } from "../ui/styles";
+import { cn, pill, pillActive, pillIdle, quietButton } from "../ui/styles";
 
 const AddDialog = dynamic(() => import("../add/AddDialog"));
 
@@ -86,7 +86,7 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
 
   if (!items.length) {
     return (
-      <div className={cn(card, "px-6 py-12 text-center")}>
+      <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-12 text-center dark:border-neutral-700">
         <p className="text-sm text-gray-500 dark:text-neutral-400">
           {own ? "Your wall is empty — favorite something you love and it lands here." : "Nothing on this wall yet."}
         </p>
@@ -121,7 +121,7 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
       )}
 
       <section aria-label="All favorites">
-        <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8">
+        <div className="mb-6 flex items-center justify-between gap-3 sm:mb-8">
           <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
             {filters.map((f) => (
               <button
@@ -142,9 +142,9 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
               onClick={() => setAdding(true)}
               aria-label="Add a favorite"
               title="Add a favorite"
-              className={cn(quietButton, "h-8 shrink-0 px-2.5 text-[13px]")}
+              className={cn(pill, pillIdle, "px-2.5 py-1 text-[13px]")}
             >
-              <Plus className="size-4" /> <span className="max-sm:hidden">Add</span>
+              <Plus className="size-3.5" strokeWidth={2.4} /> <span className="max-sm:hidden">Add</span>
             </button>
           )}
         </div>

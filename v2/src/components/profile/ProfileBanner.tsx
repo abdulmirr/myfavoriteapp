@@ -24,9 +24,10 @@ export async function uploadHeader(profileId: string, file: File): Promise<strin
 }
 
 /**
- * The banner across the top of a profile: their header image, or — until
- * they add one — their top covers blurred into a field of color, so every
- * page opens on that person's taste. Owners change it in place.
+ * The banner across the top of a profile, edge to edge: their header image,
+ * or — until they add one — their top covers blurred into a field of color,
+ * so every page opens on that person's taste. Its bottom fades into the page
+ * (no box around it). Owners change it in place.
  */
 export default function ProfileBanner({
   profileId,
@@ -66,7 +67,7 @@ export default function ProfileBanner({
   };
 
   return (
-    <div className="relative aspect-[5/2] w-full overflow-hidden bg-gray-200 sm:aspect-[4/1] dark:bg-neutral-700">
+    <div className="relative h-[150px] w-full overflow-hidden sm:h-[230px] lg:h-[270px]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -76,32 +77,35 @@ export default function ProfileBanner({
           className="absolute inset-0 size-full object-cover"
         />
       ) : ambient.length > 0 ? (
-        // their covers as a soft glow that settles into the card below
-        <div aria-hidden className="absolute inset-0">
-          <div className="absolute -inset-12 flex scale-125 blur-3xl saturate-[1.8]">
-            {ambient.map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={thumbCover(src, 120)} alt="" className="h-full min-w-0 flex-1 object-cover" />
-            ))}
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-white/25 to-white dark:from-black/10 dark:via-black/20 dark:to-neutral-800" />
+        // their covers as a soft field of color
+        <div aria-hidden className="absolute -inset-16 flex scale-110 opacity-80 blur-3xl saturate-[1.7] dark:opacity-50">
+          {ambient.map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={thumbCover(src, 120)} alt="" className="h-full min-w-0 flex-1 object-cover" />
+          ))}
         </div>
       ) : (
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-300 dark:from-neutral-700 dark:via-neutral-800 dark:to-neutral-700"
+          className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-300 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800"
         />
       )}
+      {/* no edge: the banner settles into the page */}
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-gray-100 dark:to-neutral-900",
+          url ? "h-2/5" : "h-3/4"
+        )}
+      />
 
       {own && (
-        <>
+        <div className="absolute inset-x-0 top-0 mx-auto flex max-w-5xl justify-end px-4 pt-3 sm:px-6 sm:pt-4">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className={cn(
-              "absolute top-3 right-3 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-black/45 px-3 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none disabled:cursor-default"
-            )}
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-black/45 px-3 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none disabled:cursor-default"
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
             {url ? "Change header" : "Add header"}
@@ -117,7 +121,7 @@ export default function ProfileBanner({
               if (f) void pick(f);
             }}
           />
-        </>
+        </div>
       )}
     </div>
   );

@@ -389,16 +389,18 @@ export async function favorite(work: Work, thoughts = ""): Promise<string> {
     const row: Record<string, unknown> = viaOk
       ? { ...base, via_profile_id: work.source_profile_id, source_item_id: work.source_item_id }
       : base;
-    let res = await db.from("items").insert(row).select("id").single();
+    let res = await db.from("items").insert(row).select("id, canonical_id").single();
     // the source copy vanished since the card loaded — keep the favorite,
     // drop the attribution
     if (res.error?.code === "23514" && viaOk) {
-      res = await db.from("items").insert(base).select("id").single();
+      res = await db.from("items").insert(base).select("id, canonical_id").single();
     }
     if (res.error) throw new Error(friendlyError(res.error.message));
-    const id = (res.data as { id: string }).id;
+    const saved = res.data as { id: string; canonical_id: string | null };
+    const id = saved.id;
     const next = new Map(state.favorites);
-    for (const k of keys) next.set(k, id);
+    // the database may have given it its link's key (migration32) — match on that too
+    for (const k of saved.canonical_id ? [...keys, saved.canonical_id] : keys) next.set(k, id);
     setState({ favorites: next });
     revalidate([`profile:${me.id}`, "feed", `work:${primaryKey(work)}`]);
     return id;
@@ -548,6 +550,8 @@ export async function setListsForWork(
   const viaOk =
     !!work.source_item_id && !!work.source_profile_id && work.source_profile_id !== me.id;
 
+  // keys the database settled on (a link gets its address's key) — matched too
+  const dbKeys = new Set<string>();
   for (const listId of adds) {
     const row = {
       list_id: listId,
@@ -563,9 +567,10 @@ export async function setListsForWork(
       via_profile_id: viaOk ? work.source_profile_id : null,
       source_item_id: viaOk ? work.source_item_id : null,
     };
-    const { error } = await db.from("list_items").insert(row);
+    const { data: added, error } = await db.from("list_items").insert(row).select("work_key").maybeSingle();
     // 23505: it's already there under another key spelling — fine
     if (error && error.code !== "23505") throw new Error(friendlyError(error.message));
+    if (added) dbKeys.add((added as { work_key: string }).work_key);
     touched.add(listId);
   }
   for (const listId of removes) {
@@ -590,7 +595,7 @@ export async function setListsForWork(
 
   // mirror the result locally
   const membership = new Map(state.membership);
-  for (const k of keys) {
+  for (const k of new Set([...keys, ...dbKeys])) {
     const s = new Set(membership.get(k) ?? []);
     for (const id of adds) s.add(id);
     for (const id of removes) s.delete(id);
@@ -676,9 +681,11 @@ export async function addToList(work: Work, listId: string, note = ""): Promise<
     if (error.code === "23505") throw new Error("That's already in this list.");
     throw new Error(friendlyError(error.message));
   }
-  mirrorRow(work, listId, true);
+  const row = data as ListItem;
+  // match on the key the database settled on (a link gets its address's key)
+  mirrorRow({ ...work, canonical_id: row.canonical_id ?? work.canonical_id, work_key: row.work_key }, listId, true);
   listTags(me, listId, work);
-  return data as ListItem;
+  return row;
 }
 
 /** Finish / unfinish, rewrite the note, or move one of my rows. */

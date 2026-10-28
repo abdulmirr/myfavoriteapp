@@ -31,8 +31,8 @@ export const ADD_TYPES: {
   { type: "movie", label: "movie/tv", mode: "search" },
   { type: "music", label: "music", mode: "search" },
   { type: "podcast", label: "podcast", mode: "search" },
-  { type: "video", label: "video", mode: "url" },
-  // any URL — an article, a tool, a game, a site worth keeping
+  // any URL — an essay, a video, a tool, a site worth keeping. Videos need no
+  // entry of their own: a YouTube or Vimeo link is saved as one by itself.
   { type: "article", label: "link", mode: "url" },
   // photo uploads were retired 2026-10-27 (discovery, not a camera roll); the
   // 17 existing photos still show on their walls. To bring them back:

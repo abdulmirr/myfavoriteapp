@@ -13,10 +13,7 @@ import CoverGlow from "@/components/CoverGlow";
 import Avatar from "@/components/ui/Avatar";
 import { ShareLinkButton } from "@/components/profile/ProfileActions";
 import { FavoritedBy, FavoritedList, YourEntry } from "@/components/item/ItemExtras";
-import { cn, iconButton, primaryButton } from "@/components/ui/styles";
-
-/** ★ 🔖 ⤴ as round glass over the cover's glow */
-const glass = "border border-gray-900/10 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5";
+import { cn, primaryButton } from "@/components/ui/styles";
 
 type Params = { params: Promise<{ id: string[] }> };
 
@@ -107,10 +104,10 @@ async function Work({ params }: Params) {
                   {sourceLabel(work.view_url, work.media_type)} <ArrowUpRight className="size-4" />
                 </a>
               )}
-              <div className="flex items-center gap-1.5">
-                <FavoriteButton work={work} className={glass} />
-                <SaveButton work={work} className={glass} />
-                <ShareLinkButton icon path={path} className={cn(iconButton, glass)} />
+              <div className="flex items-center gap-1">
+                <FavoriteButton work={work} />
+                <SaveButton work={work} />
+                <ShareLinkButton icon path={path} />
               </div>
             </div>
           </section>

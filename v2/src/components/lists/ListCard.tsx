@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import ListCover from "../ListCover";
-import { card, cn } from "../ui/styles";
 
 type CardList = {
   title: string;
@@ -13,41 +12,35 @@ type CardList = {
   cover_image_url: string | null;
 };
 
-/** antislop's list card: 16:9 cover, title, "N items · Public", "Updated …". */
+/** A list as a playlist tile: its cover, the title, "12 items · Private" — no box around it. */
 export default function ListCard({ list, username, priority = false }: { list: CardList; username: string; priority?: boolean }) {
   return (
     <Link
       href={`/${username}/lists/${list.slug}`}
       prefetch={true}
-      className={cn(
-        card,
-        "group flex h-full flex-col p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400"
-      )}
+      className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-4 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-900"
     >
-      <ListCover coverImage={list.cover_image_url} covers={list.covers} title={list.title} priority={priority} />
-      <div className="mt-2.5 min-w-0">
-        <h2 className="text-sm font-semibold leading-snug tracking-tight text-gray-900 sm:text-base dark:text-neutral-100">
-          <span className="underline decoration-gray-300 underline-offset-2 sm:no-underline sm:group-hover:underline dark:decoration-neutral-600">
-            {list.title}
-          </span>
-        </h2>
-        <p className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
-          {list.count} {list.count === 1 ? "item" : "items"} ·{" "}
-          {list.is_public ? (
-            "Public"
-          ) : (
-            <>
-              <Lock className="size-3" aria-hidden /> Private
-            </>
-          )}
-        </p>
-        <p className="mt-0.5 text-xs text-gray-500 dark:text-neutral-400">
-          Updated{" "}
-          <time dateTime={list.updated_at}>
-            {new Date(list.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-          </time>
-        </p>
+      <div className="transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:-translate-y-0.5">
+        <ListCover
+          coverImage={list.cover_image_url}
+          covers={list.covers}
+          title={list.title}
+          priority={priority}
+          className="shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-shadow group-hover:shadow-[0_10px_30px_rgba(0,0,0,0.14)]"
+        />
       </div>
+      <h2 className="mt-3 truncate text-[15px] font-semibold tracking-tight text-gray-900 group-hover:underline dark:text-neutral-100">
+        {list.title}
+      </h2>
+      <p className="mt-0.5 flex items-center gap-1 text-[13px] text-gray-500 dark:text-neutral-400">
+        {list.count} {list.count === 1 ? "item" : "items"}
+        {!list.is_public && (
+          <>
+            {" "}
+            · <Lock className="size-3" aria-hidden /> Private
+          </>
+        )}
+      </p>
     </Link>
   );
 }

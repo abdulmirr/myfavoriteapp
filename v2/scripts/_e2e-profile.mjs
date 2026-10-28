@@ -61,7 +61,7 @@ try {
   const you = page.getByRole("link", { name: "Your profile" });
   await you.waitFor({ timeout: 15000 });
   check("header avatar links to your profile", (await you.getAttribute("href")) === `/${username}`);
-  check("account menu is gone", (await page.getByRole("button", { name: "Account menu" }).count()) === 0);
+  check("the menu arrow sits beside the avatar", (await page.getByRole("button", { name: "Account menu" }).count()) === 1);
 
   await you.click();
   await page.waitForURL(`**/${username}`, { timeout: 15000 });

@@ -17,7 +17,8 @@ import { thumbCover } from "@/lib/img";
 import { timeAgo } from "@/lib/work";
 import { playUi } from "@/lib/sfx";
 import Avatar from "../ui/Avatar";
-import { card, cn } from "../ui/styles";
+import Dialog from "../ui/Dialog";
+import { cn } from "../ui/styles";
 
 export type NotificationsData = {
   list: Notification[] | null;
@@ -112,18 +113,97 @@ export function useNotifications(): NotificationsData {
 }
 
 const smallButton =
-  "inline-flex h-7 w-fit cursor-pointer items-center rounded-lg bg-gray-200 px-2.5 text-xs font-semibold text-gray-900 transition-colors hover:bg-gray-300 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600";
+  "inline-flex h-7 w-fit cursor-pointer items-center rounded-full border border-gray-300 px-3 text-xs font-semibold text-gray-900 transition-colors hover:border-gray-900 disabled:cursor-default disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-100 dark:hover:border-neutral-300";
 
-/** The notifications, as a card — the bell's popover, given a home on the Friends page. */
-export default function FriendNotifications({ data, limit = 5 }: { data: NotificationsData; limit?: number }) {
+/** One notification: who, what, when — and the reply it asks for (Follow back, Approve back). */
+function Row({ n, data }: { n: Notification; data: NotificationsData }) {
   const v = useViewer();
+  const actor = n.actor;
+  const who = actor?.display_name || (actor ? `@${actor.username}` : "Someone");
+  const following = !!actor && v.followingIds.has(actor.id);
+  const note = actor ? data.notes.get(actor.id) : undefined;
+  const fresh = data.fresh.has(n.id);
+  return (
+    <li className="flex gap-3">
+      <Link href={actor ? `/${actor.username}` : "#"} className="shrink-0">
+        <Avatar p={actor} className="size-9" />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-2">
+          <p className="min-w-0 flex-1 text-sm leading-snug text-gray-600 dark:text-neutral-300">
+            <Link href={actor ? `/${actor.username}` : "#"} className="font-semibold text-gray-900 hover:underline dark:text-neutral-100">
+              {who}
+            </Link>{" "}
+            {n.type === "follow" ? "followed you" : n.type === "taste" ? "approves your taste" : "favorited something from your wall"}
+          </p>
+          <span className="flex shrink-0 items-center gap-1.5 pt-px text-xs text-gray-400 tabular-nums dark:text-neutral-500">
+            {fresh && <span className="size-1.5 rounded-full bg-red-500" aria-label="new" />}
+            {timeAgo(n.created_at)}
+          </span>
+        </div>
+        {n.type === "favorited" && n.item && (
+          <Link href={`/item/fav/${n.item.id}`} className="mt-2 flex items-center gap-2.5 rounded-lg hover:opacity-80">
+            {n.item.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumbCover(n.item.image_url, 100)}
+                alt=""
+                loading="lazy"
+                className="size-9 shrink-0 rounded-[4px] bg-gray-200 object-cover dark:bg-neutral-700"
+              />
+            )}
+            <span className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">{n.item.title}</span>
+          </Link>
+        )}
+        {n.type === "taste" && note && (
+          <p className="mt-1.5 text-sm leading-snug text-gray-500 dark:text-neutral-400">&ldquo;{note}&rdquo;</p>
+        )}
+        {n.type === "taste" && actor && !data.given.has(actor.id) && (
+          <button type="button" disabled={data.busy.has(actor.id)} onClick={() => data.approveBack(actor)} className={cn(smallButton, "mt-2")}>
+            Approve back
+          </button>
+        )}
+        {n.type === "follow" && actor && !following && (
+          <button type="button" disabled={data.busy.has(actor.id)} onClick={() => data.followBack(actor)} className={cn(smallButton, "mt-2")}>
+            Follow back
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** "You put Sam, Jo and 3 others on 22 pieces." */
+function Reach({ reach }: { reach: NonNullable<NotificationsData["reach"]> }) {
+  return (
+    <p className="text-xs leading-relaxed text-gray-500 dark:text-neutral-400">
+      You put{" "}
+      {reach.people.slice(0, 2).map((p, i) => (
+        <span key={p.id}>
+          {i > 0 && (reach.people.length > 2 ? ", " : " and ")}
+          <Link href={`/${p.username}`} className="font-medium text-gray-900 hover:underline dark:text-neutral-100">
+            {p.display_name || `@${p.username}`}
+          </Link>
+        </span>
+      ))}
+      {reach.people.length > 2 && `, and ${reach.people.length - 2} other${reach.people.length === 3 ? "" : "s"}`} on{" "}
+      {reach.pieces} piece{reach.pieces === 1 ? "" : "s"}.
+    </p>
+  );
+}
+
+/**
+ * The notifications, straight on the page: the latest few, and "See all"
+ * opens the rest in a window of its own (scrolling there, not stretching the
+ * page). Your reach closes the section.
+ */
+export default function FriendNotifications({ data, limit = 5 }: { data: NotificationsData; limit?: number }) {
   const [all, setAll] = useState(false);
-  const { list, fresh, reach, notes, given, busy } = data;
-  const shown = list ? (all ? list : list.slice(0, limit)) : null;
+  const { list, fresh, reach } = data;
 
   return (
     <section aria-label="Notifications">
-      <div className="flex items-baseline justify-between gap-3 px-1">
+      <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
           Notifications
           {fresh.size > 0 && <span className="ml-1.5 font-medium text-red-500 tabular-nums">{fresh.size} new</span>}
@@ -131,116 +211,47 @@ export default function FriendNotifications({ data, limit = 5 }: { data: Notific
         {list && list.length > limit && (
           <button
             type="button"
-            onClick={() => setAll((a) => !a)}
+            onClick={() => setAll(true)}
             className="cursor-pointer text-xs font-semibold text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
-            {all ? "Show less" : `See all ${list.length}`}
+            See all {list.length}
           </button>
         )}
       </div>
-      <div className={cn(card, "mt-2.5 overflow-hidden")}>
-        {shown === null ? (
-          <div className="flex flex-col gap-3 p-4" aria-busy>
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="size-8 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-700" />
-                <span className="h-3 w-3/5 animate-pulse rounded bg-gray-200 dark:bg-neutral-700" />
-              </div>
+      {list === null ? (
+        <div className="mt-4 flex flex-col gap-4" aria-busy>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className="size-9 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
+              <span className="h-3 w-3/5 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
+            </div>
+          ))}
+        </div>
+      ) : list.length === 0 ? (
+        <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-neutral-400">
+          Nothing yet. Follows and favorites from your wall show up here.
+        </p>
+      ) : (
+        <ul className="mt-4 flex flex-col gap-5">
+          {list.slice(0, limit).map((n) => (
+            <Row key={n.id} n={n} data={data} />
+          ))}
+        </ul>
+      )}
+      {reach && reach.pieces > 0 && (
+        <div className="mt-5 border-t border-gray-200 pt-4 dark:border-neutral-800">
+          <Reach reach={reach} />
+        </div>
+      )}
+      {all && list && (
+        <Dialog open={all} onOpenChange={setAll} title="Notifications" size="lg">
+          <ul className="flex flex-col gap-5 pb-1">
+            {list.map((n) => (
+              <Row key={n.id} n={n} data={data} />
             ))}
-          </div>
-        ) : shown.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm leading-relaxed text-gray-500 dark:text-neutral-400">
-            Nothing yet. Follows and favorites from your wall show up here.
-          </p>
-        ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-neutral-700">
-            {shown.map((n) => {
-              const actor = n.actor;
-              const who = actor?.display_name || (actor ? `@${actor.username}` : "Someone");
-              const following = !!actor && v.followingIds.has(actor.id);
-              const note = actor ? notes.get(actor.id) : undefined;
-              return (
-                <li key={n.id} className={cn("flex gap-3 px-4 py-3", fresh.has(n.id) && "bg-red-50/40 dark:bg-red-500/[0.04]")}>
-                  <Link href={actor ? `/${actor.username}` : "#"} className="shrink-0">
-                    <Avatar p={actor} className="size-8" />
-                  </Link>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      <p className="min-w-0 flex-1 text-sm leading-snug text-gray-600 dark:text-neutral-300">
-                        <Link
-                          href={actor ? `/${actor.username}` : "#"}
-                          className="font-semibold text-gray-900 hover:underline dark:text-neutral-100"
-                        >
-                          {who}
-                        </Link>{" "}
-                        {n.type === "follow"
-                          ? "followed you"
-                          : n.type === "taste"
-                            ? "approves your taste"
-                            : "favorited something from your wall"}
-                      </p>
-                      {fresh.has(n.id) && <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-red-500" aria-label="new" />}
-                      <span className="shrink-0 pt-px text-xs text-gray-400 dark:text-neutral-500">{timeAgo(n.created_at)}</span>
-                    </div>
-                    {n.type === "favorited" && n.item && (
-                      <Link href={`/item/fav/${n.item.id}`} className="mt-2 flex items-center gap-2.5 rounded-lg hover:opacity-80">
-                        {n.item.image_url && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={thumbCover(n.item.image_url, 100)}
-                            alt=""
-                            loading="lazy"
-                            className="size-9 shrink-0 rounded-md bg-gray-200 object-cover dark:bg-neutral-700"
-                          />
-                        )}
-                        <span className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">{n.item.title}</span>
-                      </Link>
-                    )}
-                    {n.type === "taste" && note && (
-                      <p className="mt-1.5 text-sm leading-snug text-gray-500 dark:text-neutral-400">&ldquo;{note}&rdquo;</p>
-                    )}
-                    {n.type === "taste" && actor && !given.has(actor.id) && (
-                      <button
-                        type="button"
-                        disabled={busy.has(actor.id)}
-                        onClick={() => data.approveBack(actor)}
-                        className={cn(smallButton, "mt-2")}
-                      >
-                        Approve back
-                      </button>
-                    )}
-                    {n.type === "follow" && actor && !following && (
-                      <button
-                        type="button"
-                        disabled={busy.has(actor.id)}
-                        onClick={() => data.followBack(actor)}
-                        className={cn(smallButton, "mt-2")}
-                      >
-                        Follow back
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
           </ul>
-        )}
-        {reach && reach.pieces > 0 && (
-          <p className="border-t border-gray-100 px-4 py-3 text-xs leading-relaxed text-gray-500 dark:border-neutral-700 dark:text-neutral-400">
-            You put{" "}
-            {reach.people.slice(0, 2).map((p, i) => (
-              <span key={p.id}>
-                {i > 0 && (reach.people.length > 2 ? ", " : " and ")}
-                <Link href={`/${p.username}`} className="font-medium text-gray-900 hover:underline dark:text-neutral-100">
-                  {p.display_name || `@${p.username}`}
-                </Link>
-              </span>
-            ))}
-            {reach.people.length > 2 && `, and ${reach.people.length - 2} other${reach.people.length === 3 ? "" : "s"}`} on{" "}
-            {reach.pieces} piece{reach.pieces === 1 ? "" : "s"}.
-          </p>
-        )}
-      </div>
+        </Dialog>
+      )}
     </section>
   );
 }

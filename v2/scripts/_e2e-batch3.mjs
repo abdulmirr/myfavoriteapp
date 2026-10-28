@@ -116,11 +116,12 @@ try {
   check("bell is gone", (await page.getByRole("button", { name: /Notifications/ }).count()) === 0);
   check("feed has no Following filter", (await page.getByRole("button", { name: "Following", exact: true }).count()) === 0);
 
-  await page.getByRole("button", { name: "Your lists" }).click();
-  const panel = page.locator("[data-radix-popper-content-wrapper]");
+  // your lists live in the account menu (batch 4)
+  await page.getByRole("button", { name: "Account menu" }).click();
+  const panel = page.getByRole("menu");
   await panel.getByText("Check later").waitFor({ timeout: 5000 });
-  check("🔖 panel lists your lists", (await panel.getByRole("link").count()) === 2);
-  check("🔖 panel links to the list", (await panel.getByRole("link", { name: /Check later/ }).getAttribute("href")) === `/${A.username}/lists/check-later`);
+  check("the menu lists your lists", (await panel.getByRole("menuitem", { name: /Check later|Ten out of ten/ }).count()) === 2);
+  check("…and links to the list", (await panel.getByRole("menuitem", { name: /Check later/ }).getAttribute("href")) === `/${A.username}/lists/check-later`);
   await page.keyboard.press("Escape");
 
   /* ── save dialog: list names are back ───────────────────────────────────── */
@@ -187,7 +188,7 @@ try {
   const done = await until(async () => (await q("select done_at from list_items where list_id = $1 and title = $2", [al, ORANGE.title]))[0].done_at);
   check("○ marks it finished", !!done);
   check("it moves to Finished", (await rows.count()) === 3 && (await page.getByRole("button", { name: /^Finished/ }).count()) === 1);
-  await page.getByRole("button", { name: "Loved it", exact: true }).click();
+  await page.getByRole("button", { name: "Favorite?", exact: true }).click();
   const fav = await until(async () => (await q("select id from items where profile_id = $1 and canonical_id = $2", [A.pid, ORANGE.canonical]))[0]);
   check("Loved it favorites it", !!fav);
   await page.getByRole("button", { name: /^Finished/ }).click();
@@ -220,8 +221,8 @@ try {
   await page.getByRole("button", { name: "Add", exact: true }).click();
   const add = page.getByRole("dialog");
   await add.getByRole("heading", { name: "Add to ‘Check later’" }).waitFor({ timeout: 8000 });
-  await add.getByRole("button", { name: "Music", exact: true }).click();
-  await add.getByRole("textbox", { name: "Search" }).fill("Blonde Frank Ocean");
+  await add.getByRole("tab", { name: "Music" }).click();
+  await add.getByRole("combobox", { name: "Search" }).fill("Blonde Frank Ocean");
   const hit = add.locator("button", { hasText: "Blonde" }).first();
   await hit.waitFor({ timeout: 15000 });
   await hit.click();

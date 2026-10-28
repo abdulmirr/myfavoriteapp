@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { List } from "lucide-react";
 import Star from "../ui/Star";
-import { cn, drawer } from "../ui/styles";
+import { cn } from "../ui/styles";
 
-/** antislop's segmented profile nav, tucked under the header card. */
+/** Favorites · Lists, underlined — a hairline across, the open tab marked in ink. */
 export default function ProfileTabs({ username }: { username: string }) {
   const pathname = usePathname();
   const base = `/${username}`;
@@ -15,29 +15,27 @@ export default function ProfileTabs({ username }: { username: string }) {
     { href: `${base}/lists`, label: "Lists", icon: <List className="size-4" /> },
   ];
   return (
-    <nav aria-label="Profile" className={cn(drawer, "px-2 pt-6 pb-2")}>
-      <div className="flex items-center gap-1">
-        {tabs.map((t) => {
-          const on = pathname === t.href;
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              prefetch={true}
-              aria-current={on ? "page" : undefined}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 border border-transparent px-2 py-2 text-sm font-semibold transition-colors sm:py-1.5",
-                on
-                  ? "rounded-xl bg-gray-200 text-gray-900 dark:bg-neutral-700 dark:text-neutral-100"
-                  : "rounded-full text-gray-500 hover:rounded-xl hover:bg-gray-200 hover:text-gray-900 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
-              )}
-            >
-              {t.icon}
-              {t.label}
-            </Link>
-          );
-        })}
-      </div>
+    <nav aria-label="Profile" className="mt-7 flex gap-7 border-b border-gray-200 sm:mt-8 dark:border-neutral-800">
+      {tabs.map((t) => {
+        const on = pathname === t.href;
+        return (
+          <Link
+            key={t.href}
+            href={t.href}
+            prefetch={true}
+            aria-current={on ? "page" : undefined}
+            className={cn(
+              "-mb-px flex items-center gap-1.5 border-b-2 pb-3 text-[15px] font-semibold outline-none transition-colors focus-visible:text-gray-900",
+              on
+                ? "border-gray-900 text-gray-900 dark:border-neutral-100 dark:text-neutral-100"
+                : "border-transparent text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+            )}
+          >
+            {t.icon}
+            {t.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

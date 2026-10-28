@@ -10,7 +10,7 @@ export default function Logo() {
     <Link
       href="/"
       aria-label="Favorite — home"
-      className="group flex shrink-0 items-center gap-1.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:gap-2 dark:focus-visible:ring-neutral-400"
+      className="group flex shrink-0 items-center gap-1.5 justify-self-start rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:gap-2 dark:focus-visible:ring-neutral-400"
     >
       <Star className="size-[22px] text-star transition-transform duration-300 group-hover:rotate-[22deg] max-[389px]:size-5 sm:size-[27px]" />
       {/* narrow phones (Home · Feed · Friends · ＋ · 🔖 · you): a size down, and

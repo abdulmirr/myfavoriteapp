@@ -22,11 +22,12 @@ export default function ProfileLayout({
   params: Promise<{ username: string }>;
 }) {
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-2 pb-16 sm:px-6 sm:pt-8">
+    // the banner runs edge to edge; everything else keeps the 1024px column
+    <main className="relative pb-16">
       <Suspense fallback={<ProfileHeaderSkeleton />}>
         <Header params={params} />
       </Suspense>
-      <div className="mt-6">{children}</div>
+      <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6 sm:pt-10">{children}</div>
     </main>
   );
 }

@@ -24,10 +24,23 @@ const TYPE_ICON: Record<MediaType, typeof Music> = {
  * the same line and nothing is ever cropped. No artwork → a black tile with
  * the medium's icon (antislop's title card, shrunk to a thumbnail).
  */
-export function RowCover({ work, priority = false, dim = false }: { work: Work; priority?: boolean; dim?: boolean }) {
+export function RowCover({
+  work,
+  priority = false,
+  dim = false,
+  small = false,
+}: {
+  work: Work;
+  priority?: boolean;
+  dim?: boolean;
+  /** 48px (search results) instead of a row's 56–64px */
+  small?: boolean;
+}) {
   const Icon = TYPE_ICON[work.media_type] ?? Sparkles;
   return (
-    <span className={cn("flex size-14 shrink-0 items-center justify-center sm:size-16", dim && "opacity-55")}>
+    <span
+      className={cn("flex shrink-0 items-center justify-center", small ? "size-12" : "size-14 sm:size-16", dim && "opacity-55")}
+    >
       {work.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

@@ -16,7 +16,9 @@ Design base: [antislop.xyz](https://antislop.xyz). The current site at the repo 
 5. **AI picks model (2026-10-27):** Sonnet 5.5, because cost matters.
 6. **Sounds stay.** Load them lazily so they never compete with covers.
 7. **Three pages (2026-10-27, third batch):** Home · Feed · **Friends**. Feed is discovery; Friends is your people — their activity, your notifications (the bell is gone), people with your taste, and Invite a friend. The profile keeps two tabs (Favorites, Lists); the Activity tab folded into Friends, and the Feed's Following filter went with it.
-8. **Lists are playlists and queues (2026-10-27):** numbered rows, drag to reorder (no Reorder button), ○ to mark something finished with "Loved it?" to favorite it, and + Add on your own list.
+8. **Lists are playlists and queues (2026-10-27):** numbered rows, drag to reorder (no Reorder button), ○ to mark something finished with "Favorite?" to favorite it, and + Add on your own list.
+9. **One link, one work (2026-10-28):** two people saving the same address (any spelling of it) are saving the same work. The database owns the rule (`url_work_key`, migration32).
+10. **Header (2026-10-28):** Home · Feed · Friends centered; on the right ＋, your avatar (→ your page) and antislop's arrow, which opens your lists, Settings, the theme and Log out.
 
 Environment notes:
 - The Xcode license is accepted (2026-10-27, through a macOS admin dialog), so git works.
@@ -520,6 +522,17 @@ v2's server time is ~0 locally; on Vercel its static shells come from the edge l
   - New share card for lists (title, owner, count, the first covers in their frames, or the list's own image).
 - [x] **Item page**, Letterboxd-style: the work on the left (cover, type, title, creator, Listen on…, ★ 🔖 and Share as round icons), the people on the right: **You** first (your thought or "Add your thought", Pin to Top four — replacing the "On your wall" bar), then everyone's thoughts (people you follow first), then the rest as faces, then the lists it's in.
 - [x] QA: `_e2e-batch3` (41 checks) plus `_e2e-v2` (23) and `_e2e-profile` (13), all against the real DB; tsc, eslint and `next build` clean.
+
+### 2026-10-28, fourth batch (header, profile, add dialog, one link = one work)
+
+- [x] **Header:** the pills sit dead center (a three-column grid from tablet width; phones keep the right-hugging row). The 🔖 button moved into antislop's arrow beside your avatar: a menu with you, your lists (newest five, thumbnails, lock, counts; "See all"), New list, Settings, Dark/Light mode, Log out. The avatar still goes straight to your page.
+- [x] "Loved it?" → **"Favorite?"** (finished rows and the toast).
+- [x] **Add dialog**, rebuilt: one big field that searches the chosen catalog or takes a pasted link (videos detected), six light chips on one row (Videos folded into Links), a fixed-height middle (empty state, skeleton rows, results with real covers), ↑↓ ↵ esc, and a roomier pick screen. It had been stuck at 448px because `cn` can't override a width — `Dialog` takes a `size` now.
+- [x] **Friends rail:** no boxes. Notifications are plain rows; "See all" opens them in their own window instead of stretching the column. People with your taste: name, "N in common", a slim outlined Follow, and four covers spanning the row.
+- [x] **Profile:** the banner runs edge to edge and fades into the page; the avatar sits over its edge; name, handle, bio, counts and links straight on the page (no card); Favorites · Lists as underlined tabs; list tiles without boxes (cover, title, count; a dashed "New list" tile). The wall's ＋ Add is a pill the size of the filters. The gear and ⋯ got a proper square icon button (`quietIcon`).
+- [x] Item and list pages: ★ 🔖 ⤴ are bare icons (the round backgrounds are gone).
+- [x] **One link, one work** (migration32): `url_work_key()` maps a URL to the id search would give it (themoviedb.org/movie/77 → tmdb:movie:77, Apple/Deezer/Open Library too), YouTube/Vimeo/Spotify to their own ids, anything else to `url:` + a hash of the address without scheme, www., trailing slash, fragment or tracking parameters. A trigger applies it on every write (v2, v1, the extension); links take any key, catalog-typed rows only catalog ids. Backfilled: 10 links merged (Paul Graham's Essays across 5 people, Playfighter across Abdul and Ali…), every catalog favorite with a catalog link now carries its id. The extension's RPCs match by the key. `lib/url-key.ts` mirrors the function for instant matching; `scripts/_e2e-url-key.mjs` checks the two agree on all 830 stored addresses and doubles as the migration's dry run.
+- [x] QA: `_e2e-batch4` (25 checks), `_e2e-url-key` (22), `_e2e-batch3` (41), `_e2e-v2` (23), `_e2e-profile` (13), `_e2e-extension` (14) — all against the real DB.
 
 ### Left for Abdul
 

@@ -66,9 +66,8 @@ function toWork(it: ListItem): Work {
 
 const byPosition = (a: ListItem, b: ListItem) => a.position - b.position;
 
-/** round glass buttons over the cover's glow */
-const heroIcon =
-  "inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-gray-900/10 bg-white/60 text-gray-700 outline-none backdrop-blur transition-colors hover:bg-white hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-neutral-400";
+/** bare icons beside Add, like ★ 🔖 on the item page */
+const heroIcon = iconButton;
 
 /** the rank, quiet — a list is an order */
 function Rank({ n }: { n: number }) {
@@ -105,7 +104,7 @@ function Handle({ n, title, props }: { n: number; title: string; props: ReturnTy
  * A list, playlist-style: the cover and its color up top, then the works as
  * numbered rows — nothing between a visitor and the things in it. The owner
  * gets the tools in place: drag to reorder, ○ to mark something finished
- * (finished things sink into their own section, with "Loved it?" waiting),
+ * (finished things sink into their own section, with "Favorite?" waiting),
  * ⋯ for the note, another list, or removal, and + Add to build it here.
  */
 export default function ListView({
@@ -209,7 +208,7 @@ export default function ListView({
     if (isFavorited(viewer(), work)) {
       toast("Marked as finished", { label: "Undo", run: () => void setFinished({ ...it, done_at }, false) });
     } else {
-      toast("Marked as finished", { label: "Loved it", run: () => void lovedIt(work) });
+      toast("Marked as finished", { label: "Favorite?", run: () => void lovedIt(work) });
     }
   };
 
@@ -495,7 +494,7 @@ export default function ListView({
                                     onClick={() => void lovedIt(work)}
                                     className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full bg-gray-900/[0.06] px-2.5 text-xs font-semibold text-gray-900 outline-none transition-colors hover:bg-gray-900/10 focus-visible:ring-2 focus-visible:ring-gray-900 dark:bg-white/10 dark:text-neutral-100 dark:hover:bg-white/15"
                                   >
-                                    <Star className="size-3.5 text-star" /> Loved it?
+                                    <Star className="size-3.5 text-star" /> Favorite?
                                   </button>
                                 )}
                                 {rowMenu(it, i)}
