@@ -44,12 +44,12 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
           ? [0, 1, 2].map((i) => (
               <li key={i} aria-hidden className="py-5">
                 <div className="flex items-center gap-3">
-                  <span className="size-9 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
+                  <span className="size-8 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
                   <span className="h-3 w-2/5 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
                 </div>
-                <div className="mt-2.5 ml-12 flex gap-1">
+                <div className="mt-2.5 ml-11 flex gap-1">
                   {[0, 1, 2, 3, 4, 5].map((j) => (
-                    <span key={j} className="size-8 animate-pulse rounded-[3px] bg-gray-200 dark:bg-neutral-800" />
+                    <span key={j} className="size-7 animate-pulse rounded-[3px] bg-gray-200 dark:bg-neutral-800" />
                   ))}
                 </div>
               </li>
@@ -60,7 +60,7 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                 <li key={p.id} className="py-5">
                   <div className="flex items-center gap-3">
                     <Link href={`/${p.username}`} className="flex min-w-0 flex-1 items-center gap-3 outline-none">
-                      <Avatar p={p} className="size-9" />
+                      <Avatar p={p} className="size-8" />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-semibold text-gray-900 hover:underline dark:text-neutral-100">
                           {p.display_name || `@${p.username}`}
@@ -72,9 +72,11 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                     </Link>
                     <FollowButton profile={p} chip />
                   </div>
-                  {/* their taste, small and under the name — the person leads */}
+                  {/* their taste, small and under the name — the person leads. A
+                      step smaller than the feed's faces: beside two lines and a
+                      strip of covers, the same size reads bigger */}
                   {covers.length > 0 && (
-                    <Link href={`/${p.username}`} aria-hidden tabIndex={-1} className="mt-2.5 ml-12 flex w-fit gap-1">
+                    <Link href={`/${p.username}`} aria-hidden tabIndex={-1} className="mt-2.5 ml-11 flex w-fit gap-1">
                       {covers.map((it) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -82,7 +84,7 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                           src={thumbCover(it.image_url!, 100)}
                           alt=""
                           loading="lazy"
-                          className="size-8 rounded-[3px] bg-gray-200 object-cover transition-opacity hover:opacity-90 dark:bg-neutral-800"
+                          className="size-7 rounded-[3px] bg-gray-200 object-cover transition-opacity hover:opacity-90 dark:bg-neutral-800"
                         />
                       ))}
                     </Link>

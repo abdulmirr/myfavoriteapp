@@ -43,6 +43,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: base, changeFrequency: "daily", priority: 1 },
     { url: `${base}${BROWSE.href}`, changeFrequency: "hourly", priority: 0.9 },
+    ...(BROWSE.href === "/discover"
+      ? [{ url: `${base}/discover/resources`, changeFrequency: "daily" as const, priority: 0.8 }]
+      : []),
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },
     ...profiles.map((p) => ({

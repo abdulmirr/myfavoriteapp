@@ -181,7 +181,7 @@ try {
   if (await people.count()) {
     // their covers sit small under the name: never bigger than their face
     const sizes = await people.evaluate((li) => ({
-      face: li.querySelector("a")?.getBoundingClientRect().height ?? 0,
+      face: li.querySelector("a > *")?.getBoundingClientRect().height ?? 0,
       cover: Math.max(0, ...[...li.querySelectorAll("a[aria-hidden] img")].map((i) => i.getBoundingClientRect().height)),
     }));
     check("taste covers stay smaller than the face", sizes.cover > 0 && sizes.cover < sizes.face, JSON.stringify(sizes));

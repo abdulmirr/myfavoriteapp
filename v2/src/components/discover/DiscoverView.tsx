@@ -13,6 +13,7 @@ import { itemHref, titleKey } from "@/lib/work";
 import { TypedTitle } from "../Typewriter";
 import { pageTitle, primaryButton } from "../ui/styles";
 import DiscoverSearch from "./DiscoverSearch";
+import DiscoverTabs from "./DiscoverTabs";
 import MostLoved from "./MostLoved";
 import Shelf, { SectionHead, ShelfSkeleton } from "./Shelf";
 
@@ -157,9 +158,10 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
     ) : null;
 
   return (
-    <div className="min-h-screen px-4 pt-14 pb-24 sm:px-6 sm:pt-20 lg:px-8">
+    <div className="min-h-screen px-4 pt-8 pb-24 sm:px-6 sm:pt-10 lg:px-8">
       <div className="mx-auto max-w-[1400px]">
-        <div className="mb-14 text-center sm:mb-16">
+        <DiscoverTabs current="for-you" />
+        <div className="mt-12 mb-14 text-center sm:mt-16 sm:mb-16">
           <TypedTitle text="Find your next favorite." caret className={pageTitle} />
           <form
             autoComplete="off"

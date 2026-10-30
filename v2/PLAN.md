@@ -614,6 +614,18 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] Friends, People with your taste: faces are 36px, the same as the activity feed beside them; covers stay 32px under the name.
 - [x] QA: `_e2e-discover`, `_e2e-batch4`; tsc, eslint, `next build`; the hover card checked on the production bundle.
 
+### 2026-10-30, eleventh batch (Resources; faces under the count)
+
+- [x] **Discover → Resources** (`/discover/resources`), antislop's archive, with its curator's permission. Discover has two underlined tabs, For you · Resources, and the Discover pill stays lit on both. No 4th nav tab: phones have no room, and it's still finding your next favorite.
+  - "Worth your time." · "Picked by antislop: essays, talks and videos for founders, and for getting better at life."
+  - All · Essays · Talks · Videos with counts; search over titles and authors; newest pick first; the grid grows as you scroll.
+  - 16:9 cards: the picture (YouTube thumbnails where antislop has none) or antislop's black title card, then the title, "Author · Mon YYYY", "Essay · 8 min", 🔖 ★. A click opens the piece where it lives. Tweets stay out.
+  - Data: read live from antislop's public catalog (`antislop_resources`, `date_featured ≤ today`) and cached hourly (`lib/resources.ts`), so a new pick appears the day antislop features it; no copy, no sync job. Each resource carries the link's own identity (`urlWorkKey`), so a saved or favorited resource is the same work as anyone's copy of that link. Today: 188 (115 essays, 49 talks, 24 videos).
+  - Needs `ANTISLOP_SUPABASE_URL` and `ANTISLOP_SUPABASE_ANON_KEY` (antislop's public client key): set in `v2/.env.local`, passed to the preview, and added to Production for the swap.
+- [x] **Who:** hover "12 favorites" and the faces appear just underneath, small (16px), people you follow first, then "+N". They sit over the gap below the tile, so nothing moves. The popup card is gone.
+- [x] **Friends, People with your taste:** measured, both columns' faces were 36px. Beside two lines and a strip of covers they still read bigger, so the rail's are now one step smaller (32px, covers 28px).
+- [x] QA: `_e2e-resources` (18 checks, no account), `_e2e-discover` (+ favoriting a resource lands it on the wall as that link), `_e2e-batch4`; tsc, eslint, `next build`; Resources and landing on the production bundle.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

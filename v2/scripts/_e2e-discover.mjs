@@ -1,12 +1,12 @@
 // Discover (2026-10-28), against the dev server (:3000) and the real DB. A
 // visitor gets "Most loved" — everything by favorites, each tile saying how
-// many, their faces a hover away — and a nudge to start a library. A member who loves a
+// many, their faces just under it on hover — and a nudge to start a library. A member who loves a
 // few widely-loved things gets "Because you love …" rows, each holding works
 // of its favorite's own kind, a friend they follow first among the faces,
 // and nowhere on the page anything that's already theirs (a private save
-// included) or anything twice. /feed still stands. Two throwaway members (one
-// follows the other), deleted afterwards; nothing here follows or favorites
-// a real person.
+// included) or anything twice; a resource they favorite lands on their wall.
+// /feed still stands. Two throwaway members (one follows the other), deleted
+// afterwards; nothing here follows or favorites a real person's card.
 //   node scripts/_e2e-discover.mjs
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -97,15 +97,24 @@ const lineOf = async (page, title) =>
       return [...(img?.closest("div.min-w-0")?.querySelectorAll("p") ?? [])].find((p) => /^\d+ favorites?$/.test(p.textContent.trim())) ?? null;
     }, title)
   ).asElement();
-// hover a count line: the card of faces opens above it; returns their links
+// hover a count line: their faces show just under it, small; returns the
+// links once they're showing (empty if they never do)
 async function faces(page, line) {
   await line.scrollIntoViewIfNeeded();
   await line.hover();
-  const card = page.locator(".hovercard-content");
-  await card.locator("a").first().waitFor({ timeout: 8000 });
-  const hrefs = await card.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  const hrefs = await line.evaluate(async (p) => {
+    const row = p.nextElementSibling;
+    for (let i = 0; i < 40; i++) {
+      const links = [...row.querySelectorAll("a")];
+      if (links.length && getComputedStyle(row).opacity === "1") {
+        const size = links[0].getBoundingClientRect().height;
+        return size <= 18 ? links.map((a) => a.getAttribute("href")) : [`too big: ${size}px`];
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    return [];
+  });
   await page.mouse.move(2, 2);
-  await card.waitFor({ state: "detached", timeout: 3000 }).catch(() => {});
   return hrefs;
 }
 
@@ -134,7 +143,7 @@ try {
   check("…in words, no faces under the tiles", (await most.locator(".grid img[alt='']").count()) === 0);
   const firstLine = (await most.locator(".grid p", { hasText: /^\d+ favorites?$/ }).first().elementHandle());
   const who = await faces(vp, firstLine);
-  check("…hover shows who (their faces, linked)", who.length >= 1 && who.every((h) => /^\/[^/]+$/.test(h)), `${who.length} faces`);
+  check("…hover shows who, small, under the count", who.length >= 1 && who.every((h) => /^\/[^/]+$/.test(h)), who.join(" "));
   await Promise.all([
     vp.waitForResponse((r) => r.url().includes("/api/discover/works") && r.url().includes("filter=books")),
     most.getByRole("button", { name: "Books", exact: true }).click(),
@@ -242,6 +251,22 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(500);
   await page.screenshot({ path: join(SHOTS, "discover-member-1440.png"), fullPage: true });
+
+  // a resource, favorited: on their wall, under the link's own identity —
+  // the same work as anyone else's copy of it (no one is notified)
+  await page.goto(`${APP}/discover/resources`, { waitUntil: "load" });
+  const card = page.locator("article").first();
+  await card.locator("h3").waitFor({ timeout: 20000 });
+  const link = await card.locator("a").first().getAttribute("href");
+  const named = (await card.locator("h3").textContent()).trim();
+  await card.getByRole("button", { name: `Favorite ${named}` }).click();
+  let kept = null;
+  for (let i = 0; i < 20 && !kept; i++) {
+    await wait(400);
+    kept = (await q("select canonical_id from items where profile_id = $1 and view_url = $2", [A.pid, link]))[0] ?? null;
+  }
+  const linkKey = (await q("select public.url_work_key($1) k", [link]))[0].k;
+  check("a favorited resource lands on their wall, as that link", !!kept && kept.canonical_id === linkKey, `${named}: ${kept?.canonical_id} / ${linkKey}`);
   await ctx.close();
 
   // the bigger wordmark still fits a member's header where it shows (414px up)

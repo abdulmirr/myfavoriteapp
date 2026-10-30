@@ -33,7 +33,8 @@ function NavPills({ pathname, status, unread }: { pathname: string | null; statu
     <nav aria-label="Main" className="ml-auto flex items-center gap-1 sm:ml-0 sm:gap-1.5 sm:justify-self-center">
       {NAV.map((n) => {
         if (n.members && status === "signed-out") return null;
-        const active = pathname === n.href;
+        // Discover stays lit on its Resources view
+        const active = pathname === n.href || (n.href !== "/" && !!pathname?.startsWith(`${n.href}/`));
         const badge = n.members && unread > 0;
         return (
           <Link
