@@ -245,8 +245,6 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
     );
 
   const visitorList = community.slice(0, TOTAL).map((c, i) => <CommunityCard key={c.item.id} c={c} priority={i < 2} />);
-  const count = member ? aiPicks.length + fill.length : Math.min(TOTAL, community.length);
-  const numberWord = ["No", "One", "Two", "Three", "Four", "Five"][count] ?? String(count);
 
   return (
     <div className="min-h-screen px-4 pt-14 pb-12 sm:px-6 sm:pt-20 lg:px-8">
@@ -272,21 +270,7 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
           )}
         </div>
 
-        <p className="mt-16 text-center text-base leading-relaxed tracking-tight text-gray-500 sm:mt-20 sm:text-lg dark:text-neutral-400">
-          {member ? (
-            <>
-              That&apos;s it. {numberWord} picks, chosen for you.
-              <br />
-              Here today, gone tomorrow.
-            </>
-          ) : (
-            <>
-              That&apos;s it. {numberWord} favorites from people with taste.
-              <br />
-              Here today, gone tomorrow.
-            </>
-          )}
-        </p>
+        {/* the picks end on the newsletter: tomorrow's five, by email */}
         <NewsletterCTA />
         {v.status === "signed-out" && (
           <p className="mt-8 text-center text-sm text-gray-500 dark:text-neutral-400">

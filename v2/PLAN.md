@@ -606,6 +606,14 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] **Logo:** the star is 24/30px and the wordmark 27/34px (phone/desktop). Phone rules are unchanged; headers checked from 360 to 430px.
 - [x] QA: `_e2e-discover` (36 checks), `_e2e-landing`, `_e2e-batch4`; tsc, eslint, `next build`; landing and Discover also on the production bundle.
 
+### 2026-10-30, tenth batch (quieter counts, the card, Home's ending, the rail)
+
+- [x] The count under a tile is a step quieter than the creator above it: 11px, lighter, a little apart.
+- [x] The hover card is a small dark card with an arrow (inverted in dark mode): up to five overlapping faces, people you follow first, and one line, "Ali and 10 more" ("Ali and Sam" when there are two).
+- [x] Home ends with the picks, then the newsletter field. The "That's it. Five picks…" line is gone (the daily email keeps its own).
+- [x] Friends, People with your taste: faces are 36px, the same as the activity feed beside them; covers stay 32px under the name.
+- [x] QA: `_e2e-discover`, `_e2e-batch4`; tsc, eslint, `next build`; the hover card checked on the production bundle.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.
