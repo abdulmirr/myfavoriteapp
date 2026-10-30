@@ -1,6 +1,6 @@
 // Discover (2026-10-28), against the dev server (:3000) and the real DB. A
-// visitor gets "Most loved" — everything by favorites, each tile with the
-// number and faces — and a nudge to start a library. A member who loves a
+// visitor gets "Most loved" — everything by favorites, each tile saying how
+// many, their faces a hover away — and a nudge to start a library. A member who loves a
 // few widely-loved things gets "Because you love …" rows, each holding works
 // of its favorite's own kind, a friend they follow first among the faces,
 // and nowhere on the page anything that's already theirs (a private save
@@ -81,21 +81,33 @@ const workAlts = (page, sections, framed = false) =>
   );
 const sectionOf = (page, name) => page.locator("section").filter({ has: page.getByRole("heading", { name, exact: true }) });
 // the grid in DOM order: a divider's label, or a tile's favorites count
-// the grid's tiles in order, each as its favorites count
+// the grid's tiles in order, each as its "12 favorites" count (0 if missing)
 const gridCounts = (section) =>
   section.evaluate((s) =>
-    [...s.querySelector(".grid").children].map((c) => parseInt(c.querySelector(".sr-only")?.textContent ?? "0", 10))
-  );
-// what a who line shows: a number, then faces — nothing else
-const lineShapes = (scope) =>
-  scope.evaluate((s) =>
-    [...s.querySelectorAll("p:has(> .sr-only)")].map((p) => {
-      const [count, faces, ...rest] = [...p.children].filter((c) => !c.classList.contains("sr-only"));
-      return /^\d+$/.test(count?.textContent ?? "") && (!faces || !!faces.querySelector("[class*='-space-x']")) && rest.length === 0
-        ? "ok"
-        : p.textContent;
+    [...s.querySelector(".grid").children].map((c) => {
+      const line = [...c.querySelectorAll("p")].find((p) => /^\d+ favorites?$/.test(p.textContent.trim()));
+      return line ? parseInt(line.textContent, 10) : 0;
     })
   );
+// the count line under the tile showing `title`, to hover
+const lineOf = async (page, title) =>
+  (
+    await page.evaluateHandle((t) => {
+      const img = [...document.querySelectorAll("img[alt]")].find((i) => i.alt === t && i.getClientRects().length > 0);
+      return [...(img?.closest("div.min-w-0")?.querySelectorAll("p") ?? [])].find((p) => /^\d+ favorites?$/.test(p.textContent.trim())) ?? null;
+    }, title)
+  ).asElement();
+// hover a count line: the card of faces opens above it; returns their links
+async function faces(page, line) {
+  await line.scrollIntoViewIfNeeded();
+  await line.hover();
+  const card = page.locator(".hovercard-content");
+  await card.locator("a").first().waitFor({ timeout: 8000 });
+  const hrefs = await card.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  await page.mouse.move(2, 2);
+  await card.waitFor({ state: "detached", timeout: 3000 }).catch(() => {});
+  return hrefs;
+}
 
 try {
   browser = await chromium.launch();
@@ -119,11 +131,10 @@ try {
   check("…every tile says how many", counts.every((n) => n >= 1));
   check("…most favorites first", counts.every((n, i) => i === 0 || n <= counts[i - 1]), counts.slice(0, 12).join(" "));
   check("…no month split", (await most.locator("h3").count()) === 0);
-  const shapes = await lineShapes(most);
-  check("…each line just a number and faces", shapes.length === counts.length && shapes.every((x) => x === "ok"), shapes.filter((x) => x !== "ok").slice(0, 3).join(" | "));
-  // a face per line at least (photos, or a letter where there's none)
-  const faced = await most.evaluate((s) => [...s.querySelectorAll(".grid p")].filter((p) => p.querySelector("[class*='-space-x']")?.children.length > 0).length);
-  check("…and who (faces)", faced === counts.length, `${faced}/${counts.length} lines`);
+  check("…in words, no faces under the tiles", (await most.locator(".grid img[alt='']").count()) === 0);
+  const firstLine = (await most.locator(".grid p", { hasText: /^\d+ favorites?$/ }).first().elementHandle());
+  const who = await faces(vp, firstLine);
+  check("…hover shows who (their faces, linked)", who.length >= 1 && who.every((h) => /^\/[^/]+$/.test(h)), `${who.length} faces`);
   await Promise.all([
     vp.waitForResponse((r) => r.url().includes("/api/discover/works") && r.url().includes("filter=books")),
     most.getByRole("button", { name: "Books", exact: true }).click(),
@@ -193,7 +204,7 @@ try {
   const rows = await page.getByRole("heading", { name: /^Because you love/ }).allInnerTexts();
   check("Because you love … rows", rows.length >= 1, rows.join(" | "));
   const firstRow = page.locator("section").filter({ has: page.getByRole("heading", { name: /^Because you love/ }) }).first();
-  check("…each work says who loves it", (await firstRow.locator("p .sr-only").filter({ hasText: /favorite/ }).count()) >= 4);
+  check("…each work says how many love it", (await firstRow.locator("p", { hasText: /^\d+ favorites?$/ }).count()) >= 4);
   const kinds = await page.evaluate(() =>
     [...document.querySelectorAll("section")]
       .filter((s) => (s.querySelector("h2")?.textContent ?? "").startsWith("Because you love"))
@@ -213,8 +224,10 @@ try {
   const listed = await workAlts(page, ["Because you love", "Most loved"], true);
   const twice = listed.filter((t, i) => listed.indexOf(t) !== i);
   check("no work twice on the page", twice.length === 0, twice.join(", ") || `${listed.length} works`);
-  const led = await page.evaluate((name) => [...document.querySelectorAll("p[title]")].filter((p) => p.title.startsWith(name)).length, FRIEND.split(" ")[0]);
-  check("a friend's face comes first", led >= 1, `${led} lines lead with ${FRIEND.split(" ")[0]}`);
+  const [{ username: bName }] = await q("select username from profiles where id = $1", [B.pid]);
+  const friendLine = await lineOf(page, top.title);
+  const lead = friendLine ? (await faces(page, friendLine))[0] : null;
+  check("a friend's face comes first", lead === `/${bName}`, `${top.title}: ${lead}`);
 
   // 🔖 ★ wait for the mouse (nothing gets clicked — these are real people's copies)
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -230,6 +243,21 @@ try {
   await page.waitForTimeout(500);
   await page.screenshot({ path: join(SHOTS, "discover-member-1440.png"), fullPage: true });
   await ctx.close();
+
+  // the bigger wordmark still fits a member's header where it shows (414px up)
+  for (const width of [414, 430]) {
+    const m = await member({ width, height: 800 });
+    await m.page.goto(`${APP}/discover`, { waitUntil: "load" });
+    await m.page.getByRole("link", { name: "Your profile" }).waitFor({ timeout: 20000 });
+    const fit = await m.page.evaluate(() => {
+      const h = document.querySelector("header");
+      const last = [...h.querySelectorAll("a,button")].filter((e) => e.getClientRects().length).at(-1);
+      const logo = h.querySelector("a span");
+      return { over: h.scrollWidth - h.clientWidth, right: Math.round(innerWidth - last.getBoundingClientRect().right), wordmark: getComputedStyle(logo).display !== "none" };
+    });
+    check(`${width}px member header fits, wordmark showing`, fit.over <= 0 && fit.right >= 12 && fit.wordmark, JSON.stringify(fit));
+    await m.ctx.close();
+  }
 
   for (const [vw, scheme] of [[{ width: 1440, height: 900 }, "dark"], [{ width: 390, height: 844 }, "light"]]) {
     const m = await member(vw, scheme);

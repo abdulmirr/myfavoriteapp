@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
+import { getAbout } from "@/lib/about";
 import { getPopularWorkKeys, getWork, type WorkPageData } from "@/lib/data";
+import type { FeedWork } from "@/lib/types";
 import { itemHref, metaLine, typeLabel } from "@/lib/work";
 import { NaturalCover } from "@/components/Cover";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -34,8 +36,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!data || data.canonicalRedirect) return { title: "Favorite" };
   const { work } = data;
   const title = `${work.title}${work.creator ? ` by ${work.creator}` : ""}`;
-  const description =
-    work.fav_count > 0
+  // what it is, when we know — else who loves it
+  const about = await getAbout(aboutKey(work));
+  const description = about
+    ? about.text.length > 160
+      ? `${about.text.slice(0, 157).replace(/\s+\S*$/, "")}…`
+      : about.text
+    : work.fav_count > 0
       ? `Favorited by ${work.fav_count} ${work.fav_count === 1 ? "person" : "people"} on Favorite.`
       : `Saved on Favorite.`;
   return {
@@ -64,6 +71,43 @@ function sourceLabel(url: string, type: string): string {
   if (/goodreads/.test(host)) return "View on Goodreads";
   if (/wikipedia/.test(host)) return "Read on Wikipedia";
   return `Open ${host}`;
+}
+
+/** just what identifies the work — the blurb's cache key mustn't move with its favorites */
+const aboutKey = (w: FeedWork) => ({
+  canonical_id: w.canonical_id,
+  media_type: w.media_type,
+  title: w.title,
+  creator: w.creator,
+});
+
+/** What the work is, in a few lines from where it's catalogued — credited, and only when there is one. */
+async function AboutWork({ work }: { work: FeedWork }) {
+  const about = await getAbout(aboutKey(work));
+  if (!about) return null;
+  return (
+    <section aria-labelledby="about" className="mb-10">
+      <h2 id="about" className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
+        About
+      </h2>
+      <p className="mt-2 text-[15px] leading-relaxed text-gray-600 dark:text-neutral-300">{about.text}</p>
+      <p className="mt-2 text-xs text-gray-400 dark:text-neutral-500">
+        From{" "}
+        {about.url ? (
+          <a
+            href={about.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-700 hover:underline dark:hover:text-neutral-300"
+          >
+            {about.source}
+          </a>
+        ) : (
+          about.source
+        )}
+      </p>
+    </section>
+  );
 }
 
 async function Work({ params }: Params) {
@@ -112,8 +156,11 @@ async function Work({ params }: Params) {
             </div>
           </section>
 
-          {/* the people: who loves it, what they said, where it's kept */}
+          {/* what it is, then the people: who loves it, what they said, where it's kept */}
           <div className="mt-12 md:mt-0">
+            <Suspense fallback={null}>
+              <AboutWork work={work} />
+            </Suspense>
             {favorites.length > 0 ? (
               <section aria-labelledby="favorited-by">
                 <h2 id="favorited-by" className="text-sm font-semibold tracking-tight text-gray-900 dark:text-neutral-100">

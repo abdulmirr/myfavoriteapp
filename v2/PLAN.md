@@ -591,6 +591,21 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] Data: migration35 — `discover_for` (seeds only, same-type rows) and `discover_works` (all time, without the month columns).
 - [x] QA: `_e2e-discover` (34 checks), `_e2e-batch3`, `_e2e-batch4`; tsc, eslint, `next build`.
 
+### 2026-10-30, ninth batch (who, about, newsletter, the rail, the logo)
+
+- [x] **Under every Discover tile, "12 favorites" in words.** Hover it and a small card opens above with up to eight faces (22px), people you follow first, each linking to their page, then "+N". Beyond the three that come with the page, faces load on that first hover.
+- [x] **About on item pages:** a few lines on what the work is. They're fetched, never generated, and always credited:
+  - films and shows: TMDB's overview
+  - books: Apple Books or Open Library
+  - podcasts: the show's own feed, or Deezer
+  - albums, and anything the first source lacks: Wikipedia's summary. The page must be the work itself (same title, its kind, its maker), so *In Rainbows* is never the live video.
+  - Cleaned (publisher shouting, footnotes, CDATA), cut to a few sentences, cached for weeks (`lib/about.ts`), and also used as the page's share description.
+  - Measured on 80 real works: films 24/24, TV 4/4, books 10/11, albums 25/30, podcasts 5/7. Links get none.
+- [x] **Home's newsletter is antislop's:** a line, a sentence, one white field with Subscribe inside. Members see their account email in it. No card.
+- [x] **Friends, People with your taste:** the person leads. Their taste is a strip of 32px covers under the name (it was 51px squares spanning the rail, bigger than the face).
+- [x] **Logo:** the star is 24/30px and the wordmark 27/34px (phone/desktop). Phone rules are unchanged; headers checked from 360 to 430px.
+- [x] QA: `_e2e-discover` (36 checks), `_e2e-landing`, `_e2e-batch4`; tsc, eslint, `next build`; landing and Discover also on the production bundle.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

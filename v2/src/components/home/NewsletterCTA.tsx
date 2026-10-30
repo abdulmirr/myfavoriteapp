@@ -5,7 +5,6 @@ import { Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useViewer } from "@/lib/viewer";
 import { toast } from "../ui/Toast";
-import { card, cn, field, primaryButton } from "../ui/styles";
 
 // this browser already subscribed (visitors) — survives reloads
 const KEY = "fav:newsletter";
@@ -38,6 +37,12 @@ const lineField =
 const lineButton =
   "inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
 
+// Home's version is antislop's own: one white field with the button inside it
+const inlineField =
+  "h-11 w-full rounded-lg border border-gray-200 bg-white pr-32 pl-4 text-sm text-gray-900 shadow-xs outline-none placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-gray-900/10 read-only:text-gray-500 dark:border-neutral-700/60 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus-visible:ring-white/10 dark:read-only:text-neutral-400";
+const inlineButton =
+  "absolute top-1.5 right-1.5 inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-gray-900 px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
+
 function Note({ title, note, compact }: { title: string; note: string; compact?: boolean }) {
   if (compact) {
     return (
@@ -47,7 +52,7 @@ function Note({ title, note, compact }: { title: string; note: string; compact?:
     );
   }
   return (
-    <section className={cn(card, "mt-14 px-6 py-8 text-center sm:mt-16")} aria-live="polite">
+    <section className="mt-16 text-center sm:mt-20" aria-live="polite">
       <span className="mx-auto flex size-9 items-center justify-center rounded-full bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900">
         <Check className="size-4" strokeWidth={2.5} />
       </span>
@@ -59,8 +64,9 @@ function Note({ title, note, compact }: { title: string; note: string; compact?:
 
 /**
  * antislop's newsletter, folded into Home: today's picks by email every
- * morning. Visitors type an address and confirm by email; members subscribe
- * their account email in one click. Subscribers never see it.
+ * morning — a line, a sentence and antislop's field, no card. Visitors type
+ * an address and confirm by email; members see their account email in the
+ * field and subscribe in one click. Subscribers never see it.
  */
 export default function NewsletterCTA({ compact = false }: { compact?: boolean }) {
   const v = useViewer();
@@ -165,45 +171,37 @@ export default function NewsletterCTA({ compact = false }: { compact?: boolean }
   }
 
   return (
-    <section className={cn(card, "mt-14 px-6 py-8 text-center sm:mt-16 sm:px-10 sm:py-10")}>
-      <h2 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl dark:text-neutral-100">
+    <section className="mt-16 text-center sm:mt-20">
+      <h2 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl dark:text-neutral-100">
         Today&rsquo;s picks, in your inbox.
       </h2>
-      <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-gray-500 dark:text-neutral-400">
+      <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-gray-500 sm:text-base dark:text-neutral-400">
         Five favorites from people with taste, and why they love them. Every morning.
       </p>
-      {uid ? (
-        <>
-          <button
-            type="button"
-            onClick={subscribeMember}
-            disabled={phase === "busy"}
-            className={cn(primaryButton, "mt-6")}
-          >
-            {phase === "busy" ? "Subscribing…" : "Email me the picks"}
-          </button>
-          {member?.email && (
-            <p className="mt-2.5 text-xs text-gray-500 dark:text-neutral-400">Sent to {member.email}</p>
-          )}
-        </>
-      ) : (
-        <form onSubmit={subscribeVisitor} className="mx-auto mt-6 flex max-w-sm flex-col gap-2 sm:flex-row">
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            inputMode="email"
-            placeholder="you@email.com"
-            aria-label="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={cn(field, "min-w-0 bg-gray-100 sm:flex-1 dark:bg-neutral-700")}
-          />
-          <button type="submit" disabled={phase === "busy"} className={primaryButton}>
-            {phase === "busy" ? "Subscribing…" : "Subscribe"}
-          </button>
-        </form>
-      )}
+      <form
+        onSubmit={(e) => {
+          if (!uid) return void subscribeVisitor(e);
+          e.preventDefault();
+          void subscribeMember();
+        }}
+        className="relative mx-auto mt-6 max-w-sm"
+      >
+        <input
+          type="email"
+          required
+          autoComplete="email"
+          inputMode="email"
+          placeholder="name@email.com"
+          aria-label="Email address"
+          readOnly={!!uid}
+          value={uid ? (member?.email ?? "") : email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={inlineField}
+        />
+        <button type="submit" disabled={phase === "busy"} className={inlineButton}>
+          {phase === "busy" ? "…" : "Subscribe"}
+        </button>
+      </form>
       {error && (
         <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">
           {error}

@@ -3,7 +3,7 @@ import Star from "./ui/Star";
 
 /**
  * The gold star beside a lowercase `favorite` wordmark — set like antislop's
- * logo (heavy, tight grotesk), sized to its 130px desktop / 96px phone width.
+ * logo (heavy, tight grotesk), a touch larger than its 130px desktop width.
  */
 export default function Logo() {
   return (
@@ -12,10 +12,10 @@ export default function Logo() {
       aria-label="Favorite — home"
       className="group flex shrink-0 items-center gap-1.5 justify-self-start rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-gray-900 sm:gap-2 dark:focus-visible:ring-neutral-400"
     >
-      <Star className="size-[22px] text-star transition-transform duration-300 group-hover:rotate-[22deg] max-[389px]:size-5 sm:size-[27px]" />
+      <Star className="size-6 text-star transition-transform duration-300 group-hover:rotate-[22deg] max-[389px]:size-5 sm:size-[30px]" />
       {/* narrow phones: a size down, and below 370px the star alone is the
           logo — for members (Discover · Friends · ＋ · you) below 414px */}
-      <span className="text-[25px] font-bold leading-none tracking-[-0.055em] text-gray-950 max-[389px]:text-[22px] max-[369px]:hidden in-data-[auth=in]:max-[413px]:hidden sm:text-[31px] dark:text-white">
+      <span className="text-[27px] font-bold leading-none tracking-[-0.055em] text-gray-950 max-[389px]:text-[22px] max-[369px]:hidden in-data-[auth=in]:max-[413px]:hidden sm:text-[34px] dark:text-white">
         favorite
       </span>
     </Link>

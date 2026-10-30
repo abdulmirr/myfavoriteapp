@@ -179,9 +179,12 @@ try {
   const rail = page.locator("aside");
   const people = rail.locator("section[aria-label='People with your taste'] li").first();
   if (await people.count()) {
-    const grid = await people.locator("a.grid").boundingBox().catch(() => null);
-    const row = await people.boundingBox();
-    check("taste covers span the row", !grid || Math.abs(grid.width - row.width) <= 2, grid ? `${Math.round(grid.width)} of ${Math.round(row.width)}` : "no covers");
+    // their covers sit small under the name: never bigger than their face
+    const sizes = await people.evaluate((li) => ({
+      face: li.querySelector("a")?.getBoundingClientRect().height ?? 0,
+      cover: Math.max(0, ...[...li.querySelectorAll("a[aria-hidden] img")].map((i) => i.getBoundingClientRect().height)),
+    }));
+    check("taste covers stay smaller than the face", sizes.cover > 0 && sizes.cover < sizes.face, JSON.stringify(sizes));
   }
   await page.screenshot({ path: join(SHOTS, "b4-friends.png"), fullPage: true });
 

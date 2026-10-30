@@ -47,9 +47,9 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                   <span className="size-10 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
                   <span className="h-3 w-2/5 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />
                 </div>
-                <div className="mt-3 grid grid-cols-6 gap-1.5">
+                <div className="mt-2.5 ml-[52px] flex gap-1">
                   {[0, 1, 2, 3, 4, 5].map((j) => (
-                    <span key={j} className="aspect-square animate-pulse rounded-[4px] bg-gray-200 dark:bg-neutral-800" />
+                    <span key={j} className="size-8 animate-pulse rounded-[3px] bg-gray-200 dark:bg-neutral-800" />
                   ))}
                 </div>
               </li>
@@ -72,8 +72,9 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                     </Link>
                     <FollowButton profile={p} chip />
                   </div>
+                  {/* their taste, small and under the name — the person leads */}
                   {covers.length > 0 && (
-                    <Link href={`/${p.username}`} aria-hidden tabIndex={-1} className="mt-3 grid grid-cols-6 gap-1.5">
+                    <Link href={`/${p.username}`} aria-hidden tabIndex={-1} className="mt-2.5 ml-[52px] flex w-fit gap-1">
                       {covers.map((it) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -81,7 +82,7 @@ export default function PeopleToFollow({ people, limit = 5 }: { people: Discover
                           src={thumbCover(it.image_url!, 100)}
                           alt=""
                           loading="lazy"
-                          className="aspect-square w-full rounded-[3px] bg-gray-200 object-cover transition-opacity hover:opacity-90 dark:bg-neutral-800"
+                          className="size-8 rounded-[3px] bg-gray-200 object-cover transition-opacity hover:opacity-90 dark:bg-neutral-800"
                         />
                       ))}
                     </Link>

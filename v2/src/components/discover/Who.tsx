@@ -1,39 +1,84 @@
 "use client";
 
+import Link from "next/link";
+import { useState } from "react";
+import { HoverCard } from "radix-ui";
 import type { ProfileLite } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 import { useViewer } from "@/lib/viewer";
-import { AvatarStack } from "../ui/Avatar";
+import Avatar from "../ui/Avatar";
 
-const first = (p: Pick<ProfileLite, "display_name" | "username">) => p.display_name?.split(" ")[0] || p.username;
+// who's who, shared by every line on the page: the newest three come with
+// the works; the rest load on a first hover (most counts never get one)
+const known = new Map<string, ProfileLite>();
+async function load(ids: string[]): Promise<void> {
+  const missing = ids.filter((id) => !known.has(id));
+  if (!missing.length) return;
+  const { data } = await supabase().from("profiles").select("id, username, display_name, avatar_url").in("id", missing);
+  for (const p of (data ?? []) as ProfileLite[]) known.set(p.id, p);
+}
 
 /**
- * Who loves it, under a tile: how many, and a few of their faces — people
- * you follow first, since a pick from someone you know is the one worth a
- * look. Their names are a hover away.
+ * How many love it, under a tile: "12 favorites". Hover it (where there's a
+ * mouse) and their faces open in a small card above — people you follow
+ * first — each going to their page.
  */
 export default function Who({ count, ids, people }: { count: number; ids: string[]; people: ProfileLite[] }) {
   const v = useViewer();
-  const me = v.profile?.id;
-  const following = new Map(v.following.map((p) => [p.id, p]));
-  const friends = ids.filter((id) => following.has(id)).map((id) => following.get(id)!);
-  const faces = [...friends, ...people.filter((p) => p.id !== me && !following.has(p.id))].slice(0, 3);
-  const others = count - faces.length;
-  const names = faces.length ? `${faces.map(first).join(", ")}${others > 0 ? ` and ${others} more` : ""}` : "";
+  const [shown, setShown] = useState<ProfileLite[] | null>(null);
+  const reveal = () => {
+    if (shown) return;
+    for (const p of people) known.set(p.id, p);
+    const me = v.profile?.id;
+    const order = [...ids.filter((id) => v.followingIds.has(id)), ...ids.filter((id) => !v.followingIds.has(id))]
+      .filter((id) => id !== me)
+      .slice(0, 8);
+    void load(order).then(() => setShown(order.map((id) => known.get(id)).filter((p): p is ProfileLite => !!p)));
+  };
   return (
-    <p
-      title={names || undefined}
-      className="relative mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 tabular-nums dark:text-neutral-400"
-    >
-      <span className="sr-only">
-        {count} {count === 1 ? "favorite" : "favorites"}
-        {names && `: ${names}`}
-      </span>
-      <span aria-hidden>{count}</span>
-      {faces.length > 0 && (
-        <span aria-hidden className="flex shrink-0">
-          <AvatarStack people={faces} ring="ring-2 ring-gray-100 dark:ring-neutral-900" />
-        </span>
-      )}
-    </p>
+    <HoverCard.Root openDelay={120} closeDelay={80} onOpenChange={(o) => o && reveal()}>
+      <HoverCard.Trigger asChild>
+        <p onPointerEnter={reveal} className="mt-1.5 w-fit cursor-default text-xs text-gray-500 tabular-nums dark:text-neutral-400">
+          {count} {count === 1 ? "favorite" : "favorites"}
+        </p>
+      </HoverCard.Trigger>
+      <HoverCard.Portal>
+        <HoverCard.Content
+          side="top"
+          align="start"
+          sideOffset={6}
+          collisionPadding={12}
+          className="hovercard-content z-50 w-max rounded-lg border border-gray-200 bg-white p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.10)] dark:border-neutral-700 dark:bg-neutral-800"
+        >
+          {/* one row: up to eight faces, then how many more */}
+          {shown === null ? (
+            <div aria-hidden className="flex gap-1">
+              {Array.from({ length: Math.min(count, 4) }, (_, i) => (
+                <span key={i} className="size-[22px] animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-700" />
+              ))}
+            </div>
+          ) : (
+            <ul aria-label={`${count} ${count === 1 ? "person" : "people"} favorited this`} className="flex items-center gap-1">
+              {shown.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/${p.username}`}
+                    title={p.display_name || `@${p.username}`}
+                    className="block rounded-[30%] transition-opacity hover:opacity-80"
+                  >
+                    <Avatar p={p} className="size-[22px] text-[10px]" />
+                  </Link>
+                </li>
+              ))}
+              {count > shown.length && (
+                <li className="flex h-[22px] items-center px-1 text-[11px] font-medium text-gray-500 tabular-nums dark:text-neutral-400">
+                  +{count - shown.length}
+                </li>
+              )}
+            </ul>
+          )}
+        </HoverCard.Content>
+      </HoverCard.Portal>
+    </HoverCard.Root>
   );
 }
