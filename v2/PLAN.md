@@ -626,6 +626,14 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] **Friends, People with your taste:** measured, both columns' faces were 36px. Beside two lines and a strip of covers they still read bigger, so the rail's are now one step smaller (32px, covers 28px).
 - [x] QA: `_e2e-resources` (18 checks, no account), `_e2e-discover` (+ favoriting a resource lands it on the wall as that link), `_e2e-batch4`; tsc, eslint, `next build`; Resources and landing on the production bundle.
 
+### 2026-10-30, twelfth batch (all of antislop's archive)
+
+- [x] **513 resources, not 188.** antislop publishes a pick two ways: a date of its own (`antislop_resources.date_featured`, which was all I'd read: 189) or a day in its feed (`feed_items`, which its archive page lists: 404 more). Resources now takes both, newest featured first. Its catalog holds 740; the other 227 are its unpublished backlog (plus 5 scheduled), left out so Favorite never runs ahead of the curator.
+- [x] **Tweets are in** (69 published), as quote cards (face, name, @handle, the words) with no title line under them, and their own filter: All · Essays · Talks · Videos · Tweets. Search covers what a tweet says. Podcasts count as Talks, PDFs as Essays.
+- [x] An image that fails, even before the page wakes up, falls back: a title card for resources, the person's initial for tweets. (Tweet avatars come from X's image server, which this Mac's DNS filter blocks, so locally they show initials.)
+- [x] Copy: the line under "Worth your time." is "Some of the greatest resources on the internet" (no antislop credit on the page now); Discover's tabs are **Media · Resources**.
+- [x] QA: `_e2e-resources` (19 checks); tsc, eslint, `next build`; Resources on the production bundle.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

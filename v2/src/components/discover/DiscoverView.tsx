@@ -160,7 +160,7 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   return (
     <div className="min-h-screen px-4 pt-8 pb-24 sm:px-6 sm:pt-10 lg:px-8">
       <div className="mx-auto max-w-[1400px]">
-        <DiscoverTabs current="for-you" />
+        <DiscoverTabs current="media" />
         <div className="mt-12 mb-14 text-center sm:mt-16 sm:mb-16">
           <TypedTitle text="Find your next favorite." caret className={pageTitle} />
           <form

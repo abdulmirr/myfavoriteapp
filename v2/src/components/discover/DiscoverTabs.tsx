@@ -2,11 +2,11 @@ import Link from "next/link";
 import { cn } from "../ui/styles";
 
 const TABS = [
-  { key: "for-you", href: "/discover", label: "For you" },
+  { key: "media", href: "/discover", label: "Media" },
   { key: "resources", href: "/discover/resources", label: "Resources" },
 ] as const;
 
-/** Discover's two views — what people love, and antislop's resources — as the profile's underlined tabs, centered. */
+/** Discover's two views — Media (what people love) and Resources (antislop's archive) — as the profile's underlined tabs, centered. */
 export default function DiscoverTabs({ current }: { current: (typeof TABS)[number]["key"] }) {
   return (
     <nav aria-label="Discover" className="flex justify-center gap-7 border-b border-gray-200 dark:border-neutral-800">

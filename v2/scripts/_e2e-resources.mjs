@@ -1,8 +1,9 @@
 // Discover → Resources (2026-10-30): antislop's archive inside Discover, as a
-// visitor, against the dev server (:3000). The two tabs, the Discover pill
-// lit on both, counts that add up, filters by kind, search, the grid growing
-// on scroll, every card opening where it lives, no tweets, phones. No
-// account needed. Screenshots land in $SHOTS.
+// visitor, against the dev server (:3000). The two tabs (Media · Resources),
+// the Discover pill lit on both, everything antislop has published with
+// counts that add up, filters by kind, tweets as quotes, search, the grid
+// growing on scroll, every card opening where it lives, phones. No account
+// needed. Screenshots land in $SHOTS.
 //   node scripts/_e2e-resources.mjs
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -25,7 +26,8 @@ const cards = (page) =>
       text: a.textContent,
       href: a.querySelector("a")?.getAttribute("href") ?? "",
       blank: a.querySelector("a")?.getAttribute("target") === "_blank",
-      shows: !!a.querySelector("img, .bg-black"),
+      shows: !!a.querySelector("img, .bg-black, .whitespace-pre-line"),
+      quote: !!a.querySelector(".whitespace-pre-line") && !a.querySelector("h3"),
     }))
   );
 const pill = (page, name) => page.getByRole("button", { name: new RegExp(`^${name}\\s*\\d+$`) });
@@ -41,23 +43,23 @@ try {
   await page.goto(`${APP}/discover`, { waitUntil: "load" });
   const tabs = page.getByRole("navigation", { name: "Discover" });
   await tabs.waitFor({ timeout: 20000 });
-  check("Discover has two tabs, For you lit", (await tabs.getByRole("link").allInnerTexts()).join("|") === "For you|Resources" && (await tabs.getByRole("link", { name: "For you" }).getAttribute("aria-current")) === "page");
+  check("Discover has two tabs, Media lit", (await tabs.getByRole("link").allInnerTexts()).join("|") === "Media|Resources" && (await tabs.getByRole("link", { name: "Media" }).getAttribute("aria-current")) === "page");
   await tabs.getByRole("link", { name: "Resources" }).click();
   await page.waitForURL("**/discover/resources", { timeout: 15000 });
   await page.getByRole("heading", { name: "Worth your time." }).waitFor({ timeout: 15000 });
   check("Resources opens from the tab", true);
   check("…its tab lit, and Discover in the bar", (await tabs.getByRole("link", { name: "Resources" }).getAttribute("aria-current")) === "page" && (await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Discover" }).getAttribute("aria-current")) === "page");
-  check("…credited to antislop", (await page.getByRole("link", { name: "antislop", exact: true }).getAttribute("href")) === "https://antislop.xyz");
+  check("…with its line", (await page.getByText("Some of the greatest resources on the internet", { exact: true }).count()) === 1);
 
   await page.waitForTimeout(1200);
-  const [all, essays, talks, videos] = await Promise.all(["All", "Essays", "Talks", "Videos"].map((n) => countOf(page, n)));
-  check("the archive is here", all >= 100, `${all} resources`);
-  check("…and the kinds add up", essays + talks + videos === all, `${essays} + ${talks} + ${videos} = ${all}`);
+  const [all, essays, talks, videos, tweets] = await Promise.all(["All", "Essays", "Talks", "Videos", "Tweets"].map((n) => countOf(page, n)));
+  check("everything antislop has published is here", all >= 400, `${all} resources`);
+  check("…and the kinds add up", essays + talks + videos + tweets === all, `${essays} + ${talks} + ${videos} + ${tweets} = ${all}`);
   let shown = await cards(page);
   check("the first 24 show", shown.length === 24, `${shown.length}`);
   check("…each opens where it lives, in a new tab", shown.every((c) => /^https?:\/\//.test(c.href) && c.blank));
   check("…each with a picture or a title card", shown.every((c) => c.shows));
-  check("…no tweets", shown.every((c) => c.medium !== "Tweet"));
+
   for (let y = 0; y < 5000; y += 900) {
     await page.mouse.wheel(0, 900);
     await page.waitForTimeout(300);
@@ -71,11 +73,16 @@ try {
   await pill(page, "Talks").click();
   await page.waitForTimeout(400);
   shown = await cards(page);
-  check("Talks: speeches and lectures only", shown.length > 0 && shown.every((c) => ["Speech", "Lecture"].includes(c.medium)), [...new Set(shown.map((c) => c.medium))].join(", "));
+  check("Talks: speeches, lectures and podcasts only", shown.length > 0 && shown.every((c) => ["Speech", "Lecture", "Podcast"].includes(c.medium)), [...new Set(shown.map((c) => c.medium))].join(", "));
   await pill(page, "Videos").click();
   await page.waitForTimeout(400);
   shown = await cards(page);
   check("Videos: videos only", shown.length > 0 && shown.every((c) => c.medium === "Video"), [...new Set(shown.map((c) => c.medium))].join(", "));
+  await pill(page, "Tweets").click();
+  await page.waitForTimeout(400);
+  shown = await cards(page);
+  check("Tweets: as quotes (who, then the words), no title line", shown.length > 0 && shown.every((c) => c.medium === "Tweet" && c.quote), `${shown.length} shown`);
+  await page.screenshot({ path: join(SHOTS, "resources-tweets.png") });
   await pill(page, "All").click();
 
   const search = page.getByRole("textbox", { name: "Search resources" });

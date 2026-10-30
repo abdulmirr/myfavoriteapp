@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import type { Resource, ResourceKind } from "@/lib/resources";
 import type { Work } from "@/lib/types";
@@ -15,6 +15,7 @@ const KINDS: { key: "all" | ResourceKind; label: string }[] = [
   { key: "essays", label: "Essays" },
   { key: "talks", label: "Talks" },
   { key: "videos", label: "Videos" },
+  { key: "tweets", label: "Tweets" },
 ];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const when = (d: string | null) => (d ? `${MONTHS[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}` : "");
@@ -22,30 +23,76 @@ const fold = (s: string) =>
   s
     .toLowerCase()
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "");
+    .replace(/[\u0300-\u036f]/g, "");
 const PAGE = 24;
+
+/**
+ * An image that fails says so — including one that failed before the page
+ * woke up to listen (its error event has already gone by).
+ */
+function useBroken(): [boolean, (img: HTMLImageElement | null) => void, () => void] {
+  const [broken, setBroken] = useState(false);
+  const ref = useCallback((img: HTMLImageElement | null) => {
+    if (img?.complete && img.naturalWidth === 0) setBroken(true);
+  }, []);
+  return [broken, ref, () => setBroken(true)];
+}
 
 /** The picture, or antislop's black title card when there's none (or it won't load). */
 function Media({ r, priority }: { r: Resource; priority: boolean }) {
-  const [broken, setBroken] = useState(false);
+  const [broken, ref, fail] = useBroken();
   if (!r.image_url || broken) return <TitleCard title={r.title} creator={r.creator} badge={r.fresh} />;
   return (
     <div className={cn(mediaBox, "aspect-video")}>
       {r.fresh && <span className={newBadge}>New</span>}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={ref}
         src={r.image_url}
         alt=""
         loading={priority ? "eager" : "lazy"}
         decoding="async"
-        onError={() => setBroken(true)}
+        onError={fail}
         className="absolute inset-0 size-full object-cover transition-opacity group-hover/resource:opacity-90"
       />
     </div>
   );
 }
 
-/** One resource: it opens where it lives; 🔖 ★ keep it on Favorite. */
+/** A tweet, as the quote it is: who said it (their initial when the picture's gone), then the words. */
+function Quote({ r }: { r: Resource }) {
+  const t = r.tweet!;
+  const [broken, ref, fail] = useBroken();
+  return (
+    <div className="relative flex aspect-video flex-col overflow-hidden rounded-md border border-gray-200 bg-white p-4 transition-colors group-hover/resource:border-gray-300 dark:border-neutral-700/60 dark:bg-neutral-800 dark:group-hover/resource:border-neutral-600">
+      {r.fresh && <span className={newBadge}>New</span>}
+      <div className="flex items-center gap-2.5">
+        {t.avatar && !broken ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            ref={ref}
+            src={t.avatar}
+            alt=""
+            loading="lazy"
+            onError={fail}
+            className="size-8 shrink-0 rounded-full bg-gray-200 object-cover dark:bg-neutral-700"
+          />
+        ) : (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 dark:bg-neutral-700 dark:text-neutral-300">
+            {(r.creator || t.handle || "?").trim().charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate text-[13px] font-semibold text-gray-900 dark:text-neutral-100">{r.creator}</span>
+          {t.handle && <span className="block truncate text-xs text-gray-500 dark:text-neutral-400">@{t.handle}</span>}
+        </span>
+      </div>
+      <p className="mt-3 line-clamp-4 text-[15px] leading-snug whitespace-pre-line text-gray-900 dark:text-neutral-100">{t.text}</p>
+    </div>
+  );
+}
+
+/** One resource: it opens where it lives; 🔖 ★ keep it on Favorite. A tweet's words are its picture. */
 function ResourceCard({ r, priority }: { r: Resource; priority: boolean }) {
   const work: Work = {
     media_type: r.media_type,
@@ -59,20 +106,34 @@ function ResourceCard({ r, priority }: { r: Resource; priority: boolean }) {
   const by = [r.creator, when(r.published)].filter(Boolean).join(" · ");
   return (
     <article className="group/resource min-w-0">
-      <a href={r.url} target="_blank" rel="noopener noreferrer" aria-hidden tabIndex={-1} className="block">
-        <Media r={r} priority={priority} />
-      </a>
-      <a
-        href={r.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 block rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400"
-      >
-        <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-gray-900 group-hover/resource:underline dark:text-neutral-100">
-          {r.title}
-        </h3>
-      </a>
-      <div className="mt-1 flex items-end justify-between gap-3">
+      {r.tweet ? (
+        <a
+          href={r.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${r.creator}: ${r.tweet.text}`}
+          className="block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400"
+        >
+          <Quote r={r} />
+        </a>
+      ) : (
+        <>
+          <a href={r.url} target="_blank" rel="noopener noreferrer" aria-hidden tabIndex={-1} className="block">
+            <Media r={r} priority={priority} />
+          </a>
+          <a
+            href={r.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 block rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400"
+          >
+            <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-gray-900 group-hover/resource:underline dark:text-neutral-100">
+              {r.title}
+            </h3>
+          </a>
+        </>
+      )}
+      <div className={cn("flex items-end justify-between gap-3", r.tweet ? "mt-3" : "mt-1")}>
         <div className="min-w-0">
           {by && <p className="truncate text-xs text-gray-500 dark:text-neutral-400">{by}</p>}
           <p className="mt-0.5 text-xs text-gray-400 dark:text-neutral-500">
@@ -87,10 +148,10 @@ function ResourceCard({ r, priority }: { r: Resource; priority: boolean }) {
 }
 
 /**
- * Discover → Resources: antislop's archive — essays, talks and videos for
- * founders and for getting better at life — newest pick first, by kind, with
- * a search over titles and authors. All of it arrives with the page; the
- * grid grows as you scroll.
+ * Discover → Resources: antislop's archive — every essay, talk, video and
+ * tweet it has published — newest pick first, by kind, with a search over
+ * titles, authors and what the tweets say. All of it arrives with the page;
+ * the grid grows as you scroll.
  */
 export default function ResourcesView({ resources }: { resources: Resource[] | null }) {
   const [kind, setKind] = useState<"all" | ResourceKind>("all");
@@ -101,7 +162,9 @@ export default function ResourcesView({ resources }: { resources: Resource[] | n
   const all = resources ?? [];
   const term = fold(q.trim());
   const list = all.filter(
-    (r) => (kind === "all" || r.kind === kind) && (!term || fold(`${r.title} ${r.creator}`).includes(term))
+    (r) =>
+      (kind === "all" || r.kind === kind) &&
+      (!term || fold(`${r.title} ${r.creator} ${r.tweet?.text ?? ""} ${r.tweet?.handle ?? ""}`).includes(term))
   );
   const counts = Object.fromEntries(KINDS.map((k) => [k.key, k.key === "all" ? all.length : all.filter((r) => r.kind === k.key).length]));
   const more = list.length > limit;
@@ -121,16 +184,7 @@ export default function ResourcesView({ resources }: { resources: Resource[] | n
         <div className="mt-12 mb-10 text-center sm:mt-16 sm:mb-12">
           <TypedTitle text="Worth your time." caret className={pageTitle} />
           <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-balance text-gray-500 dark:text-neutral-400">
-            Picked by{" "}
-            <a
-              href="https://antislop.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-gray-700 underline-offset-4 hover:underline dark:text-neutral-200"
-            >
-              antislop
-            </a>
-            : essays, talks and videos for founders, and for getting better at life.
+            Some of the greatest resources on the internet
           </p>
           <form
             autoComplete="off"

@@ -4,8 +4,7 @@ import ResourcesView from "@/components/discover/ResourcesView";
 
 export const metadata: Metadata = {
   title: "Resources",
-  description:
-    "Essays, talks and videos worth your time, for founders and for getting better at life. Picked by antislop.",
+  description: "Some of the greatest resources on the internet: essays, talks, videos and tweets worth your time.",
 };
 
 /** Discover → Resources: antislop's archive, cached into the static shell and refreshed hourly. */
