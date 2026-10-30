@@ -141,7 +141,9 @@ export function YourEntry({ work }: { work: Work }) {
 /**
  * Everyone who has it. People who wrote something get a line each, newest
  * first — `?from=` (the wall you came from) leads, then people you follow;
- * the rest gather as faces. Your own copy is YourEntry, so it's left out here.
+ * the rest gather as faces, under "And N more" when lines come before them
+ * (the heading has already counted everyone). Your own copy is YourEntry, so
+ * it's left out here.
  */
 export function FavoritedBy({ favorites }: { favorites: Fav[] }) {
   const from = useSearchParams().get("from");
@@ -159,6 +161,7 @@ export function FavoritedList({ favorites, from = null }: { favorites: Fav[]; fr
     .map((x) => x.f);
   const said = others.filter((f) => f.description?.trim());
   const quiet = others.filter((f) => !f.description?.trim());
+  const after = said.length > 0 || others.length < favorites.length;
 
   return (
     <>
@@ -182,10 +185,8 @@ export function FavoritedList({ favorites, from = null }: { favorites: Fav[]; fr
       ))}
       {quiet.length > 0 && (
         <div className="py-4">
-          <p className="text-sm text-gray-500 dark:text-neutral-400">
-            {said.length || me ? "Also on" : "On"} {quiet.length} {quiet.length === 1 ? "wall" : "walls"}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-x-1 gap-y-2">
+          {after && <p className="mb-3 text-sm text-gray-500 dark:text-neutral-400">And {quiet.length} more</p>}
+          <div className="-ml-1 flex flex-wrap gap-x-1 gap-y-2">
             {quiet.map((f) => (
               <Link
                 key={f.id}

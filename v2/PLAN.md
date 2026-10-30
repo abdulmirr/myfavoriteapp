@@ -628,11 +628,19 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 
 ### 2026-10-30, twelfth batch (all of antislop's archive)
 
-- [x] **513 resources, not 188.** antislop publishes a pick two ways: a date of its own (`antislop_resources.date_featured`, which was all I'd read: 189) or a day in its feed (`feed_items`, which its archive page lists: 404 more). Resources now takes both, newest featured first. Its catalog holds 740; the other 227 are its unpublished backlog (plus 5 scheduled), left out so Favorite never runs ahead of the curator.
+- [x] **513 resources, not 188.** antislop publishes a pick two ways: a date of its own (`antislop_resources.date_featured`, which was all I'd read: 189) or a day in its feed (`feed_items`, which its archive page lists: 404 more). Resources now takes both, newest featured first. Its catalog holds 740; the other 227 are its unpublished backlog (plus 5 scheduled), left out so Favorite never runs ahead of the curator (in since the thirteenth batch, at Abdul's call).
 - [x] **Tweets are in** (69 published), as quote cards (face, name, @handle, the words) with no title line under them, and their own filter: All · Essays · Talks · Videos · Tweets. Search covers what a tweet says. Podcasts count as Talks, PDFs as Essays.
 - [x] An image that fails, even before the page wakes up, falls back: a title card for resources, the person's initial for tweets. (Tweet avatars come from X's image server, which this Mac's DNS filter blocks, so locally they show initials.)
 - [x] Copy: the line under "Worth your time." is "Some of the greatest resources on the internet" (no antislop credit on the page now); Discover's tabs are **Media · Resources**.
 - [x] QA: `_e2e-resources` (19 checks); tsc, eslint, `next build`; Resources on the production bundle.
+
+### 2026-10-30, thirteenth batch (topics, the backlog, "Favorited by" once)
+
+- [x] **By topic.** The curator tags his collection picks (215) with eight topics of his own (`antislop_resources.topics`): Mindset, Worldview, Career, Greatness, Creativity, Thinking, Learning, Productivity. Resources uses his eight plus **Writing** (writing and storytelling; speaking sits in Career), as pills with counts, wrapping in even rows on tablets and on one line from 1280px. I placed the other 525 by hand, title by title (`lib/resource-placed.ts`, grouped by topic with each title beside its id, easy to correct), and added Writing to four of his Creativity picks about writing. A pick can sit in two topics, as his do. One antislop adds later that's in neither gets a guess: the words in its title (a short list per topic), else where its author's other picks mostly live; failing both, it's under All only. Tried on my 525, it agrees with me on about half of those it guesses (author first managed a third; a classifier learned from the 740, about 40%), so it's a stopgap: new picks (about 1–2 a day) are worth placing by hand now and then.
+- [x] **Format is the second filter**, a quiet row under the topics: All formats · Essays · Talks · Videos · Tweets. Topic counts follow the format chosen; an empty combination can't be picked.
+- [x] **The whole catalog: 739.** The 227 backlog picks (and 5 scheduled) are in, after everything antislop has featured (newest featured first, then newest added). One essay catalogued twice ("You have 12 shots in life", an X article and its Substack) shows once. Today: Mindset 198, Worldview 160, Career 113, Creativity 97, Thinking 92, Greatness 53, Productivity 50, Learning 46, Writing 21. The page is 121 KB gzipped.
+- [x] **Item page, "Favorited by" said once.** The heading counts everyone; the faces under it said it again ("Also on 3 walls"). Now the faces stand alone under the heading, and when thoughts (or your own entry) come first, they're "And 7 more".
+- [x] QA: `_e2e-resources` (30 checks, incl. the item page with and without thoughts); tsc, eslint, `next build`; both on the production bundle.
 
 ### Left for Abdul
 

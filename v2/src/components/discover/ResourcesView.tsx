@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import type { Resource, ResourceKind } from "@/lib/resources";
+import { TOPICS, type Topic } from "@/lib/resource-topics";
 import type { Work } from "@/lib/types";
 import { TitleCard } from "../Cover";
 import { TypedTitle } from "../Typewriter";
@@ -11,7 +12,7 @@ import { cn, mediaBox, newBadge, pageTitle, pill, pillActive, pillIdle } from ".
 import DiscoverTabs from "./DiscoverTabs";
 
 const KINDS: { key: "all" | ResourceKind; label: string }[] = [
-  { key: "all", label: "All" },
+  { key: "all", label: "All formats" },
   { key: "essays", label: "Essays" },
   { key: "talks", label: "Talks" },
   { key: "videos", label: "Videos" },
@@ -148,25 +149,31 @@ function ResourceCard({ r, priority }: { r: Resource; priority: boolean }) {
 }
 
 /**
- * Discover → Resources: antislop's archive — every essay, talk, video and
- * tweet it has published — newest pick first, by kind, with a search over
- * titles, authors and what the tweets say. All of it arrives with the page;
- * the grid grows as you scroll.
+ * Discover → Resources: antislop's whole archive — essays, talks, videos and
+ * tweets — newest pick first. Browse it by what it's about (each topic counts
+ * what's in it in the chosen format), then narrow by format, or search titles,
+ * authors and what the tweets say. All of it arrives with the page; the grid
+ * grows as you scroll.
  */
 export default function ResourcesView({ resources }: { resources: Resource[] | null }) {
+  const [topic, setTopic] = useState<"all" | Topic>("all");
   const [kind, setKind] = useState<"all" | ResourceKind>("all");
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement>(null);
 
   const all = resources ?? [];
+  const about = (r: Resource, t: "all" | Topic) => t === "all" || r.topics.includes(t);
+  const shaped = (r: Resource, k: "all" | ResourceKind) => k === "all" || r.kind === k;
   const term = fold(q.trim());
   const list = all.filter(
     (r) =>
-      (kind === "all" || r.kind === kind) &&
+      about(r, topic) &&
+      shaped(r, kind) &&
       (!term || fold(`${r.title} ${r.creator} ${r.tweet?.text ?? ""} ${r.tweet?.handle ?? ""}`).includes(term))
   );
-  const counts = Object.fromEntries(KINDS.map((k) => [k.key, k.key === "all" ? all.length : all.filter((r) => r.kind === k.key).length]));
+  const topicCount = (t: "all" | Topic) => all.filter((r) => about(r, t) && shaped(r, kind)).length;
+  const kindCount = (k: "all" | ResourceKind) => all.filter((r) => about(r, topic) && shaped(r, k)).length;
   const more = list.length > limit;
 
   useEffect(() => {
@@ -218,30 +225,65 @@ export default function ResourcesView({ resources }: { resources: Resource[] | n
 
         {resources === null ? (
           <p className="py-16 text-center text-sm text-gray-500 dark:text-neutral-400">
-            antislop&apos;s picks aren&apos;t loading right now. Try again in a minute.
+            Resources aren&apos;t loading right now. Try again in a minute.
           </p>
         ) : (
           <>
-            <div className="no-scrollbar -mx-4 mb-8 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:justify-center sm:px-0">
-              {KINDS.map((k) => (
-                <button
-                  key={k.key}
-                  type="button"
-                  onClick={() => {
-                    setKind(k.key);
-                    setLimit(PAGE);
-                  }}
-                  aria-pressed={kind === k.key}
-                  className={cn(pill, kind === k.key ? pillActive : pillIdle)}
-                >
-                  {k.label}
-                  <span className="font-medium tabular-nums opacity-60">{counts[k.key]}</span>
-                </button>
-              ))}
+            {/* what it's about — scrolls sideways on a phone; wraps in even rows above that, one from xl */}
+            <div
+              role="group"
+              aria-label="Topic"
+              className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-auto sm:max-w-[720px] sm:flex-wrap sm:justify-center sm:px-0 xl:max-w-none"
+            >
+              {(["all", ...TOPICS] as const).map((t) => {
+                const n = topicCount(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      setTopic(t);
+                      setLimit(PAGE);
+                    }}
+                    aria-pressed={topic === t}
+                    disabled={!n && topic !== t}
+                    className={cn(pill, topic === t ? pillActive : pillIdle, "disabled:cursor-default disabled:opacity-40")}
+                  >
+                    {t === "all" ? "All" : t}
+                    <span className="font-medium tabular-nums opacity-60">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* …then the format, quieter */}
+            <div role="group" aria-label="Format" className="mt-4 mb-8 flex justify-center gap-5">
+              {KINDS.map((k) => {
+                const on = kind === k.key;
+                return (
+                  <button
+                    key={k.key}
+                    type="button"
+                    onClick={() => {
+                      setKind(k.key);
+                      setLimit(PAGE);
+                    }}
+                    aria-pressed={on}
+                    disabled={!on && !kindCount(k.key)}
+                    className={cn(
+                      "cursor-pointer rounded-sm text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-40 dark:focus-visible:ring-neutral-400",
+                      on
+                        ? "text-gray-900 dark:text-neutral-100"
+                        : "text-gray-400 hover:text-gray-700 disabled:hover:text-gray-400 dark:text-neutral-500 dark:hover:text-neutral-200 dark:disabled:hover:text-neutral-500"
+                    )}
+                  >
+                    {k.label}
+                  </button>
+                );
+              })}
             </div>
             {list.length === 0 ? (
               <p className="py-16 text-center text-sm text-gray-500 dark:text-neutral-400">
-                Nothing matches &ldquo;{q.trim()}&rdquo;.
+                {term ? <>Nothing matches &ldquo;{q.trim()}&rdquo;.</> : "Nothing here yet."}
               </p>
             ) : (
               <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
