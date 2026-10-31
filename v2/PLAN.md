@@ -666,6 +666,10 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] **Discover "stuck until refresh", again.** On the live preview, every way into Discover loads at once in a fresh browser: from the landing, Resources, an item, a profile, back from an item, and clicking before the landing finished loading (47–48 covers within 3s each). The likeliest cause is a tab still running the code from before the fix: a page keeps its JavaScript until it reloads, so the fix only arrived with the refresh. One more stuck path is hardened: a member whose profile failed to load got a placeholder row above Most loved forever. Now it clears (`DiscoverView`; the new check fails on the old code with 23 placeholder bones).
 - [x] QA: `_e2e-landing` (+ the button's tracking, Join Favorite's missing line) and `_e2e-resources` (+ no endless placeholder); tsc, eslint, `next build`; both on the production bundle.
 
+### 2026-10-31, seventeenth batch (the landing's lines in the headline's type)
+
+- [x] "Favorite is a library for everything you love. / Get curated daily recommendations." is set like the headline and the button: Inter medium, tight (−0.025em at 17px from tablet width up; −0.02em at 15px on phones, 14px below 375px, so it stays two lines), still gray, a step under the headline. QA: `_e2e-landing` (+ the lines' weight and tracking, two lines at every width down to 360px), on dev and on the production bundle.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

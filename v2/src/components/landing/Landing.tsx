@@ -147,8 +147,9 @@ export default function Landing() {
             <br />
             in one place.
           </h1>
-          {/* two lines, each its own sentence (a size down on the narrowest phones, to stay two) */}
-          <p className="mt-5 text-[15px] leading-relaxed text-gray-500 max-[374px]:text-sm sm:text-base dark:text-neutral-400">
+          {/* two lines, each its own sentence, set like the headline (medium, tight) a step down in gray —
+              smaller on phones (and the narrowest a size more) to stay two */}
+          <p className="mt-5 text-[15px] leading-[1.45] font-medium tracking-[-0.02em] text-gray-500 max-[374px]:text-sm sm:text-[17px] sm:tracking-[-0.025em] dark:text-neutral-400">
             Favorite is a library for everything you love.
             <br />
             Get curated daily recommendations.
