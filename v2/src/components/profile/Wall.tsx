@@ -3,15 +3,18 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { PinOff, Plus } from "lucide-react";
 import type { Item, MediaType } from "@/lib/types";
-import { useViewer } from "@/lib/viewer";
+import { supabase } from "@/lib/supabase";
+import { revalidate, useViewer } from "@/lib/viewer";
 import { itemHref, TYPE_FILTERS } from "@/lib/work";
 import { playSfx } from "@/lib/sfx";
 import Framed from "./Framed";
+import { toast } from "../ui/Toast";
 import { cn, pill, pillActive, pillIdle, quietButton } from "../ui/styles";
 
 const AddDialog = dynamic(() => import("../add/AddDialog"));
+const PinPicker = dynamic(() => import("./PinPicker"));
 
 function Tile({ item, username, eager, big = false }: { item: Item; username: string; eager: boolean; big?: boolean }) {
   const href = itemHref({ canonical_id: item.canonical_id, item_id: item.id }, username) ?? "#";
@@ -52,18 +55,24 @@ function Tile({ item, username, eager, big = false }: { item: Item; username: st
  * The library, kept: a person's favorites as objects on a wall — vinyl,
  * page edges, posters in frames — straight on the page, no boxes. Their Top
  * four leads, large (pinned first; a full wall tops up the empty slots from
- * its own order), then the whole wall with quiet type filters.
+ * its own order), then the whole wall with quiet type filters. The owner sees
+ * only what's actually pinned: ✕-pin on hover to unpin, and each empty slot
+ * opens a picker of their wall.
  */
 export default function Wall({ items, profileId, username }: { items: Item[]; profileId: string; username: string }) {
   const v = useViewer();
   const own = v.status === "signed-in" && v.profile?.id === profileId;
   const [filter, setFilter] = useState("all");
   const [adding, setAdding] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // pins changed here, until the server's copy of the wall catches up
+  const [pins, setPins] = useState<Record<string, number | null>>({});
 
-  const pinned = useMemo(
-    () => items.filter((i) => i.pinned_order).sort((a, b) => (a.pinned_order ?? 0) - (b.pinned_order ?? 0)),
-    [items]
-  );
+  const pinned = useMemo(() => {
+    const at = (i: Item) => (i.id in pins ? pins[i.id] : i.pinned_order) ?? 0;
+    return items.filter((i) => at(i) > 0).sort((a, b) => at(a) - at(b));
+  }, [items, pins]);
   const four = useMemo(() => {
     const top = pinned.slice(0, 4);
     if (top.length === 4 || items.length < 8) return top;
@@ -82,6 +91,27 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
     { key: "photos", label: "Photos", types: ["photo"] as MediaType[], n: counts.get("photos") ?? 0 },
   ].filter((f) => f.key === "all" || f.n > 0);
   const active = filters.find((f) => f.key === filter) ?? filters[0];
+  const top = pinned.slice(0, 4);
+
+  const setPin = async (item: Item, slot: number | null) => {
+    if (busy) return;
+    setBusy(true);
+    const { error } = await supabase().from("items").update({ pinned_order: slot }).eq("id", item.id);
+    setBusy(false);
+    if (error) {
+      toast("Couldn't update your Top four — try again.");
+      return;
+    }
+    setPins((p) => ({ ...p, [item.id]: slot }));
+    revalidate([`profile:${profileId}`]);
+    toast(slot ? `Pinned ${item.title}` : `Unpinned ${item.title}`);
+  };
+  const pinFirstFree = (item: Item) => {
+    setPicking(false);
+    const used = new Set(top.map((i) => (i.id in pins ? pins[i.id] : i.pinned_order)));
+    const slot = [1, 2, 3, 4].find((s) => !used.has(s));
+    if (slot) void setPin(item, slot);
+  };
   const shown = active.types ? items.filter((i) => active.types!.includes(i.media_type)) : items;
 
   if (!items.length) {
@@ -102,20 +132,57 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
 
   return (
     <div className="flex flex-col gap-10 pt-2 sm:gap-14 sm:pt-4">
-      {four.length > 0 && (
+      {(own || four.length > 0) && (
         <section aria-labelledby="top-four">
-          <div className="mb-4 flex items-baseline justify-between gap-3 sm:mb-6">
-            <h2 id="top-four" className="text-base font-semibold tracking-tight text-gray-900 dark:text-neutral-100">
-              Top four
-            </h2>
-            {own && pinned.length < 4 && (
-              <p className="text-xs text-gray-500 dark:text-neutral-400">Pin yours from any favorite&rsquo;s page</p>
-            )}
-          </div>
+          <h2
+            id="top-four"
+            className="mb-4 text-base font-semibold tracking-tight text-gray-900 sm:mb-6 dark:text-neutral-100"
+          >
+            Top four
+          </h2>
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 sm:gap-x-8 lg:gap-x-12">
-            {four.map((i) => (
-              <Tile key={i.id} item={i} username={username} eager big />
-            ))}
+            {own ? (
+              <>
+                {top.map((i) => (
+                  <div key={i.id} className="group/pin relative min-w-0">
+                    <Tile item={i} username={username} eager big />
+                    <button
+                      type="button"
+                      onClick={() => void setPin(i, null)}
+                      disabled={busy}
+                      aria-label={`Unpin ${i.title} from your Top four`}
+                      title="Unpin"
+                      className="absolute top-1 right-1 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-white/95 text-gray-900 opacity-0 shadow-[0_2px_12px_rgba(0,0,0,0.18)] outline-none backdrop-blur-sm transition-opacity duration-150 group-hover/pin:opacity-100 hover:bg-white focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default [@media(hover:none)]:opacity-100 dark:bg-neutral-800/95 dark:text-neutral-100 dark:hover:bg-neutral-700"
+                    >
+                      <PinOff className="size-4" />
+                    </button>
+                  </div>
+                ))}
+                {Array.from({ length: 4 - top.length }, (_, n) => (
+                  <button
+                    key={`empty-${n}`}
+                    type="button"
+                    onClick={() => setPicking(true)}
+                    disabled={busy}
+                    className="group block min-w-0 cursor-pointer self-start rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-4 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-900"
+                  >
+                    {/* an empty frame the size of a cover, the New list tile's + at its heart */}
+                    <span className="flex aspect-square w-full items-center justify-center">
+                      <span className="flex size-[86%] items-center justify-center rounded-md bg-gray-200/70 ring-1 ring-gray-900/5 transition-colors ring-inset group-hover:bg-gray-200 dark:bg-neutral-800/70 dark:ring-white/[0.06] dark:group-hover:bg-neutral-800">
+                        <span className="flex size-11 items-center justify-center rounded-full bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-transform duration-200 group-hover:scale-105 dark:bg-neutral-100 dark:text-neutral-900">
+                          <Plus className="size-5" strokeWidth={2.25} />
+                        </span>
+                      </span>
+                    </span>
+                    <span className="mt-3 block text-center text-sm font-semibold tracking-tight text-gray-900 group-hover:underline sm:text-[15px] dark:text-neutral-100">
+                      Pin a favorite
+                    </span>
+                  </button>
+                ))}
+              </>
+            ) : (
+              four.map((i) => <Tile key={i.id} item={i} username={username} eager big />)
+            )}
           </div>
         </section>
       )}
@@ -155,6 +222,14 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
         </div>
       </section>
       {adding && <AddDialog open={adding} onOpenChange={setAdding} />}
+      {picking && (
+        <PinPicker
+          open={picking}
+          onOpenChange={setPicking}
+          items={items.filter((i) => !top.includes(i))}
+          onPick={pinFirstFree}
+        />
+      )}
     </div>
   );
 }

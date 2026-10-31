@@ -680,6 +680,13 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] A sample public list on @abeistoocool (Abdul's second account): "Films for a slow Sunday", 8 films, three with notes, one finished.
 - QA: `_e2e-picks` (five picks, clean titles, five artists, none owned, no community card), `_e2e-owned` (only their own new pick, no top-up), `_e2e-discover` (Most loved identical for a member and a visitor; owned/private saves still kept out of their rows), `_e2e-batch3` (finishing through ⋯) — all pass.
 
+### 2026-10-31, nineteenth batch (live on myfavoriteapp.com; Because you love back; Top four editing)
+
+- [x] **v2 is production.** Vercel's Root Directory is `v2` and the root `.vercelignore` no longer excludes it, so a push to `main` deploys v2. To roll back: Instant Rollback to `myfavoriteapp-9ja2onqzh` (the last v1), then set Root Directory back to `.`.
+- [x] **Fixed: "Because you love" rows were gone** (locally too). `discover_for` took 89s for the site's roles (0.3s as the owner): with the viewer as a parameter, row security turned its joins into nested loops, and anon's 3s timeout cancelled it every time. Migration37 runs it with its owner's rights; it reads only public data.
+- [x] Discover tiles show 🔖 ★ only on hover or focus, saved and favorited ones too.
+- [x] **Top four on your own profile:** hover a pin for Unpin (always shown on touch screens); slots without a pin show "Pin a favorite", which opens a searchable picker of your wall. Visitors still see four (empty slots top up from the wall).
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

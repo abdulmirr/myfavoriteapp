@@ -74,6 +74,14 @@ function ExtensionConnect() {
   }, []);
 
   useEffect(() => {
+    // Chrome injects the content script only into a document that loads at
+    // /extension. Arriving by client-side navigation (sign-in's redirect, any
+    // <Link>) leaves nothing to answer the handshake, so load the page for real.
+    const nav = performance.getEntriesByType("navigation")[0];
+    if (nav && new URL(nav.name).pathname !== "/extension") {
+      window.location.reload();
+      return;
+    }
     let cancelled = false;
     (async () => {
       const db = supabase();

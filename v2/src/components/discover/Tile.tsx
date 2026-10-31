@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import type { Work } from "@/lib/types";
-import { isFavorited, listsHolding, useViewer } from "@/lib/viewer";
 import { itemHref, typeLabel } from "@/lib/work";
 import Framed from "../profile/Framed";
 import { CardActions } from "../WorkCard";
-import { cn } from "../ui/styles";
 
 export type TileWork = Work & { work_key?: string | null; item_id?: string | null };
 
@@ -40,9 +38,9 @@ function To({
 
 /**
  * Discover's card: the work in the wall's frame (vinyl, book, poster), title
- * and creator under it. 🔖 and ★ sit on a small pill over the corner — on
- * hover where there's a mouse, and always once it's saved or favorited; on
- * touch screens the work's page is one tap away.
+ * and creator under it. 🔖 and ★ sit on a small pill over the corner, only
+ * on hover (or keyboard focus), saved or favorited ones too; on touch screens
+ * the work's page is one tap away.
  */
 export default function Tile({
   work,
@@ -59,8 +57,6 @@ export default function Tile({
   /** the line under the title: who loves it */
   who?: React.ReactNode;
 }) {
-  const v = useViewer();
-  const kept = isFavorited(v, work) || listsHolding(v, work).size > 0;
   const to = href === undefined ? itemHref(work) : href;
   return (
     <div className="min-w-0">
@@ -78,14 +74,7 @@ export default function Tile({
             sizes={sizes}
           />
         </To>
-        <div
-          className={cn(
-            "absolute right-1 bottom-1 z-20 rounded-full bg-white/95 p-0.5 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-opacity duration-150 dark:bg-neutral-800/95",
-            kept
-              ? "opacity-100"
-              : "pointer-events-none opacity-0 group-hover/tile:pointer-events-auto group-hover/tile:opacity-100 group-focus-within/tile:pointer-events-auto group-focus-within/tile:opacity-100"
-          )}
-        >
+        <div className="pointer-events-none absolute right-1 bottom-1 z-20 rounded-full bg-white/95 p-0.5 opacity-0 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-opacity duration-150 group-focus-within/tile:pointer-events-auto group-focus-within/tile:opacity-100 group-hover/tile:pointer-events-auto group-hover/tile:opacity-100 dark:bg-neutral-800/95">
           <CardActions work={work} />
         </div>
       </div>
