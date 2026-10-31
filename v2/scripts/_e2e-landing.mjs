@@ -68,6 +68,8 @@ try {
           links: h1.parentElement.querySelectorAll("a").length,
           text: line.innerText.replace(/\s+/g, " ").trim(),
           button: Math.round(h1.parentElement.querySelector("a").getBoundingClientRect().height),
+          // the button's words set like the headline: tight
+          tracking: parseFloat(getComputedStyle(h1.parentElement.querySelector("a")).letterSpacing) / parseFloat(getComputedStyle(h1.parentElement.querySelector("a")).fontSize),
           // the class, the browser's color scheme, and a near-black page (Tailwind's colors compute as lab(L …))
           dark:
             document.documentElement.classList.contains("dark") &&
@@ -86,7 +88,7 @@ try {
       else check(`${tag}: the button is on the first screen`, m.words.at(-1).b <= height, `${Math.round(m.words.at(-1).b)}px`);
       check(`${tag}: no sideways scroll`, m.wide <= width, `${m.wide}px`);
       check(`${tag}: dark, though the system prefers light`, m.dark);
-      check(`${tag}: one thing to click in the middle (the 40px primary button), no email box`, m.links === 1 && m.email === 0 && m.button === 40, `${m.links} links, ${m.email} email, button ${m.button}px`);
+      check(`${tag}: one thing to click in the middle (40px, its words tight like the headline), no email box`, m.links === 1 && m.email === 0 && m.button === 40 && m.tracking < -0.02, `${m.links} links, ${m.email} email, button ${m.button}px, tracking ${m.tracking.toFixed(3)}em`);
       check(`${tag}: "Favorite is a library for everything you love. / Get curated daily recommendations."`, m.text === "Favorite is a library for everything you love. Get curated daily recommendations.", m.text);
       check(`${tag}: the line under the headline on two lines`, m.lines === 2, `${m.lines} lines`);
       const names = m.bar.map((b) => b.name);
@@ -208,6 +210,16 @@ try {
   };
   check("Discover from here: Most loved within a second", (await discover(page)) >= 24, `${await tiles(page)} tiles`);
   await ctx.close();
+
+  // the button's page: "Join Favorite", nothing under it but the form
+  const jctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const jp = await jctx.newPage();
+  await jp.goto(`${APP}/`, { waitUntil: "load" });
+  await jp.getByRole("link", { name: "Start your library" }).click();
+  await jp.waitForURL("**/signin?mode=signup", { timeout: 15000 });
+  await jp.getByRole("heading", { name: "Join Favorite" }).waitFor({ timeout: 15000 });
+  check("Join Favorite: no line under the heading", (await jp.getByText(/Your favorites, your lists/).count()) === 0);
+  await jctx.close();
 
   // …and right after logging out, on a tab where a member had Discover open
   // (Next keeps that page alive, with the member's list in it). The member

@@ -659,6 +659,13 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] **Discover after logging out, fixed.** With Cache Components, Next keeps a visited page alive in the background, state and all. A member who had Discover open, logged out (a client-side push to /), and came back found Most loved still holding their list under their key. A visitor's "All" never fetches (it assumes the HTML's list is already there), so nothing showed, indefinitely. Most loved now returns to the HTML's list whenever no one is signed in. Reproduced before the fix (0 tiles after 3s) and after (48 at once).
 - [x] QA: `_e2e-landing` (+ dark whatever the system prefers, the new lines, the 40px button, Discover from the landing, and Discover right after logging out, via a stand-in member with a profile) and `_e2e-resources` (+ the format menu: its items, counts and button label); tsc, eslint, `next build`; both on the production bundle. `_e2e-batch4` updated (no theme switch) but not rerun.
 
+### 2026-10-31, sixteenth batch (the button's type, Join Favorite, Discover again)
+
+- [x] **Join Favorite:** the line under the heading is gone ("Your favorites, your lists, and picks chosen from your taste."), matching "Welcome back".
+- [x] **The landing button's words are set like the headline:** the same Inter semibold, tight (−0.03em; the headline is −0.04em, which cramps at button size) and a touch larger (15px), in the same 40px box. The shared `primaryButton` is unchanged.
+- [x] **Discover "stuck until refresh", again.** On the live preview, every way into Discover loads at once in a fresh browser: from the landing, Resources, an item, a profile, back from an item, and clicking before the landing finished loading (47–48 covers within 3s each). The likeliest cause is a tab still running the code from before the fix: a page keeps its JavaScript until it reloads, so the fix only arrived with the refresh. One more stuck path is hardened: a member whose profile failed to load got a placeholder row above Most loved forever. Now it clears (`DiscoverView`; the new check fails on the old code with 23 placeholder bones).
+- [x] QA: `_e2e-landing` (+ the button's tracking, Join Favorite's missing line) and `_e2e-resources` (+ no endless placeholder); tsc, eslint, `next build`; both on the production bundle.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

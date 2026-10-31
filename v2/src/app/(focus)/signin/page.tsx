@@ -112,11 +112,6 @@ function SignIn() {
       <h1 className="text-center text-[28px] font-semibold tracking-tight text-gray-900 sm:text-[32px] dark:text-neutral-100">
         {mode === "login" ? "Welcome back" : "Join Favorite"}
       </h1>
-      {mode === "signup" && (
-        <p className="mt-2 text-center text-sm text-gray-500 dark:text-neutral-400">
-          Your favorites, your lists, and picks chosen from your taste.
-        </p>
-      )}
       <div className={cn(card, "mt-6 p-6")}>
         <button
           type="button"

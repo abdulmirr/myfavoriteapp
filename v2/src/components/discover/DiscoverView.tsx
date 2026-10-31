@@ -126,13 +126,14 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   const shelves = (rows?.because ?? []).map(because).filter((r) => r !== null);
 
   // before a member's own rows: a placeholder while they load, or a nudge
-  // when there's nothing to pick from yet (visitors go straight to Most loved)
+  // when there's nothing to pick from yet (visitors go straight to Most loved).
+  // No profile and none coming (its load failed) means no rows to wait for.
   const lead =
     v.status === "unknown" ? (
       <div className="signed-in-only">
         <ShelfSkeleton />
       </div>
-    ) : v.status === "signed-out" ? null : rows === undefined ? (
+    ) : v.status === "signed-out" || (!pid && !v.stale) ? null : rows === undefined ? (
       <ShelfSkeleton />
     ) : rows && shelves.length === 0 ? (
       <Nudge>

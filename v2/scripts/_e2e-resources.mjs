@@ -180,6 +180,10 @@ try {
   check("members: Home · Discover · Friends in the bar, no Resources pill", (await mbar.getByRole("link").allInnerTexts()).join("|") === "Home|Discover|Friends");
   const mtabs = mp.getByRole("navigation", { name: "Discover" });
   check("…Media · Resources tabs on Discover, Media lit", (await mtabs.isVisible()) && (await mtabs.getByRole("link").allInnerTexts()).join("|") === "Media|Resources" && (await lit(mtabs, "Media")));
+  // this stand-in's profile never loads (Supabase says 401): no rows are coming, so no placeholder waits for them
+  await mp.waitForTimeout(4500);
+  const waiting = await mp.locator("section[aria-hidden='true'] .animate-pulse").count();
+  check("…a member whose profile didn't load isn't left on a placeholder", waiting === 0, `${waiting} placeholder bones`);
   await mtabs.getByRole("link", { name: "Resources" }).click();
   await mp.waitForURL("**/discover/resources", { timeout: 15000 });
   await mp.getByRole("heading", { name: "Worth your time." }).waitFor({ timeout: 15000 });

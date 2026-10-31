@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Item, MediaType } from "@/lib/types";
 import Framed from "../profile/Framed";
-import { cn, primaryButton } from "../ui/styles";
+import { cn } from "../ui/styles";
 import Drift from "./Drift";
 
 /*
@@ -78,6 +78,10 @@ const BAND: Piece[] = [
   { ...RIGHT[1], wide: false, x: "84%", y: "44%" },
 ];
 
+// the app's primary button (40px, 16px sides), its words set like the headline: tight, a touch larger
+const start =
+  "inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-4 text-[15px] font-semibold tracking-[-0.03em] text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
+
 // far ones first, so a near cover passes in front where two meet
 const RANK: Record<Depth, number> = { far: 0, mid: 1, near: 2 };
 const byDepth = <T extends { p: Piece }>(a: T, b: T) => RANK[a.p.depth] - RANK[b.p.depth];
@@ -149,8 +153,7 @@ export default function Landing() {
             <br />
             Get curated daily recommendations.
           </p>
-          {/* the app's own primary button: compact, the same everywhere */}
-          <Link href="/signin?mode=signup" className={cn(primaryButton, "mt-8")}>
+          <Link href="/signin?mode=signup" className={cn(start, "mt-8")}>
             Start your library
           </Link>
         </div>
