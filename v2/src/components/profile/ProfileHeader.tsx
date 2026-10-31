@@ -8,7 +8,7 @@ import ProfileStats, { TasteBadges } from "./ProfileStats";
 import ProfileTabs from "./ProfileTabs";
 
 /**
- * A person's page, opening on them: the banner edge to edge (their header,
+ * A person's page, opening on them: the banner across the column (their header,
  * or their covers' color), the avatar over its fading edge, then name,
  * handle, bio, counts and links straight on the page — no card — with the
  * actions on the right (Follow / Share / ⋯, or Share and the settings gear on
@@ -19,12 +19,14 @@ export default function ProfileHeader({ profile }: { profile: ProfilePageData })
   const socials = (profile.socials ?? []).filter((s) => s.url?.trim());
   return (
     <header className="relative">
-      <ProfileBanner
-        profileId={profile.id}
-        username={profile.username}
-        headerUrl={profile.header_url}
-        ambient={profile.ambient}
-      />
+      <div className="mx-auto max-w-5xl px-4 pt-2 sm:px-6 sm:pt-4">
+        <ProfileBanner
+          profileId={profile.id}
+          username={profile.username}
+          headerUrl={profile.header_url}
+          ambient={profile.ambient}
+        />
+      </div>
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
         <div className="flex items-end justify-between gap-4">
           <Avatar
@@ -86,7 +88,9 @@ export default function ProfileHeader({ profile }: { profile: ProfilePageData })
 export function ProfileHeaderSkeleton() {
   return (
     <div className="relative" aria-busy>
-      <div className="h-[150px] w-full animate-pulse bg-gray-200 sm:h-[230px] lg:h-[270px] dark:bg-neutral-800" />
+      <div className="mx-auto max-w-5xl px-4 pt-2 sm:px-6 sm:pt-4">
+        <div className="h-[150px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[200px] lg:h-[244px] dark:bg-neutral-800" />
+      </div>
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <span className="-mt-12 block size-24 rounded-[30%] bg-gray-300 ring-4 ring-gray-100 sm:-mt-16 sm:size-32 dark:bg-neutral-700 dark:ring-neutral-900" />
         <span className="mt-5 block h-8 w-56 animate-pulse rounded bg-gray-200 dark:bg-neutral-800" />

@@ -113,7 +113,7 @@ export default function RevealStep({ profile }: { profile: Profile }) {
           <p className="truncate text-sm text-gray-500 dark:text-neutral-400">@{profile.username}</p>
           {covers && covers.length > 0 && (
             <>
-              <p className="mt-6 text-sm font-semibold text-gray-900 dark:text-neutral-100">Top four</p>
+              <p className="mt-6 text-sm font-semibold text-gray-900 dark:text-neutral-100">Favorites</p>
               <div className="mt-3 grid grid-cols-4 gap-3 sm:gap-5">
                 {covers.map((c) => (
                   <Framed key={c.id} item={c} eager sizes="(max-width: 639px) 22vw, 140px" />

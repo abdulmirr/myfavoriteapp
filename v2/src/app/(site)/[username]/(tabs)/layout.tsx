@@ -22,7 +22,7 @@ export default function ProfileLayout({
   params: Promise<{ username: string }>;
 }) {
   return (
-    // the banner runs edge to edge; everything else keeps the 1024px column
+    // the banner and everything under it share the 1024px column
     <main className="relative pb-16">
       <Suspense fallback={<ProfileHeaderSkeleton />}>
         <Header params={params} />

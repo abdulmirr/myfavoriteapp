@@ -6,7 +6,7 @@ import Dialog from "../ui/Dialog";
 import { field } from "../ui/styles";
 import Framed from "./Framed";
 
-/** An empty Top four slot's chooser: your wall, searchable; one click pins it. */
+/** The Top four's "Pin a favorite": your wall, searchable; one click pins it. */
 export default function PinPicker({
   open,
   onOpenChange,

@@ -243,7 +243,7 @@ function PagePreview({ name, username, bio, avatar }: { name: string; username: 
               <span key={i} className="aspect-square rounded-md border border-dashed border-gray-300 dark:border-neutral-600" />
             ))}
           </div>
-          <p className="mt-2.5 text-xs text-gray-400 dark:text-neutral-500">Your top four — next.</p>
+          <p className="mt-2.5 text-xs text-gray-400 dark:text-neutral-500">Your favorites — next.</p>
         </div>
       </div>
       <p className="mt-3 text-center text-[13px] text-gray-500 dark:text-neutral-400">

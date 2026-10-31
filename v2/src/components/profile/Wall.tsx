@@ -54,10 +54,9 @@ function Tile({ item, username, eager, big = false }: { item: Item; username: st
 /**
  * The library, kept: a person's favorites as objects on a wall — vinyl,
  * page edges, posters in frames — straight on the page, no boxes. Their Top
- * four leads, large (pinned first; a full wall tops up the empty slots from
- * its own order), then the whole wall with quiet type filters. The owner sees
- * only what's actually pinned: ✕-pin on hover to unpin, and each empty slot
- * opens a picker of their wall.
+ * four leads, large: exactly what they pinned, none to four (nothing tops it
+ * up). The owner unpins on hover, and while there's room one "Pin a favorite"
+ * slot opens a picker of their wall. Then the whole wall with quiet filters.
  */
 export default function Wall({ items, profileId, username }: { items: Item[]; profileId: string; username: string }) {
   const v = useViewer();
@@ -73,12 +72,6 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
     const at = (i: Item) => (i.id in pins ? pins[i.id] : i.pinned_order) ?? 0;
     return items.filter((i) => at(i) > 0).sort((a, b) => at(a) - at(b));
   }, [items, pins]);
-  const four = useMemo(() => {
-    const top = pinned.slice(0, 4);
-    if (top.length === 4 || items.length < 8) return top;
-    const used = new Set(top.map((i) => i.id));
-    return [...top, ...items.filter((i) => !used.has(i.id) && i.media_type !== "photo")].slice(0, 4);
-  }, [items, pinned]);
   const counts = useMemo(() => {
     const c = new Map<string, number>();
     for (const f of TYPE_FILTERS) c.set(f.key, items.filter((i) => f.types.includes(i.media_type)).length);
@@ -132,7 +125,7 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
 
   return (
     <div className="flex flex-col gap-10 pt-2 sm:gap-14 sm:pt-4">
-      {(own || four.length > 0) && (
+      {(own || top.length > 0) && (
         <section aria-labelledby="top-four">
           <h2
             id="top-four"
@@ -158,15 +151,14 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
                     </button>
                   </div>
                 ))}
-                {Array.from({ length: 4 - top.length }, (_, n) => (
+                {top.length < 4 && (
                   <button
-                    key={`empty-${n}`}
                     type="button"
                     onClick={() => setPicking(true)}
                     disabled={busy}
                     className="group block min-w-0 cursor-pointer self-start rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-4 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-neutral-400 dark:focus-visible:ring-offset-neutral-900"
                   >
-                    {/* an empty frame the size of a cover, the New list tile's + at its heart */}
+                    {/* an open frame the size of a cover, the New list tile's + at its heart */}
                     <span className="flex aspect-square w-full items-center justify-center">
                       <span className="flex size-[86%] items-center justify-center rounded-md bg-gray-200/70 ring-1 ring-gray-900/5 transition-colors ring-inset group-hover:bg-gray-200 dark:bg-neutral-800/70 dark:ring-white/[0.06] dark:group-hover:bg-neutral-800">
                         <span className="flex size-11 items-center justify-center rounded-full bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-transform duration-200 group-hover:scale-105 dark:bg-neutral-100 dark:text-neutral-900">
@@ -178,10 +170,10 @@ export default function Wall({ items, profileId, username }: { items: Item[]; pr
                       Pin a favorite
                     </span>
                   </button>
-                ))}
+                )}
               </>
             ) : (
-              four.map((i) => <Tile key={i.id} item={i} username={username} eager big />)
+              top.map((i) => <Tile key={i.id} item={i} username={username} eager big />)
             )}
           </div>
         </section>

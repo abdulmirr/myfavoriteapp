@@ -687,6 +687,11 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] Discover tiles show 🔖 ★ only on hover or focus, saved and favorited ones too.
 - [x] **Top four on your own profile:** hover a pin for Unpin (always shown on touch screens); slots without a pin show "Pin a favorite", which opens a searchable picker of your wall. Visitors still see four (empty slots top up from the wall).
 
+### 2026-10-31, twentieth batch (the banner in the column; Top four is only your pins)
+
+- [x] The profile banner sits in the page's 1024px column (rounded 8px corners, the bottom still fading into the page) instead of spanning the window, which stretched 4:1 uploads (1584px) about 2× on retina. 244px tall on desktop = 4:1 at the column's width; the image is served up to 2000px wide.
+- [x] **Top four is exactly what you pinned, none to four.** Nothing tops it up from the wall anymore; a page without pins has no Top four for visitors. The owner sees their pins plus one "Pin a favorite" slot while there's room. Onboarding's previews say "Favorites" instead of "Top four". The profile share card still shows four covers (pins first), as artwork.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

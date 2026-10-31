@@ -24,10 +24,11 @@ export async function uploadHeader(profileId: string, file: File): Promise<strin
 }
 
 /**
- * The banner across the top of a profile, edge to edge: their header image,
- * or — until they add one — their top covers blurred into a field of color,
- * so every page opens on that person's taste. Its bottom fades into the page
- * (no box around it). Owners change it in place.
+ * The banner across the top of a profile, as wide as the page's column (a
+ * full-window banner stretched 4:1 uploads past their pixels): their header
+ * image, or — until they add one — their top covers blurred into a field of
+ * color, so every page opens on that person's taste. Its bottom fades into
+ * the page. Owners change it in place.
  */
 export default function ProfileBanner({
   profileId,
@@ -67,7 +68,7 @@ export default function ProfileBanner({
   };
 
   return (
-    <div className="relative h-[150px] w-full overflow-hidden sm:h-[230px] lg:h-[270px]">
+    <div className="relative h-[150px] w-full overflow-hidden rounded-lg sm:h-[200px] lg:h-[244px]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -100,7 +101,7 @@ export default function ProfileBanner({
       />
 
       {own && (
-        <div className="absolute inset-x-0 top-0 mx-auto flex max-w-5xl justify-end px-4 pt-3 sm:px-6 sm:pt-4">
+        <div className="absolute top-3 right-3">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
