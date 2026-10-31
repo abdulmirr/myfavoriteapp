@@ -15,27 +15,42 @@ import AccountMenu, { AccountMenuSkeleton } from "./AccountMenu";
 // the add flow (catalog search, links) loads on first open only
 const AddDialog = dynamic(() => import("./add/AddDialog"));
 
-const NAV = [
-  { href: "/", label: "Home", hideOnPhone: true, members: false },
+const RESOURCES = "/discover/resources";
+
+const NAV: { href: string; label: string; hideOnPhone: boolean; only?: "members" | "visitors" }[] = [
+  { href: "/", label: "Home", hideOnPhone: true },
   // Discover, or the feed when it's switched back (lib/discover.ts)
-  { href: BROWSE.href, label: BROWSE.label, hideOnPhone: false, members: false },
+  { href: BROWSE.href, label: BROWSE.label, hideOnPhone: false },
+  // visitors get Resources as a page of its own; members find it inside Discover
+  { href: RESOURCES, label: "Resources", hideOnPhone: false, only: "visitors" },
   // what your people are up to + your notifications (members only)
-  { href: "/friends", label: "Friends", hideOnPhone: false, members: true },
+  { href: "/friends", label: "Friends", hideOnPhone: false, only: "members" },
 ];
 
+// a visitor's phone bar holds three pills beside the wordmark: a size down to fit
+const visitorPhone = "max-sm:px-2.5 [html:not([data-auth=in])_&]:max-sm:text-[13px]";
+
+// Discover lit for members only, until the session check says who's looking
+const pillActiveIfIn =
+  "in-data-[auth=in]:bg-gray-900 in-data-[auth=in]:text-white dark:in-data-[auth=in]:bg-neutral-100 dark:in-data-[auth=in]:text-neutral-900";
+
 /**
- * Home · Discover · Friends — centered in the bar from tablet width up. Friends
- * is for members: hidden for visitors, and while the session check runs the
- * pre-paint auth switch decides. Its badge is the unread notification count.
+ * Home · Discover · Friends for members, Home · Discover · Resources for
+ * visitors — centered in the bar from tablet width up. While the session
+ * check runs, the pre-paint auth switch decides which. Friends' badge is the
+ * unread notification count.
  */
 function NavPills({ pathname, status, unread }: { pathname: string | null; status: string; unread: number }) {
   return (
     <nav aria-label="Main" className="ml-auto flex items-center gap-1 sm:ml-0 sm:gap-1.5 sm:justify-self-center">
       {NAV.map((n) => {
-        if (n.members && status === "signed-out") return null;
-        // Discover stays lit on its Resources view
-        const active = pathname === n.href || (n.href !== "/" && !!pathname?.startsWith(`${n.href}/`));
-        const badge = n.members && unread > 0;
+        if (n.only === "members" && status === "signed-out") return null;
+        if (n.only === "visitors" && status === "signed-in") return null;
+        // Discover stays lit inside it — on Resources, for members only (visitors have its own pill)
+        const inside = n.href !== "/" && !!pathname?.startsWith(`${n.href}/`);
+        const theirs = inside && pathname === RESOURCES && status !== "signed-in";
+        const active = pathname === n.href || (inside && !theirs);
+        const badge = n.only === "members" && unread > 0;
         return (
           <Link
             key={n.href}
@@ -44,10 +59,13 @@ function NavPills({ pathname, status, unread }: { pathname: string | null; statu
             aria-label={badge ? `${n.label}, ${unread} new` : undefined}
             className={cn(
               pill,
-              "relative max-sm:px-2.5",
+              "relative",
+              visitorPhone,
               active ? pillActive : pillIdle,
+              theirs && status === "unknown" && pillActiveIfIn,
               n.hideOnPhone && "max-sm:hidden",
-              n.members && status === "unknown" && "signed-in-only"
+              status === "unknown" && n.only === "members" && "signed-in-only",
+              status === "unknown" && n.only === "visitors" && "signed-out-only"
             )}
           >
             {n.label}
@@ -83,7 +101,7 @@ function useUnreadPoll(profileId: string | null) {
 function PersonalSkeleton() {
   return (
     <div className="flex items-center gap-1 sm:gap-1.5" aria-hidden>
-      <span className="size-8 animate-pulse rounded-xl bg-gray-200 dark:bg-neutral-800" />
+      <span className="size-8 animate-pulse rounded-lg bg-gray-200 dark:bg-neutral-800" />
       <span className="flex items-center gap-0.5">
         <span className="size-8 animate-pulse rounded-[30%] bg-gray-200 dark:bg-neutral-800" />
         <AccountMenuSkeleton />
@@ -112,7 +130,7 @@ function YouLink({ pathname }: { pathname: string | null }) {
 function LogIn({ pathname }: { pathname: string | null }) {
   const next = pathname && pathname !== "/signin" ? `?next=${encodeURIComponent(pathname)}` : "";
   return (
-    <Link href={`/signin${next}`} className={cn(pill, pathname === "/signin" ? pillActive : pillIdle)}>
+    <Link href={`/signin${next}`} className={cn(pill, visitorPhone, pathname === "/signin" ? pillActive : pillIdle)}>
       Log in
     </Link>
   );

@@ -1,6 +1,8 @@
-// Discover → Resources (2026-10-30): antislop's whole archive inside Discover,
-// as a visitor, against the dev server (:3000). The two tabs (Media ·
-// Resources), the Discover pill lit on both, the whole catalog (backlog too)
+// Resources (2026-10-30): antislop's whole archive, against the dev server
+// (:3000). A visitor finds it in the bar (Home · Discover · Resources, no
+// tabs); a member inside Discover (Media · Resources tabs, Discover lit) —
+// the member is a stand-in session, no account. Then, as a visitor: the
+// whole catalog (backlog too)
 // with every pick filed under a topic, topic × format filters whose counts
 // agree with the grid, tweets as quotes, search, the grid growing on scroll,
 // every card opening where it lives, phones. Then an item page's "Favorited
@@ -46,14 +48,16 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto(`${APP}/discover`, { waitUntil: "load" });
-  const tabs = page.getByRole("navigation", { name: "Discover" });
-  await tabs.waitFor({ timeout: 20000 });
-  check("Discover has two tabs, Media lit", (await tabs.getByRole("link").allInnerTexts()).join("|") === "Media|Resources" && (await tabs.getByRole("link", { name: "Media" }).getAttribute("aria-current")) === "page");
-  await tabs.getByRole("link", { name: "Resources" }).click();
+  const bar = page.getByRole("navigation", { name: "Main" });
+  const lit = async (scope, name) => (await scope.getByRole("link", { name, exact: true }).getAttribute("aria-current")) === "page";
+  await bar.getByRole("link", { name: "Resources" }).waitFor({ timeout: 20000 });
+  check("visitors: Home · Discover · Resources in the bar, Discover lit", (await bar.getByRole("link").allInnerTexts()).join("|") === "Home|Discover|Resources" && (await lit(bar, "Discover")));
+  check("…and no Media · Resources tabs", !(await page.getByRole("navigation", { name: "Discover" }).isVisible()));
+  await bar.getByRole("link", { name: "Resources" }).click();
   await page.waitForURL("**/discover/resources", { timeout: 15000 });
   await page.getByRole("heading", { name: "Worth your time." }).waitFor({ timeout: 15000 });
-  check("Resources opens from the tab", true);
-  check("…its tab lit, and Discover in the bar", (await tabs.getByRole("link", { name: "Resources" }).getAttribute("aria-current")) === "page" && (await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Discover" }).getAttribute("aria-current")) === "page");
+  check("Resources opens from the bar, its own pill lit (not Discover)", (await lit(bar, "Resources")) && !(await lit(bar, "Discover")));
+  check("…no tabs here either", !(await page.getByRole("navigation", { name: "Discover" }).isVisible()));
   check("…with its line", (await page.getByText("Some of the greatest resources on the internet", { exact: true }).count()) === 1);
 
   await page.waitForTimeout(1200);
@@ -150,6 +154,27 @@ try {
 
   const map = await (await fetch(`${APP}/sitemap.xml`)).text();
   check("in the sitemap", map.includes("/discover/resources"));
+
+  // a member — a stand-in session in storage (no account; Supabase calls
+  // answered 401) — still finds Resources inside Discover
+  const REF = "bvpruvuenqdwilysgojy";
+  const fake = { access_token: "e2e.stand-in.token", refresh_token: "e2e-stand-in", expires_at: Math.floor(Date.now() / 1000) + 86400, expires_in: 86400, token_type: "bearer", user: { id: "00000000-0000-4000-8000-00000000e2e0", aud: "authenticated", role: "authenticated", email: "e2e@example.com" } };
+  const member = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await member.addInitScript(([k, v]) => localStorage.setItem(k, v), [`sb-${REF}-auth-token`, JSON.stringify(fake)]);
+  await member.route(`https://${REF}.supabase.co/**`, (r) => r.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+  const mp = await member.newPage();
+  await mp.goto(`${APP}/discover`, { waitUntil: "load" });
+  const mbar = mp.getByRole("navigation", { name: "Main" });
+  await mbar.getByRole("link", { name: "Friends" }).waitFor({ timeout: 20000 });
+  check("members: Home · Discover · Friends in the bar, no Resources pill", (await mbar.getByRole("link").allInnerTexts()).join("|") === "Home|Discover|Friends");
+  const mtabs = mp.getByRole("navigation", { name: "Discover" });
+  check("…Media · Resources tabs on Discover, Media lit", (await mtabs.isVisible()) && (await mtabs.getByRole("link").allInnerTexts()).join("|") === "Media|Resources" && (await lit(mtabs, "Media")));
+  await mtabs.getByRole("link", { name: "Resources" }).click();
+  await mp.waitForURL("**/discover/resources", { timeout: 15000 });
+  await mp.getByRole("heading", { name: "Worth your time." }).waitFor({ timeout: 15000 });
+  check("…Resources from the tab: its tab lit, Discover lit in the bar", (await lit(mtabs, "Resources")) && (await lit(mbar, "Discover")));
+  await mp.screenshot({ path: join(SHOTS, "resources-member.png") });
+  await member.close();
 
   // an item page counts the people who love it once: the heading says how
   // many; the faces under it don't say it again

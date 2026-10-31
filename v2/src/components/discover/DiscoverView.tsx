@@ -11,7 +11,7 @@ import { useOwned } from "@/lib/use-owned";
 import { useViewer } from "@/lib/viewer";
 import { itemHref, titleKey } from "@/lib/work";
 import { TypedTitle } from "../Typewriter";
-import { pageTitle, primaryButton } from "../ui/styles";
+import { pageTitle } from "../ui/styles";
 import DiscoverSearch from "./DiscoverSearch";
 import DiscoverTabs from "./DiscoverTabs";
 import MostLoved from "./MostLoved";
@@ -67,18 +67,6 @@ function Nudge({ children, action }: { children: React.ReactNode; action?: React
     </div>
   );
 }
-
-const visitorNudge = (
-  <Nudge
-    action={
-      <Link href="/signin?mode=signup" className={primaryButton}>
-        Start your library
-      </Link>
-    }
-  >
-    Make a page of your favorites and Discover starts picking for you: what the people who love the same things love.
-  </Nudge>
-);
 
 /**
  * Discover (2026-10-28): things to find, each with its reason. For members,
@@ -137,19 +125,14 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   };
   const shelves = (rows?.because ?? []).map(because).filter((r) => r !== null);
 
-  // before the personal rows: a placeholder while they load, or a nudge
-  // when there's nothing to pick from yet
+  // before a member's own rows: a placeholder while they load, or a nudge
+  // when there's nothing to pick from yet (visitors go straight to Most loved)
   const lead =
     v.status === "unknown" ? (
-      <>
-        <div className="signed-in-only">
-          <ShelfSkeleton />
-        </div>
-        <div className="signed-out-only">{visitorNudge}</div>
-      </>
-    ) : v.status === "signed-out" ? (
-      visitorNudge
-    ) : rows === undefined ? (
+      <div className="signed-in-only">
+        <ShelfSkeleton />
+      </div>
+    ) : v.status === "signed-out" ? null : rows === undefined ? (
       <ShelfSkeleton />
     ) : rows && shelves.length === 0 ? (
       <Nudge>
@@ -161,7 +144,7 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
     <div className="min-h-screen px-4 pt-8 pb-24 sm:px-6 sm:pt-10 lg:px-8">
       <div className="mx-auto max-w-[1400px]">
         <DiscoverTabs current="media" />
-        <div className="mt-12 mb-14 text-center sm:mt-16 sm:mb-16">
+        <div className="mt-6 mb-14 text-center sm:mt-10 sm:mb-16">
           <TypedTitle text="Find your next favorite." caret className={pageTitle} />
           <form
             autoComplete="off"

@@ -1,6 +1,6 @@
 // Discover (2026-10-28), against the dev server (:3000) and the real DB. A
 // visitor gets "Most loved" — everything by favorites, each tile saying how
-// many, their faces just under it on hover — and a nudge to start a library. A member who loves a
+// many, their faces just under it on hover — and nothing else (no nudge, no tabs). A member who loves a
 // few widely-loved things gets "Because you love …" rows, each holding works
 // of its favorite's own kind, a friend they follow first among the faces,
 // and nowhere on the page anything that's already theirs (a private save
@@ -129,8 +129,7 @@ try {
   await vp.getByRole("heading", { name: "Find your next favorite." }).waitFor({ timeout: 15000 });
   const nav = vp.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Discover" });
   check("the nav says Discover, here", (await nav.getAttribute("href")) === "/discover" && (await nav.getAttribute("aria-current")) === "page");
-  const start = vp.getByRole("link", { name: "Start your library" });
-  check("visitors get a nudge to start a library", (await start.count()) === 1 && (await start.getAttribute("href")) === "/signin?mode=signup");
+  check("visitors: no nudge, no Media · Resources tabs (Resources is in the bar)", (await vp.getByRole("link", { name: "Start your library" }).count()) === 0 && (await vp.getByRole("navigation", { name: "Discover" }).isVisible()) === false);
   check("…and no personal rows", (await vp.getByRole("heading", { name: /^Because you love/ }).count()) === 0);
   const gone = await Promise.all(["Fresh thoughts", "Loved most this month", "Browse everything"].map((n) => vp.getByRole("heading", { name: n, exact: true }).count()));
   check("the old rows are gone", gone.every((n) => n === 0));

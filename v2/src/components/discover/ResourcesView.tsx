@@ -188,7 +188,7 @@ export default function ResourcesView({ resources }: { resources: Resource[] | n
     <div className="min-h-screen px-4 pt-8 pb-24 sm:px-6 sm:pt-10 lg:px-8">
       <div className="mx-auto max-w-[1400px]">
         <DiscoverTabs current="resources" />
-        <div className="mt-12 mb-10 text-center sm:mt-16 sm:mb-12">
+        <div className="mt-6 mb-10 text-center sm:mt-10 sm:mb-12">
           <TypedTitle text="Worth your time." caret className={pageTitle} />
           <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-balance text-gray-500 dark:text-neutral-400">
             Some of the greatest resources on the internet

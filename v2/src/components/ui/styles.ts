@@ -20,7 +20,7 @@ export const drawer =
 
 /* navigation */
 export const pill =
-  "inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-3 py-1.5 text-sm font-semibold leading-5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400";
+  "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-sm font-semibold leading-5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400";
 export const pillActive = "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900";
 export const pillIdle =
   "cursor-pointer bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700";
@@ -39,7 +39,7 @@ export const iconButton =
 
 /** Smaller header icon button, sized to the pills. */
 export const headerIcon =
-  "relative inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-gray-200 text-gray-900 outline-none transition-colors hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-900 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 dark:focus-visible:ring-neutral-400";
+  "relative inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-gray-200 text-gray-900 outline-none transition-colors hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-900 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 dark:focus-visible:ring-neutral-400";
 
 /* buttons */
 export const primaryButton =

@@ -6,10 +6,17 @@ const TABS = [
   { key: "resources", href: "/discover/resources", label: "Resources" },
 ] as const;
 
-/** Discover's two views — Media (what people love) and Resources (antislop's archive) — as the profile's underlined tabs, centered. */
+/**
+ * Discover's two views — Media (what people love) and Resources (antislop's
+ * archive) — as the profile's underlined tabs, centered. Members only:
+ * visitors have Resources in the bar instead.
+ */
 export default function DiscoverTabs({ current }: { current: (typeof TABS)[number]["key"] }) {
   return (
-    <nav aria-label="Discover" className="flex justify-center gap-7 border-b border-gray-200 dark:border-neutral-800">
+    <nav
+      aria-label="Discover"
+      className="signed-in-only mb-6 flex justify-center gap-7 border-b border-gray-200 dark:border-neutral-800"
+    >
       {TABS.map((t) => {
         const on = t.key === current;
         return (

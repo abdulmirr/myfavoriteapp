@@ -198,9 +198,11 @@ html:not([data-auth="in"]) .signed-in-only { display: none !important; }
   50% { transform: translateY(-10px) rotate(var(--tilt, 0deg)); }
 }
 .landing-float { animation: landing-float 7s ease-in-out infinite; }
+/* --mx / --my glide on a spring in Drift.tsx, so no transition here: one
+   that restarted on every mouse move stalled, then lurched when it stopped */
 .landing-depth {
   transform: translate3d(calc(var(--mx, 0) * var(--d, 0.5) * -26px), calc(var(--my, 0) * var(--d, 0.5) * -18px), 0);
-  transition: transform 1.2s cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform;
   animation: fade-in 0.9s ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -642,6 +642,15 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] **Item page, "Favorited by" said once.** The heading counts everyone; the faces under it said it again ("Also on 3 walls"). Now the faces stand alone under the heading, and when thoughts (or your own entry) come first, they're "And 7 more".
 - [x] QA: `_e2e-resources` (30 checks, incl. the item page with and without thoughts); tsc, eslint, `next build`; both on the production bundle.
 
+### 2026-10-31, fourteenth batch (the landing, tightened; Resources in the visitor's bar)
+
+- [x] **Landing, quieter.** The headline is 60px semibold (40 on phones; it was 76 bold). The line under it is two short sentences on two lines: "Keep the books, films and music that made you. / Find new favorites from people with taste." One button, "Start your library" (44px, 15px text). "See an example page" and the email box are gone; the newsletter stays on Home, for members.
+- [x] **One corner for every control.** Pills and the header's icon button were 12px, the landing button 6px, buttons and fields 8px. All 8px now. Pills are shared, so the header and filters change everywhere.
+- [x] **The covers follow the mouse on a spring.** The lean was a CSS transition restarted on every mouse move, from a slow start, so it barely moved while the mouse moved and lurched when it stopped (measured: 16px/s moving, 155px/s after). Now a critically damped spring, per frame (`Drift.tsx`): 50px/s moving, 49 after, no overshoot. A pointer leaving the window settles the scene back to center (the old leave listener never fired).
+- [x] **Resources in the visitor's bar.** Visitors see Home · Discover · Resources, with Resources lit on its page and no Media · Resources tabs. Members are unchanged: Home · Discover · Friends, Resources a tab inside Discover, Discover lit. The pre-paint auth switch decides before the session check, so neither flashes. To fit three pills on a visitor's phone: the wordmark a size down below 414px, and 13px pill text, for visitors only.
+- [x] **Discover:** the visitor nudge ("Make a page of your favorites…") is gone; visitors go straight to Most loved.
+- [x] QA: `_e2e-landing` (+ one button, no email box, two lines down to 360px, the bar fitting at every width; the covers moving while the mouse moves, no lurch, a jump gliding, and the lurch checks fail on the old code), `_e2e-resources` (+ the visitor's bar, and a member through a stand-in session, no account); tsc, eslint, `next build`; both on the production bundle. The visitor checks in `_e2e-discover` and `_e2e-batch4` are updated to match but weren't rerun, since both create accounts.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

@@ -241,7 +241,7 @@ try {
   await lp.getByRole("heading", { name: /Your taste,\s*in one place\./ }).waitFor({ timeout: 15000 });
   const starts = lp.getByRole("link", { name: "Start your library" });
   check("one “Start your library”, to sign-up", (await starts.count()) === 1 && (await starts.getAttribute("href")) === "/signin?mode=signup");
-  check("a quiet email line for the not-ready", (await lp.getByRole("textbox", { name: /email/i }).count()) === 1);
+  check("no email line (it's on Home, for members)", (await lp.getByRole("textbox", { name: /email/i }).count()) === 0);
   check("no message bubble for visitors", (await lp.getByRole("button", { name: /message/i }).count()) === 0);
   const fold = await lp.evaluate(() => document.documentElement.scrollHeight);
   check("the landing is about one screen", fold <= 1100, `${fold}px tall`);

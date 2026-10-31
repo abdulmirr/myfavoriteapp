@@ -1,14 +1,13 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import type { Item, MediaType } from "@/lib/types";
 import Framed from "../profile/Framed";
-import NewsletterCTA from "../home/NewsletterCTA";
 import { cn } from "../ui/styles";
 import Drift from "./Drift";
 
 /*
  * The front door for visitors (members get Home), in one screen: the line in
- * the middle, a shelf of favorites floating around it, one button. The
+ * the middle, two lines under it, a shelf of favorites floating around it,
+ * one button. The
  * covers sit at three depths — near ones bigger and moving most with the
  * mouse, far ones smaller and fainter — so it reads as a room, not a grid.
  * Phones and tablets get the shelf as a band above the words.
@@ -107,9 +106,9 @@ function Float({ p, at, width, order }: { p: Piece; at: React.CSSProperties; wid
   );
 }
 
-// bigButton's shape with the landing's tighter corners
+// primaryButton, a size up for the one thing to do here — same corners as every control
 const start =
-  "inline-flex h-12 cursor-pointer items-center justify-center rounded-md bg-gray-900 px-7 text-base font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
+  "inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-gray-900 px-6 text-[15px] font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
 
 export default function Landing() {
   const around = [
@@ -143,35 +142,25 @@ export default function Landing() {
         </div>
 
         <div className="relative flex flex-col items-center px-4 text-center">
-          <h1 className="text-[46px] font-bold leading-[1.02] tracking-[-0.045em] text-gray-950 sm:text-[64px] lg:text-[76px] dark:text-white">
+          <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.04em] text-gray-950 sm:text-[52px] lg:text-[60px] dark:text-white">
             Your taste,
             <br />
             in one place.
           </h1>
-          <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-balance text-gray-600 sm:text-lg dark:text-neutral-300">
-            Keep a page of the books, films and music that made you. Save what you want to get to next. Find new
-            favorites from people with taste.
+          {/* two lines, each its own sentence (a size down on the narrowest phones, to stay two) */}
+          <p className="mt-5 text-[15px] leading-relaxed text-gray-500 max-[374px]:text-sm sm:text-base dark:text-neutral-400">
+            Keep the books, films and music that made you.
+            <br />
+            Find new favorites from people with taste.
           </p>
-          <div className="mt-9 flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
-            <Link href="/signin?mode=signup" className={start}>
-              Start your library
-            </Link>
-            <Link
-              href="/abdulmir"
-              className="group inline-flex items-center gap-1.5 text-[15px] font-semibold text-gray-600 hover:text-gray-950 dark:text-neutral-300 dark:hover:text-white"
-            >
-              See an example page <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
+          <Link href="/signin?mode=signup" className={cn(start, "mt-8")}>
+            Start your library
+          </Link>
         </div>
       </section>
 
       <footer className="relative px-4 pt-2 pb-7">
-        {/* the line arrives after hydration — hold its room so nothing jumps */}
-        <div className="min-h-[84px] lg:min-h-10">
-          <NewsletterCTA compact />
-        </div>
-        <p className="mt-5 flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+        <p className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
           <Link href="/privacy" className="hover:text-gray-900 dark:hover:text-neutral-100">
             Privacy
           </Link>
