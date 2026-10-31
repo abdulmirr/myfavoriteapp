@@ -65,14 +65,13 @@ try {
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   check("POST /api/picks → 200", res.status === 200, `${res.status} in ${secs}s`);
   const picks = json.picks ?? [];
-  check("exactly one pick (music only)", picks.length === 1 && picks[0].media_type === "music", JSON.stringify(picks.map((p) => [p.media_type, p.title, p.creator])));
-  if (picks[0]) {
-    const p = picks[0];
-    console.log(`     hook:   ${p.hook}\n     reason: ${p.reason}\n     art:    ${p.image_url}`);
-    check("pick has hook + reason", !!p.hook && !!p.reason);
-    check("pick isn't already a favorite", !albums.some(([t]) => t.toLowerCase() === p.title.toLowerCase()));
-    check("pick has artwork", !!p.image_url);
-  }
+  check("five picks, all music (the one category unlocked)", picks.length === 5 && picks.every((p) => p.media_type === "music"), JSON.stringify(picks.map((p) => [p.media_type, p.title, p.creator])));
+  for (const p of picks) console.log(`     ${p.title} — ${p.creator}\n       hook:   ${p.hook}\n       reason: ${p.reason}`);
+  check("every pick has a hook + reason", picks.every((p) => p.hook.trim().length >= 10 && p.reason.trim().length >= 40));
+  check("…a clean title (no second guesses)", picks.every((p) => !/\?\s*No\b|replaced/i.test(p.title)));
+  check("…five different artists", new Set(picks.map((p) => p.creator.toLowerCase())).size === picks.length);
+  check("…none already a favorite", !picks.some((p) => albums.some(([t]) => t.toLowerCase() === p.title.toLowerCase())));
+  check("…artwork on most", picks.filter((p) => p.image_url).length >= 4);
 
   const again = await fetch(`${APP}/api/picks`, {
     method: "POST",
@@ -94,7 +93,8 @@ try {
   await page.goto(`${APP}/`, { waitUntil: "load" });
   await sleep(6000);
   const body = (await page.textContent("main, body")) ?? "";
-  check("Home shows the AI pick", !!picks[0] && body.includes(picks[0].title));
+  check("Home shows the picks", picks.length > 0 && picks.every((p) => body.includes(p.title)));
+  check("…and no one else's favorite", !body.includes("— @"));
   await page.screenshot({ path: join(SHOTS, "picks-home.png") });
   await browser.close();
 

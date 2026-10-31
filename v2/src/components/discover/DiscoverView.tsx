@@ -71,10 +71,10 @@ function Nudge({ children, action }: { children: React.ReactNode; action?: React
 /**
  * Discover (2026-10-28): things to find, each with its reason. For members,
  * three "Because you love …" rows (loaded here, from /api/discover), each
- * holding works of its favorite's own type; for everyone, "Most loved" —
- * everything, by favorites. Every work shows how many love it and their
- * faces, people you follow first. Nothing that's already theirs is offered
- * back. People live on Friends; the old feed at /feed (lib/discover.ts).
+ * holding works of its favorite's own type, none of it already theirs; for
+ * everyone, "Most loved" — everything, by favorites across all of Favorite,
+ * the same list signed in or out. Every work shows how many love it and
+ * their faces, people you follow first. People live on Friends; the old feed at /feed (lib/discover.ts).
  */
 export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
   const v = useViewer();
@@ -105,7 +105,7 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
 
   const rows = pid && mine?.pid === pid ? mine.rows : undefined;
   // the rows in the order they show; each skips what's theirs and what an
-  // earlier row already showed (so does Most loved) — by work, and by title
+  // earlier row already showed — by work, and by title
   // within a kind, for the odd copy two catalogs spell differently — puts
   // what people they follow love first, and hides with under four left
   const seen = new Set<string>();
@@ -182,7 +182,7 @@ export default function DiscoverView({ initial }: { initial: RankedWork[] }) {
             {shelves.map((row, i) => (
               <BecauseShelf key={row.seed.work_key} row={row} priority={i === 0} />
             ))}
-            <MostLoved initial={initial} isOwned={isOwned} skip={seen} />
+            <MostLoved initial={initial} />
           </div>
         )}
       </div>

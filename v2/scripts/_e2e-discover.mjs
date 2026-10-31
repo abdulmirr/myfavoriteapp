@@ -3,8 +3,9 @@
 // many, their faces just under it on hover — and nothing else (no nudge, no tabs). A member who loves a
 // few widely-loved things gets "Because you love …" rows, each holding works
 // of its favorite's own kind, a friend they follow first among the faces,
-// and nowhere on the page anything that's already theirs (a private save
-// included) or anything twice; a resource they favorite lands on their wall.
+// and in those rows nothing that's already theirs (a private save included)
+// or anything twice; their "Most loved" is the visitors' list, untouched (it
+// counts everyone on Favorite); a resource they favorite lands on their wall.
 // /feed still stands. Two throwaway members (one follows the other), deleted
 // afterwards; nothing here follows or favorites a real person's card.
 //   node scripts/_e2e-discover.mjs
@@ -134,6 +135,7 @@ try {
   const gone = await Promise.all(["Fresh thoughts", "Loved most this month", "Browse everything"].map((n) => vp.getByRole("heading", { name: n, exact: true }).count()));
   check("the old rows are gone", gone.every((n) => n === 0));
   const most = sectionOf(vp, "Most loved");
+  const visitorMost = await workAlts(vp, ["Most loved"]);
   const counts = await gridCounts(most);
   check("most loved, as a grid", counts.length >= 24, `${counts.length} tiles`);
   check("…every tile says how many", counts.every((n) => n >= 1));
@@ -182,7 +184,9 @@ try {
   check("…and no friends or people rows (Friends has those)", !("friends" in mine) && !("people" in mine));
   check("…for real ids only", (await fetch(`${APP}/api/discover?viewer=nope`)).status === 400);
   const ranked = await (await fetch(`${APP}/api/discover/works?viewer=${A.pid}`)).json();
-  check("most loved leaves out their favorites", ranked.works.length > 0 && !ranked.works.some((w) => owned.includes(w.title)));
+  const everyone = await (await fetch(`${APP}/api/discover/works`)).json();
+  const keys = (r) => r.works.map((w) => w.work_key).join(",");
+  check("most loved is everyone's, whoever asks", ranked.works.length > 0 && keys(ranked) === keys(everyone));
 
   // one of the picks, saved to a private list — only their browser knows
   const secret = rowWorks.find((w) => w.title !== top.title);
@@ -225,13 +229,16 @@ try {
     await page.waitForTimeout(250);
   }
   await page.waitForTimeout(1500);
-  const shown = await workAlts(page);
+  const shown = await workAlts(page, ["Because you love"]);
   const leaks = shown.filter((t) => owned.includes(t) || t === secret.title);
-  check("nothing on the page is already theirs", shown.length > 30 && leaks.length === 0, leaks.length ? leaks.join(", ") : `${shown.length} works shown`);
+  check("nothing in their rows is already theirs", shown.length >= 4 && leaks.length === 0, leaks.length ? leaks.join(", ") : `${shown.length} works shown`);
   check("…not even their private save", !shown.includes(secret.title), secret.title);
-  const listed = await workAlts(page, ["Because you love", "Most loved"], true);
+  const listed = await workAlts(page, ["Because you love"], true);
   const twice = listed.filter((t, i) => listed.indexOf(t) !== i);
-  check("no work twice on the page", twice.length === 0, twice.join(", ") || `${listed.length} works`);
+  check("no work twice in their rows", twice.length === 0, twice.join(", ") || `${listed.length} works`);
+  const memberMost = await workAlts(page, ["Most loved"]);
+  const n = Math.min(24, visitorMost.length);
+  check("their Most loved is the visitors' (owned works and all)", n >= 24 && memberMost.slice(0, n).join("|") === visitorMost.slice(0, n).join("|"));
   const [{ username: bName }] = await q("select username from profiles where id = $1", [B.pid]);
   const friendLine = await lineOf(page, top.title);
   const lead = friendLine ? (await faces(page, friendLine))[0] : null;

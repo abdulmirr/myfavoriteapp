@@ -8,7 +8,6 @@ import type { DailyPick, Work } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { useOwned } from "@/lib/use-owned";
 import { useViewer, viewer } from "@/lib/viewer";
-import { titleKey } from "@/lib/work";
 import { TypedLine, TypedTitle } from "../Typewriter";
 import NewsletterCTA from "./NewsletterCTA";
 import PickCard, { PickSkeleton } from "./PickCard";
@@ -80,8 +79,9 @@ function CommunityCard({ c, priority }: { c: CommunityPick; priority?: boolean }
 
 /**
  * Home — antislop's daily page. Visitors get five favorites from the
- * community (real people's thoughts as the notes); members get one AI pick
- * per category they've unlocked, topped up to five from the community.
+ * community (real people's thoughts as the notes); members get five AI
+ * picks chosen from their own favorites and saves — nothing else. Only a
+ * member with too few favorites to read yet sees the community's five.
  */
 export default function HomeView({ community }: { community: CommunityPick[] }) {
   const v = useViewer();
@@ -91,6 +91,8 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
   // fresh profile lands — a cached snapshot never redirects)
   const setup = v.status === "signed-in" && !v.stale && !!v.profile && !v.onboarded;
   const [ai, setAi] = useState<AiState>({ state: "idle" });
+  // bumped by "Try again" after a failed load
+  const [retry, setRetry] = useState(0);
 
   // today's set for this member: painted from the local cache on the first
   // render that knows who they are, then confirmed by the server below
@@ -158,7 +160,7 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
       live = false;
       clearTimeout(timer);
     };
-  }, [wantPicks, pid]);
+  }, [wantPicks, pid, retry]);
 
   const pass = (p: DailyPick) => {
     const me = viewer().profile;
@@ -204,13 +206,11 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
   const [titleDone, setTitleDone] = useState(false);
   const ready = v.status !== "unknown" && weekday !== "";
 
-  // the five cards
+  // the five cards — every one from their own taste
   const aiPicks = (ai.state === "ready" || ai.state === "loading" ? ai.picks : []).filter((p) => !isOwned(pickWork(p)));
-  const taken = new Set(aiPicks.map((p) => titleKey(p.media_type, p.title)));
-  // the community's ranked backups cover whatever's already on their wall
-  const fill = community
-    .filter((c) => !taken.has(titleKey(c.item.media_type, c.item.title)) && !isOwned(communityWork(c)))
-    .slice(0, Math.max(0, TOTAL - aiPicks.length));
+  // too few favorites to choose from yet: the community's five, minus what's theirs
+  const starter =
+    ai.state === "gated" ? community.filter((c) => !isOwned(communityWork(c))).slice(0, TOTAL) : [];
 
   const memberList =
     ai.state === "loading" && !ai.picks.length ? (
@@ -228,6 +228,26 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
             Favorite 3 albums, books or films and tomorrow&apos;s picks are chosen from your taste.
           </p>
         )}
+        {ai.state === "error" && (
+          <p className="-mt-2 text-center text-sm text-gray-500 dark:text-neutral-400">
+            Today&apos;s picks didn&apos;t come through.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setAi({ state: "loading", picks: [] });
+                setRetry((n) => n + 1);
+              }}
+              className={inlineLink}
+            >
+              Try again
+            </button>
+          </p>
+        )}
+        {ai.state === "ready" && !aiPicks.length && (
+          <p className="-mt-2 text-center text-sm text-gray-500 dark:text-neutral-400">
+            That&apos;s all of today&apos;s picks. Fresh ones tomorrow.
+          </p>
+        )}
         {aiPicks.map((p, i) => (
           <PickCard
             key={`ai:${p.media_type}:${p.title}`}
@@ -238,8 +258,8 @@ export default function HomeView({ community }: { community: CommunityPick[] }) 
             priority={i < 2}
           />
         ))}
-        {fill.map((c) => (
-          <CommunityCard key={`c:${c.item.id}`} c={c} />
+        {starter.map((c, i) => (
+          <CommunityCard key={`c:${c.item.id}`} c={c} priority={i < 2} />
         ))}
       </>
     );

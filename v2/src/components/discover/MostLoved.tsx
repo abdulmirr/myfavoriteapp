@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MOST_LOVED_PAGE as PAGE } from "@/lib/discover";
 import type { RankedWork } from "@/lib/types";
-import { useViewer } from "@/lib/viewer";
 import { TYPE_FILTERS, titleKey } from "@/lib/work";
 import { cn, pill, pillActive, pillIdle } from "../ui/styles";
 import { GridSkeleton, SectionHead, grid } from "./Shelf";
@@ -12,9 +11,8 @@ import Who from "./Who";
 
 type Page = { key: string; works: RankedWork[]; hasMore: boolean };
 
-async function fetchPage(viewer: string | null, filter: string, offset: number): Promise<Omit<Page, "key">> {
+async function fetchPage(filter: string, offset: number): Promise<Omit<Page, "key">> {
   const p = new URLSearchParams({ filter, offset: String(offset) });
-  if (viewer) p.set("viewer", viewer);
   const res = await fetch(`/api/discover/works?${p}`);
   const json = (await res.json()) as { works?: RankedWork[]; hasMore?: boolean };
   if (!res.ok) throw new Error("most loved unavailable");
@@ -25,53 +23,41 @@ const FILTERS = [{ key: "all", label: "All" }, ...TYPE_FILTERS.map((f) => ({ key
 
 /**
  * "Most loved": every work on Favorite as a dense grid of frames, by how
- * many people have it — each with that number and their faces (people you
- * follow first). By medium; what's already yours, and what a shelf above
- * already showed, stays out. The first "All" page comes with the HTML;
- * members get theirs on arrival.
+ * many people across Favorite have it — each with that number and their
+ * faces (people you follow first). By medium. The same list for everyone,
+ * members and visitors alike — nothing is left out for being yours or for
+ * showing in a row above. The first "All" page comes with the HTML.
  */
-export default function MostLoved({
-  initial,
-  isOwned,
-  skip,
-}: {
-  initial: RankedWork[];
-  isOwned: (w: RankedWork) => boolean;
-  skip: Set<string>;
-}) {
-  const v = useViewer();
-  const viewer = v.status === "signed-in" ? (v.profile?.id ?? null) : null;
+export default function MostLoved({ initial }: { initial: RankedWork[] }) {
   const [filter, setFilter] = useState("all");
-  const key = `${viewer ?? "-"}:${filter}`;
-  const [page, setPage] = useState<Page>({ key: "-:all", works: initial, hasMore: initial.length === PAGE });
+  const key = filter;
+  const [page, setPage] = useState<Page>({ key: "all", works: initial, hasMore: initial.length === PAGE });
   const [failed, setFailed] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
 
-  // "All" for anyone signed out is the list that came with the HTML — again
-  // after signing out, when Next kept this page alive holding a member's list
-  if (key === "-:all" && page.key !== key) setPage({ key, works: initial, hasMore: initial.length === PAGE });
+  // "All" is the list that came with the HTML
+  if (key === "all" && page.key !== key) setPage({ key, works: initial, hasMore: initial.length === PAGE });
 
   useEffect(() => {
-    if (v.status === "unknown" || key === "-:all") return;
+    if (key === "all") return;
     let stale = false;
-    fetchPage(viewer, filter, 0)
+    fetchPage(filter, 0)
       .then((s) => !stale && setPage({ key, ...s }))
       .catch(() => !stale && setFailed(key));
     return () => {
       stale = true;
     };
-  }, [v.status, key, viewer, filter]);
+  }, [key, filter]);
 
-  // a member's own "All" replaces the visitors' one when it lands
-  const shown = page.key === key ? page : filter === "all" && page.key === "-:all" ? page : null;
-  const ready = shown === page && page.key === key;
+  const shown = page.key === key ? page : null;
+  const ready = shown !== null;
 
   const loadMore = useCallback(async () => {
     if (!ready || !page.hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
-      const next = await fetchPage(viewer, filter, page.works.length);
+      const next = await fetchPage(filter, page.works.length);
       setPage((p) => {
         if (p.key !== key) return p;
         const seen = new Set(p.works.map((w) => w.work_key));
@@ -82,7 +68,7 @@ export default function MostLoved({
     } finally {
       setLoadingMore(false);
     }
-  }, [ready, page, loadingMore, viewer, filter, key]);
+  }, [ready, page, loadingMore, filter, key]);
 
   useEffect(() => {
     const el = sentinel.current;
@@ -96,14 +82,14 @@ export default function MostLoved({
   const once = new Set<string>();
   const works = (shown?.works ?? []).filter((w) => {
     const t = titleKey(w.media_type, w.title);
-    if (isOwned(w) || skip.has(w.work_key) || skip.has(t) || once.has(t)) return false;
+    if (once.has(t)) return false;
     once.add(t);
     return true;
   });
 
   return (
     <section>
-      <SectionHead title="Most loved" sub="What people have favorited most." />
+      <SectionHead title="Most loved" sub="What everyone on Favorite has favorited most." />
       <div className="no-scrollbar -mx-4 mt-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {FILTERS.map((f) => (
           <button

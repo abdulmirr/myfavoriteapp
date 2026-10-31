@@ -183,10 +183,12 @@ try {
   const kb = await until(async () => (await order())[1] === "Row Three");
   check("arrow keys move a row", !!kb, JSON.stringify(await order()));
 
-  // finish channel ORANGE, then "Loved it" from the toast
-  await page.getByRole("button", { name: `Mark ${ORANGE.title} as finished` }).click();
+  // finish channel ORANGE from its ⋯ menu, then "Favorite?" from the toast
+  check("no ○ on the rows (finishing lives in ⋯)", (await page.getByRole("button", { name: `Mark ${ORANGE.title} as finished` }).count()) === 0);
+  await page.getByRole("button", { name: `More for ${ORANGE.title}` }).click();
+  await page.getByRole("menuitem", { name: "Mark as finished" }).click();
   const done = await until(async () => (await q("select done_at from list_items where list_id = $1 and title = $2", [al, ORANGE.title]))[0].done_at);
-  check("○ marks it finished", !!done);
+  check("⋯ → Mark as finished marks it", !!done);
   check("it moves to Finished", (await rows.count()) === 3 && (await page.getByRole("button", { name: /^Finished/ }).count()) === 1);
   await page.getByRole("button", { name: "Favorite?", exact: true }).click();
   const fav = await until(async () => (await q("select id from items where profile_id = $1 and canonical_id = $2", [A.pid, ORANGE.canonical]))[0]);

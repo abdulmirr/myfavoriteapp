@@ -461,13 +461,9 @@ export default function AddDialog({
                   <CornerDownLeft className="size-4 shrink-0 text-gray-400 max-sm:hidden" />
                 </button>
               ) : mode === "url" ? (
-                <Empty
-                  icon={Link2}
-                  title="Paste a link"
-                  body="Essays, videos, sites — anything with an address. If someone already saved it, it's the same work."
-                />
+                <Empty icon={Link2} title="Paste a link" />
               ) : query.trim().length < 1 ? (
-                <Empty icon={Icon} title={`Find ${chip.noun}`} body={`${chip.hint} — or paste a link to anything.`} />
+                <Empty icon={Icon} title={`Find ${chip.noun}`} />
               ) : results === null ? (
                 <div className="flex flex-col gap-1" aria-busy>
                   {[0, 1, 2, 3].map((i) => (
@@ -558,14 +554,14 @@ export default function AddDialog({
 }
 
 /** The quiet middle of the dialog before there's anything to show. */
-function Empty({ icon: Icon, title, body }: { icon: typeof Music; title: string; body: string }) {
+function Empty({ icon: Icon, title, body }: { icon: typeof Music; title: string; body?: string }) {
   return (
     <div className="flex h-[280px] flex-col items-center justify-center text-center">
       <span className="flex size-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500 dark:bg-neutral-700/60 dark:text-neutral-300">
         <Icon className="size-5" />
       </span>
       <p className="mt-4 text-[15px] font-semibold text-gray-900 dark:text-neutral-100">{title}</p>
-      <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-500 dark:text-neutral-400">{body}</p>
+      {body && <p className="mt-1 max-w-xs text-sm leading-relaxed text-gray-500 dark:text-neutral-400">{body}</p>}
     </div>
   );
 }

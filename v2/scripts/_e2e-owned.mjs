@@ -2,8 +2,10 @@
 // server (:3000) and the real DB, with no Claude call: today's and tomorrow's
 // AI sets are seeded by hand (so nothing generates), one of today's AI picks
 // is already on the user's wall, and two of today's community picks are
-// theirs too (one favorited, one saved to a list). Home must show none of
-// them — and still five cards. Throwaway user, deleted afterwards.
+// theirs too (one favorited, one saved to a list). Home must show only the AI
+// pick that's new to them — no community picks topping it up (2026-10-31:
+// every card a member sees comes from their own taste). Throwaway user,
+// deleted afterwards.
 //   node scripts/_e2e-owned.mjs
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
@@ -106,7 +108,7 @@ try {
   await wait(1500);
   const cards = page.locator("article h2");
   const shown = (await cards.allInnerTexts()).map((t) => t.trim()).filter(Boolean);
-  check("Home shows five", shown.length === 5, shown.join(" | "));
+  check("Home shows just their own new pick", shown.length === 1 && shown[0] === "A Brand New Album", shown.join(" | "));
   check("…not the favorited community pick", !shown.includes(favTitle), favTitle);
   check("…not the saved one", !shown.includes(saveTitle), saveTitle);
   check("…not the owned AI pick", !shown.includes("Blonde"));

@@ -15,6 +15,11 @@ function storageRender(url: string, width: number, square = false): string | nul
     if (square) {
       u.searchParams.set("height", String(width));
       u.searchParams.set("resize", "cover");
+    } else {
+      // width alone keeps the original height and crops to it (a 1200×600
+      // list cover came back 200×600, a sliver); contain scales the whole
+      // image, never up
+      u.searchParams.set("resize", "contain");
     }
     u.searchParams.set("quality", "75");
     return u.toString();

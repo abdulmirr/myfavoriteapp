@@ -16,8 +16,10 @@ export default function InviteButton({ className, quiet = false }: { className?:
   const [copied, setCopied] = useState(false);
 
   const invite = async () => {
-    const url = `${window.location.origin}${me ? `/${me.username}` : ""}`;
-    const text = `been putting all my favorite movies, books + music on this app. make yours, i'll show you mine ${url}`;
+    // always the real domain, so an invite sent from localhost or a preview still works
+    const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://myfavoriteapp.com").replace(/\/$/, "");
+    const url = `${site}${me ? `/${me.username}` : ""}`;
+    const text = `hey i put all my favorite movies/books here, would love to see yours ${url}`;
     if (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)) {
       window.location.href = `sms:&body=${encodeURIComponent(text)}`;
       return;

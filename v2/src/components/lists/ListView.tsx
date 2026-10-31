@@ -8,7 +8,6 @@ import {
   Bookmark,
   Check,
   ChevronDown,
-  Circle,
   CircleCheck,
   GripVertical,
   Lock,
@@ -17,6 +16,7 @@ import {
   Plus,
   Quote,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import type { ListItem, ListSummary, ProfileLite, Work } from "@/lib/types";
 import {
@@ -103,9 +103,10 @@ function Handle({ n, title, props }: { n: number; title: string; props: ReturnTy
 /**
  * A list, playlist-style: the cover and its color up top, then the works as
  * numbered rows — nothing between a visitor and the things in it. The owner
- * gets the tools in place: drag to reorder, ○ to mark something finished
+ * gets the tools in place: drag to reorder, ⋯ to mark something finished
  * (finished things sink into their own section, with "Favorite?" waiting),
- * ⋯ for the note, another list, or removal, and + Add to build it here.
+ * add a note, save it to another list or remove it, and + Add to build it
+ * here.
  */
 export default function ListView({
   list: initialList,
@@ -258,6 +259,17 @@ export default function ListView({
           >
             <Star className={cn("size-4", fav && "text-star")} /> {fav ? "In your favorites" : "Favorite"}
           </MenuItem>
+          <MenuItem onSelect={() => void setFinished(it, !it.done_at)}>
+            {it.done_at ? (
+              <>
+                <Undo2 /> Mark as not finished
+              </>
+            ) : (
+              <>
+                <CircleCheck /> Mark as finished
+              </>
+            )}
+          </MenuItem>
           <MenuItem onSelect={() => later(() => setNoteFor(it))}>
             <Quote /> {it.note?.trim() ? "Edit note" : "Add a note"}
           </MenuItem>
@@ -395,16 +407,6 @@ export default function ListView({
                       actions={
                         own ? (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => void setFinished(it, true)}
-                              aria-label={`Mark ${it.title} as finished`}
-                              title="Finished it?"
-                              className={cn(iconButton, "group/finish max-sm:size-8")}
-                            >
-                              <Circle className="size-[18px] group-hover/finish:hidden" strokeWidth={1.8} />
-                              <CircleCheck className="hidden size-[18px] group-hover/finish:block" strokeWidth={1.8} />
-                            </button>
                             <FavoriteButton work={work} className="max-sm:hidden" />
                             {rowMenu(it, i)}
                           </>

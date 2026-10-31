@@ -67,7 +67,7 @@ try {
           words,
           links: h1.parentElement.querySelectorAll("a").length,
           text: line.innerText.replace(/\s+/g, " ").trim(),
-          // …set like the headline: medium, tight
+          // …set tight like the headline, regular weight
           lineLook: { weight: getComputedStyle(line).fontWeight, tracking: parseFloat(getComputedStyle(line).letterSpacing) / parseFloat(getComputedStyle(line).fontSize) },
           button: Math.round(h1.parentElement.querySelector("a").getBoundingClientRect().height),
           // the button's words set like the headline: tight
@@ -93,7 +93,7 @@ try {
       check(`${tag}: one thing to click in the middle (40px, its words tight like the headline), no email box`, m.links === 1 && m.email === 0 && m.button === 40 && m.tracking < -0.02, `${m.links} links, ${m.email} email, button ${m.button}px, tracking ${m.tracking.toFixed(3)}em`);
       check(`${tag}: "Favorite is a library for everything you love. / Get curated daily recommendations."`, m.text === "Favorite is a library for everything you love. Get curated daily recommendations.", m.text);
       check(`${tag}: the line under the headline on two lines`, m.lines === 2, `${m.lines} lines`);
-      check(`${tag}: …set like the headline (medium, tight)`, m.lineLook.weight === "500" && m.lineLook.tracking <= -0.015, `${m.lineLook.weight}, ${m.lineLook.tracking.toFixed(3)}em`);
+      check(`${tag}: …set tight like the headline, regular weight`, m.lineLook.weight === "400" && m.lineLook.tracking <= -0.015, `${m.lineLook.weight}, ${m.lineLook.tracking.toFixed(3)}em`);
       const names = m.bar.map((b) => b.name);
       const pills = width >= 640 ? ["Home", "Discover", "Resources"] : ["Discover", "Resources"];
       const tight = m.bar.filter((b, i) => b.l < -0.5 || b.r > width - m.pad + 0.5 || (i && b.l < m.bar[i - 1].r));
