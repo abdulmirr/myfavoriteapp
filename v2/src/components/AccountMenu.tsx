@@ -4,7 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, List, Lock, LogOut, Moon, Plus, Settings, Sun } from "lucide-react";
+import { ChevronDown, List, Lock, LogOut, Plus, Settings } from "lucide-react";
 import { signOut, useViewer } from "@/lib/viewer";
 import { thumbCover } from "@/lib/img";
 import Avatar from "./ui/Avatar";
@@ -16,36 +16,21 @@ const NewListDialog = dynamic(() => import("./lists/NewListDialog"));
 /** how many lists the menu shows before "See all" */
 const SHOWN = 5;
 
-/** Flip the theme and remember the choice (the layout's pre-paint script reads it). */
-function toggleTheme(): boolean {
-  const dark = !document.documentElement.classList.contains("dark");
-  document.documentElement.classList.toggle("dark", dark);
-  try {
-    localStorage.setItem("fav:theme", dark ? "dark" : "light");
-  } catch {}
-  return dark;
-}
-
 /**
  * antislop's arrow beside the profile button: your lists (newest first, one
- * tap to any of them), Settings, the theme, Log out. The avatar next to it
- * still goes straight to your page.
+ * tap to any of them), Settings, Log out. The avatar next to it still goes
+ * straight to your page.
  */
 export default function AccountMenu() {
   const v = useViewer();
   const router = useRouter();
-  const [dark, setDark] = useState(false);
   const [creating, setCreating] = useState(false);
   const p = v.profile;
   const lists = v.lists;
 
   return (
     <>
-      <Menu
-        onOpenChange={(o) => {
-          if (o) setDark(document.documentElement.classList.contains("dark"));
-        }}
-      >
+      <Menu>
         <MenuTrigger
           aria-label="Account menu"
           className="group flex h-8 w-6 cursor-pointer items-center justify-center rounded-md text-gray-500 outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900 data-[state=open]:text-gray-900 dark:text-neutral-400 dark:hover:text-neutral-100 dark:focus-visible:ring-neutral-400 dark:data-[state=open]:text-neutral-100"
@@ -116,14 +101,6 @@ export default function AccountMenu() {
             <Link href="/settings">
               <Settings /> Settings
             </Link>
-          </MenuItem>
-          <MenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setDark(toggleTheme());
-            }}
-          >
-            {dark ? <Sun /> : <Moon />} {dark ? "Light mode" : "Dark mode"}
           </MenuItem>
           <MenuSeparator />
           <MenuItem

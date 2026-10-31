@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Item, MediaType } from "@/lib/types";
 import Framed from "../profile/Framed";
-import { cn } from "../ui/styles";
+import { cn, primaryButton } from "../ui/styles";
 import Drift from "./Drift";
 
 /*
@@ -106,10 +106,6 @@ function Float({ p, at, width, order }: { p: Piece; at: React.CSSProperties; wid
   );
 }
 
-// primaryButton, a size up for the one thing to do here — same corners as every control
-const start =
-  "inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-gray-900 px-6 text-[15px] font-semibold text-white outline-none transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:focus-visible:ring-neutral-400";
-
 export default function Landing() {
   const around = [
     ...LEFT.map((p, i) => ({ p, side: "left" as const, order: i * 2 })),
@@ -149,11 +145,12 @@ export default function Landing() {
           </h1>
           {/* two lines, each its own sentence (a size down on the narrowest phones, to stay two) */}
           <p className="mt-5 text-[15px] leading-relaxed text-gray-500 max-[374px]:text-sm sm:text-base dark:text-neutral-400">
-            Keep the books, films and music that made you.
+            Favorite is a library for everything you love.
             <br />
-            Find new favorites from people with taste.
+            Get curated daily recommendations.
           </p>
-          <Link href="/signin?mode=signup" className={cn(start, "mt-8")}>
+          {/* the app's own primary button: compact, the same everywhere */}
+          <Link href="/signin?mode=signup" className={cn(primaryButton, "mt-8")}>
             Start your library
           </Link>
         </div>

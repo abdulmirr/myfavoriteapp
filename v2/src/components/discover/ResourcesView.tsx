@@ -1,18 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Check, ChevronDown, Search, X } from "lucide-react";
 import type { Resource, ResourceKind } from "@/lib/resources";
 import { TOPICS, type Topic } from "@/lib/resource-topics";
 import type { Work } from "@/lib/types";
 import { TitleCard } from "../Cover";
 import { TypedTitle } from "../Typewriter";
 import { CardActions } from "../WorkCard";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "../ui/Menu";
 import { cn, mediaBox, newBadge, pageTitle, pill, pillActive, pillIdle } from "../ui/styles";
 import DiscoverTabs from "./DiscoverTabs";
 
 const KINDS: { key: "all" | ResourceKind; label: string }[] = [
-  { key: "all", label: "All formats" },
+  { key: "all", label: "Any format" },
   { key: "essays", label: "Essays" },
   { key: "talks", label: "Talks" },
   { key: "videos", label: "Videos" },
@@ -26,6 +27,13 @@ const fold = (s: string) =>
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "");
 const PAGE = 24;
+
+// the format menu's button: a pill's shape, outlined until a format is picked
+const formatButton =
+  "group inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-semibold leading-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-neutral-400";
+const formatIdle =
+  "border-gray-300 text-gray-900 hover:bg-gray-200 data-[state=open]:bg-gray-200 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 dark:data-[state=open]:bg-neutral-800";
+const formatOn = "border-transparent bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900";
 
 /**
  * An image that fails says so — including one that failed before the page
@@ -149,11 +157,11 @@ function ResourceCard({ r, priority }: { r: Resource; priority: boolean }) {
 }
 
 /**
- * Discover → Resources: antislop's whole archive — essays, talks, videos and
- * tweets — newest pick first. Browse it by what it's about (each topic counts
- * what's in it in the chosen format), then narrow by format, or search titles,
- * authors and what the tweets say. All of it arrives with the page; the grid
- * grows as you scroll.
+ * Resources: antislop's whole archive — essays, talks, videos and tweets —
+ * newest pick first. One row to browse it: the format (a menu, with what each
+ * holds in the topic chosen), then the topics; or search titles, authors and
+ * what the tweets say. All of it arrives with the page; the grid grows as you
+ * scroll.
  */
 export default function ResourcesView({ resources }: { resources: Resource[] | null }) {
   const [topic, setTopic] = useState<"all" | Topic>("all");
@@ -229,57 +237,58 @@ export default function ResourcesView({ resources }: { resources: Resource[] | n
           </p>
         ) : (
           <>
-            {/* what it's about — scrolls sideways on a phone; wraps in even rows above that, one from xl */}
-            <div
-              role="group"
-              aria-label="Topic"
-              className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-auto sm:max-w-[720px] sm:flex-wrap sm:justify-center sm:px-0 xl:max-w-none"
-            >
-              {(["all", ...TOPICS] as const).map((t) => {
-                const n = topicCount(t);
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setTopic(t);
-                      setLimit(PAGE);
-                    }}
-                    aria-pressed={topic === t}
-                    disabled={!n && topic !== t}
-                    className={cn(pill, topic === t ? pillActive : pillIdle, "disabled:cursor-default disabled:opacity-40")}
-                  >
-                    {t === "all" ? "All" : t}
-                    <span className="font-medium tabular-nums opacity-60">{n}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {/* …then the format, quieter */}
-            <div role="group" aria-label="Format" className="mt-4 mb-8 flex justify-center gap-5">
-              {KINDS.map((k) => {
-                const on = kind === k.key;
-                return (
-                  <button
-                    key={k.key}
-                    type="button"
-                    onClick={() => {
-                      setKind(k.key);
-                      setLimit(PAGE);
-                    }}
-                    aria-pressed={on}
-                    disabled={!on && !kindCount(k.key)}
-                    className={cn(
-                      "cursor-pointer rounded-sm text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900 disabled:cursor-default disabled:opacity-40 dark:focus-visible:ring-neutral-400",
-                      on
-                        ? "text-gray-900 dark:text-neutral-100"
-                        : "text-gray-400 hover:text-gray-700 disabled:hover:text-gray-400 dark:text-neutral-500 dark:hover:text-neutral-200 dark:disabled:hover:text-neutral-500"
-                    )}
-                  >
-                    {k.label}
-                  </button>
-                );
-              })}
+            {/* one row: the format first (so a phone shows it), then what it's about —
+                scrolls sideways on a phone; wraps in even rows above that, one from xl */}
+            <div className="no-scrollbar -mx-4 mb-8 flex gap-1.5 overflow-x-auto px-4 sm:mx-auto sm:max-w-[600px] sm:flex-wrap sm:justify-center sm:px-0 xl:max-w-none">
+              <Menu>
+                <MenuTrigger
+                  aria-label={`Format: ${KINDS.find((k) => k.key === kind)!.label}`}
+                  className={cn(formatButton, kind === "all" ? formatIdle : formatOn)}
+                >
+                  {kind === "all" ? "Format" : KINDS.find((k) => k.key === kind)!.label}
+                  <ChevronDown className="size-3.5 opacity-70 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </MenuTrigger>
+                <MenuContent align="start" className="w-52">
+                  {KINDS.map((k) => {
+                    const n = kindCount(k.key);
+                    return (
+                      <MenuItem
+                        key={k.key}
+                        disabled={!n && kind !== k.key}
+                        onSelect={() => {
+                          setKind(k.key);
+                          setLimit(PAGE);
+                        }}
+                      >
+                        <Check className={kind === k.key ? "" : "invisible"} />
+                        <span className="flex-1">{k.label}</span>
+                        <span className="text-xs tabular-nums text-gray-500 dark:text-neutral-400">{n}</span>
+                      </MenuItem>
+                    );
+                  })}
+                </MenuContent>
+              </Menu>
+              <div role="group" aria-label="Topic" className="contents">
+                {(["all", ...TOPICS] as const).map((t) => {
+                  const n = topicCount(t);
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setTopic(t);
+                        setLimit(PAGE);
+                      }}
+                      aria-pressed={topic === t}
+                      disabled={!n && topic !== t}
+                      title={`${n} ${n === 1 ? "resource" : "resources"}`}
+                      className={cn(pill, topic === t ? pillActive : pillIdle, "disabled:cursor-default disabled:opacity-40")}
+                    >
+                      {t === "all" ? "All" : t}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             {list.length === 0 ? (
               <p className="py-16 text-center text-sm text-gray-500 dark:text-neutral-400">

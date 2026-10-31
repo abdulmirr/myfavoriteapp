@@ -20,9 +20,6 @@ import {
   destructiveButton,
   field,
   fieldLabel,
-  pill,
-  pillActive,
-  pillIdle,
   primaryButton,
   quietButton,
   textarea,
@@ -125,7 +122,6 @@ export default function SettingsPage() {
   const [dailyPicks, setDailyPicks] = useState(false);
   const [events, setEvents] = useState(true);
   const [emailError, setEmailError] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [sounds, setSounds] = useState(true);
   const [pw, setPw] = useState("");
   const [pwState, setPwState] = useState<"idle" | "busy" | "done" | "error">("idle");
@@ -138,15 +134,8 @@ export default function SettingsPage() {
   }, [v.status, router]);
 
   useEffect(() => {
-    let t: string | null = null;
-    try {
-      t = localStorage.getItem("fav:theme");
-    } catch {}
     const s = soundsEnabled();
-    queueMicrotask(() => {
-      setTheme(t === "dark" ? "dark" : t === "light" ? "light" : "system");
-      setSounds(s);
-    });
+    queueMicrotask(() => setSounds(s));
   }, []);
 
   // the editable copy + private settings, loaded once the profile is known
@@ -246,16 +235,6 @@ export default function SettingsPage() {
       .from("profile_private")
       .upsert({ profile_id: me.id, ...patch }, { onConflict: "profile_id" });
     return !error;
-  };
-
-  const applyTheme = (t: "light" | "dark" | "system") => {
-    setTheme(t);
-    try {
-      if (t === "system") localStorage.removeItem("fav:theme");
-      else localStorage.setItem("fav:theme", t);
-    } catch {}
-    const dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-    document.documentElement.classList.toggle("dark", dark);
   };
 
   const exportLibrary = async (format: "json" | "csv") => {
@@ -421,23 +400,8 @@ export default function SettingsPage() {
           <ImportLibrary profileId={me.id} />
         </Section>
 
-        <Section title="Appearance">
+        <Section title="Preferences">
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Theme</span>
-              <div className="flex gap-1">
-                {(["light", "dark", "system"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => applyTheme(t)}
-                    className={cn(pill, "px-2.5 py-1 text-[13px] capitalize", theme === t ? pillActive : pillIdle)}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
             <Toggle
               label="Sounds"
               hint="A whisper of foley when you open things, a soft chime when you favorite."

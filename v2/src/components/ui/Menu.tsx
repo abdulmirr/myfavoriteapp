@@ -38,20 +38,23 @@ export function MenuItem({
   onSelect,
   asChild,
   destructive = false,
+  disabled = false,
   className,
 }: {
   children: React.ReactNode;
   onSelect?: (e: Event) => void;
   asChild?: boolean;
   destructive?: boolean;
+  disabled?: boolean;
   className?: string;
 }) {
   return (
     <M.Item
       asChild={asChild}
       onSelect={onSelect}
+      disabled={disabled}
       className={cn(
-        "flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium outline-none transition-colors data-[highlighted]:bg-gray-100 dark:data-[highlighted]:bg-neutral-700 [&_svg]:size-4 [&_svg]:shrink-0",
+        "flex w-full cursor-pointer select-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium outline-none transition-colors data-[disabled]:cursor-default data-[disabled]:opacity-40 data-[highlighted]:bg-gray-100 dark:data-[highlighted]:bg-neutral-700 [&_svg]:size-4 [&_svg]:shrink-0",
         destructive
           ? "text-red-600 dark:text-red-400"
           : "text-gray-900 dark:text-neutral-100 [&_svg]:text-gray-500 dark:[&_svg]:text-neutral-400",

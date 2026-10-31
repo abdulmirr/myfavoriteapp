@@ -1,11 +1,12 @@
 // The landing page (2026-10-28; tightened 2026-10-31), as a visitor, at the
-// sizes people use: one screen tall, one sign-up button and nothing else to
-// click in the middle (no example link, no email box), the line under the
-// headline on two lines, the bar (Home · Discover · Resources · Log in)
+// sizes people use: dark whatever the system prefers, one screen tall, one
+// sign-up button (the app's primary one) and nothing else to click in the
+// middle, its two lines, the bar (Home · Discover · Resources · Log in)
 // fitting at every width, covers floating around the words without ever
 // touching them, the band above the words on phones — and the covers
 // following the mouse smoothly: moving while it moves, never lurching when it
-// stops. No account needed. Screenshots land in $SHOTS.
+// stops. Then on to Discover: Most loved at once, for a visitor and right
+// after logging out (a stand-in member, no account). Screenshots land in $SHOTS.
 //   node scripts/_e2e-landing.mjs
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -35,10 +36,10 @@ const SIZES = [
 
 const browser = await chromium.launch();
 try {
-  for (const scheme of ["light", "dark"]) {
+  // the site is dark only — a system that prefers light changes nothing
+  for (const scheme of ["light"]) {
     for (const [width, height, around] of SIZES) {
-      if (scheme === "dark" && ![1440, 390].includes(width)) continue;
-      const tag = `${width}x${height}${scheme === "dark" ? " dark" : ""}`;
+      const tag = `${width}x${height}`;
       const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme });
       const page = await ctx.newPage();
       const errors = [];
@@ -65,6 +66,13 @@ try {
           wide: document.documentElement.scrollWidth,
           words,
           links: h1.parentElement.querySelectorAll("a").length,
+          text: line.innerText.replace(/\s+/g, " ").trim(),
+          button: Math.round(h1.parentElement.querySelector("a").getBoundingClientRect().height),
+          // the class, the browser's color scheme, and a near-black page (Tailwind's colors compute as lab(L …))
+          dark:
+            document.documentElement.classList.contains("dark") &&
+            getComputedStyle(document.documentElement).colorScheme === "dark" &&
+            parseFloat(getComputedStyle(document.body).backgroundColor.replace(/^lab\(/, "")) < 15,
           email: document.querySelectorAll("input[type=email]").length,
           lines: Math.round(line.getBoundingClientRect().height / parseFloat(getComputedStyle(line).lineHeight)),
           bar: bar.map((a) => ({ ...box(a), name: a.getAttribute("aria-label")?.startsWith("Favorite") ? "logo" : a.textContent.trim(), lit: a.getAttribute("aria-current") === "page" })),
@@ -77,7 +85,9 @@ try {
       if (height >= 800) check(`${tag}: one screen tall`, m.scroll <= height + 1, `${m.scroll}px`);
       else check(`${tag}: the button is on the first screen`, m.words.at(-1).b <= height, `${Math.round(m.words.at(-1).b)}px`);
       check(`${tag}: no sideways scroll`, m.wide <= width, `${m.wide}px`);
-      check(`${tag}: one thing to click in the middle, no email box`, m.links === 1 && m.email === 0, `${m.links} links, ${m.email} email`);
+      check(`${tag}: dark, though the system prefers light`, m.dark);
+      check(`${tag}: one thing to click in the middle (the 40px primary button), no email box`, m.links === 1 && m.email === 0 && m.button === 40, `${m.links} links, ${m.email} email, button ${m.button}px`);
+      check(`${tag}: "Favorite is a library for everything you love. / Get curated daily recommendations."`, m.text === "Favorite is a library for everything you love. Get curated daily recommendations.", m.text);
       check(`${tag}: the line under the headline on two lines`, m.lines === 2, `${m.lines} lines`);
       const names = m.bar.map((b) => b.name);
       const pills = width >= 640 ? ["Home", "Discover", "Resources"] : ["Discover", "Resources"];
@@ -101,7 +111,7 @@ try {
       const starts = page.getByRole("link", { name: "Start your library" });
       check(`${tag}: one sign-up button`, (await starts.count()) === 1 && (await starts.getAttribute("href")) === "/signin?mode=signup");
       check(`${tag}: no page errors`, errors.length === 0, errors.slice(0, 2).join(" | "));
-      await page.screenshot({ path: join(SHOTS, `landing-${width}x${height}-${scheme}.png`) });
+      await page.screenshot({ path: join(SHOTS, `landing-${width}x${height}.png`) });
       await ctx.close();
     }
   }
@@ -187,7 +197,51 @@ try {
   const early = (jump.find(([t]) => t >= j0 + 60)?.[1] ?? base) - base;
   const over = Math.max(...jump.map(([, x]) => Math.sign(goal) * (x - base) - Math.abs(goal)));
   check("a jump glides: a gentle start, no overshoot", Math.abs(goal) > 8 && Math.abs(early) < 0.2 * Math.abs(goal) && over <= 1, `${Math.abs(early).toFixed(1)}px in the first 60ms of ${Math.abs(goal).toFixed(1)}px, overshoot ${Math.max(0, over).toFixed(1)}px`);
+
+  // from here to Discover: Most loved there at once
+  const tiles = (p) => p.evaluate(() => document.querySelectorAll("section a[href^='/item/'] img").length);
+  const discover = async (p) => {
+    await p.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Discover", exact: true }).click();
+    await p.waitForURL("**/discover", { timeout: 15000 });
+    await p.waitForTimeout(1000);
+    return tiles(p);
+  };
+  check("Discover from here: Most loved within a second", (await discover(page)) >= 24, `${await tiles(page)} tiles`);
   await ctx.close();
+
+  // …and right after logging out, on a tab where a member had Discover open
+  // (Next keeps that page alive, with the member's list in it). The member
+  // is a stand-in: a session in storage and Supabase answered here — no account.
+  const REF = "bvpruvuenqdwilysgojy";
+  const UID = "00000000-0000-4000-8000-00000000e2e0";
+  const PID = "00000000-0000-4000-8000-0000000e2e01";
+  const session = { access_token: "e2e.stand-in.token", refresh_token: "e2e-stand-in", expires_at: Math.floor(Date.now() / 1000) + 86400, expires_in: 86400, token_type: "bearer", user: { id: UID, aud: "authenticated", role: "authenticated", email: "e2e@example.com" } };
+  const profile = { id: PID, user_id: UID, username: "e2e-stand-in", display_name: "Stand-in", avatar_url: null, bio: null, created_at: "2026-01-01T00:00:00Z", profile_private: { onboarded_at: "2026-01-01T00:00:00Z" } };
+  const mctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await mctx.addInitScript(([k, v]) => {
+    if (!sessionStorage.getItem("seeded")) {
+      localStorage.setItem(k, v);
+      sessionStorage.setItem("seeded", "1");
+    }
+  }, [`sb-${REF}-auth-token`, JSON.stringify(session)]);
+  await mctx.route(`https://${REF}.supabase.co/**`, (r) => {
+    const u = r.request().url();
+    if (u.includes("/auth/v1/logout")) return r.fulfill({ status: 204, body: "" });
+    if (u.includes("/auth/v1/")) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(session.user) });
+    if (u.includes("/rest/v1/profiles")) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(profile) });
+    return r.fulfill({ status: 200, contentType: "application/json", headers: { "content-range": "*/0" }, body: "[]" });
+  });
+  const mp = await mctx.newPage();
+  await mp.goto(`${APP}/discover`, { waitUntil: "load" });
+  const theirs = await mp.waitForResponse((res) => res.url().includes("/api/discover/works") && res.url().includes(PID), { timeout: 20000 }).then(() => true, () => false);
+  await mp.waitForTimeout(800);
+  await mp.getByRole("button", { name: "Account menu" }).click();
+  await mp.getByRole("menuitem", { name: /log out/i }).click();
+  await mp.waitForURL(`${APP}/`, { timeout: 15000 });
+  await mp.getByRole("heading", { name: /Your taste,\s*in one place\./ }).waitFor({ timeout: 15000 });
+  const loggedOut = await discover(mp);
+  check("…and right after logging out (Discover had a member's list)", theirs && loggedOut >= 24, `${loggedOut} tiles${theirs ? "" : " (the member's list never loaded)"}`);
+  await mctx.close();
 } catch (e) {
   fail++;
   console.log("FAIL threw:", e.message);

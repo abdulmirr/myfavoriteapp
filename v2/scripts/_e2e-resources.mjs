@@ -35,9 +35,14 @@ const cards = (page) =>
   );
 const TOPICS = ["Mindset", "Worldview", "Career", "Greatness", "Creativity", "Writing", "Thinking", "Learning", "Productivity"];
 const TALKS = ["Speech", "Lecture", "Podcast"];
-const pill = (page, name) => page.getByRole("group", { name: "Topic" }).getByRole("button", { name: new RegExp(`^${name}\\s*\\d+$`) });
-const countOf = async (page, name) => Number((await pill(page, name).textContent()).replace(/\D/g, ""));
-const format = (page, name) => page.getByRole("group", { name: "Format" }).getByRole("button", { name, exact: true });
+// a topic chip says how many it holds (in the format picked) when you hover it
+const pill = (page, name) => page.getByRole("group", { name: "Topic" }).getByRole("button", { name, exact: true });
+const countOf = async (page, name) => Number((await pill(page, name).getAttribute("title")).replace(/\D/g, ""));
+// the format is a menu: open it, pick one (its items read "Talks 63")
+const format = async (page, name) => {
+  await page.getByRole("button", { name: /^Format:/ }).click();
+  await page.getByRole("menuitem", { name: new RegExp(`^${name}\\s*\\d+$`) }).click();
+};
 const settle = (page) => page.waitForTimeout(400);
 
 const browser = await chromium.launch();
@@ -61,7 +66,7 @@ try {
   check("…with its line", (await page.getByText("Some of the greatest resources on the internet", { exact: true }).count()) === 1);
 
   await page.waitForTimeout(1200);
-  const names = (await page.getByRole("group", { name: "Topic" }).getByRole("button").allInnerTexts()).map((t) => t.replace(/\s*\d+$/, ""));
+  const names = await page.getByRole("group", { name: "Topic" }).getByRole("button").allInnerTexts();
   check("topics, in order", names.join("|") === ["All", ...TOPICS].join("|"), names.join(" · "));
   const all = await countOf(page, "All");
   const per = Object.fromEntries(await Promise.all(TOPICS.map(async (t) => [t, await countOf(page, t)])));
@@ -72,7 +77,13 @@ try {
   const filed = html.match(/\\?"topics\\?":\[/g)?.length ?? 0;
   const unfiled = html.match(/\\?"topics\\?":\[\]/g)?.length ?? 0;
   check("…and every pick is filed under one", filed >= all && unfiled === 0, `${filed} sent, ${unfiled} unfiled`);
-  check("formats: All formats first, lit", (await page.getByRole("group", { name: "Format" }).getByRole("button").allInnerTexts()).join("|") === "All formats|Essays|Talks|Videos|Tweets" && (await format(page, "All formats").getAttribute("aria-pressed")) === "true");
+  const trigger = page.getByRole("button", { name: /^Format:/ });
+  check("one row: the format menu first, then the topics", (await trigger.textContent()).trim() === "Format" && (await page.evaluate(() => document.querySelector("[role=group][aria-label=Topic]").parentElement.firstElementChild.getAttribute("aria-label"))) === "Format: Any format");
+  await trigger.click();
+  const items = (await page.getByRole("menuitem").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
+  const kinds = items.map((t) => Number(t.match(/\d+$/)?.[0]));
+  check("…which lists Any format · Essays · Talks · Videos · Tweets with what each holds", items.map((t) => t.replace(/\s*\d+$/, "")).join("|") === "Any format|Essays|Talks|Videos|Tweets" && kinds[0] === all && kinds.slice(1).reduce((s, n) => s + n, 0) === all, items.join(" · "));
+  await page.keyboard.press("Escape");
   let shown = await cards(page);
   check("the first 24 show", shown.length === 24, `${shown.length}`);
   check("…each opens where it lives, in a new tab", shown.every((c) => /^https?:\/\//.test(c.href) && c.blank));
@@ -96,28 +107,29 @@ try {
   check("…Orwell and Graham among them", ["Why I Write", "Write Like You Talk"].every((t) => shown.some((c) => c.text.includes(t))));
   await page.screenshot({ path: join(SHOTS, "resources-writing.png") });
   // …narrowed by format: the topic counts follow, the grid agrees
-  await format(page, "Talks").click();
+  await format(page, "Talks");
   await settle(page);
   shown = await cards(page);
   const writingTalks = await countOf(page, "Writing");
+  check("…the menu's button says Talks once picked", (await page.getByRole("button", { name: /^Format:/ }).textContent()).trim() === "Talks");
   check("Writing × Talks: talks only, as many as Writing now counts", shown.length > 0 && shown.length === Math.min(writingTalks, 24) && shown.every((c) => TALKS.includes(c.medium)), `${shown.length} shown, Writing ${writingTalks}`);
   check("…and the counts are of talks", (await countOf(page, "All")) < all && writingTalks < per.Writing);
   await pill(page, "All").click();
   await settle(page);
   shown = await cards(page);
   check("Talks: speeches, lectures and podcasts only", shown.length > 0 && shown.every((c) => TALKS.includes(c.medium)), [...new Set(shown.map((c) => c.medium))].join(", "));
-  await format(page, "Videos").click();
+  await format(page, "Videos");
   await settle(page);
   shown = await cards(page);
   check("Videos: videos only", shown.length > 0 && shown.every((c) => c.medium === "Video"), [...new Set(shown.map((c) => c.medium))].join(", "));
-  await format(page, "Tweets").click();
+  await format(page, "Tweets");
   await settle(page);
   shown = await cards(page);
   check("Tweets: as quotes (who, then the words), no title line", shown.length > 0 && shown.every((c) => c.medium === "Tweet" && c.quote), `${shown.length} shown`);
   await page.screenshot({ path: join(SHOTS, "resources-tweets.png") });
-  await format(page, "All formats").click();
+  await format(page, "Any format");
   await settle(page);
-  check("All formats: back to the whole count", (await countOf(page, "All")) === all);
+  check("Any format: back to the whole count", (await countOf(page, "All")) === all);
 
   const search = page.getByRole("textbox", { name: "Search resources" });
   await search.fill("paul graham");
@@ -142,13 +154,12 @@ try {
   await pp.waitForTimeout(1500);
   const wide = await pp.evaluate(() => document.documentElement.scrollWidth);
   check("phones: no sideways scroll", wide <= 390, `${wide}px`);
-  const rows = await pp.evaluate(() =>
-    ["Topic", "Format"].map((n) => {
-      const g = document.querySelector(`[role=group][aria-label=${n}]`);
-      return { n, scrolls: g.scrollWidth > g.clientWidth, tall: g.getBoundingClientRect().height };
-    })
-  );
-  check("…topics slide sideways in one row, formats fit in one", rows[0].scrolls && rows[0].tall < 40 && !rows[1].scrolls && rows[1].tall < 30, JSON.stringify(rows));
+  const row = await pp.evaluate(() => {
+    const r = document.querySelector("[role=group][aria-label=Topic]").parentElement;
+    const first = r.firstElementChild.getBoundingClientRect();
+    return { scrolls: r.scrollWidth > r.clientWidth, tall: Math.round(r.getBoundingClientRect().height), format: first.left >= 0 && first.right <= innerWidth };
+  });
+  check("…the format and topics in one row that slides sideways, the format in view", row.scrolls && row.tall < 40 && row.format, JSON.stringify(row));
   await pp.screenshot({ path: join(SHOTS, "resources-390.png") });
   await phone.close();
 

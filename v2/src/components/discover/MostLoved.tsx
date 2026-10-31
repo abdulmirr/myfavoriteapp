@@ -48,6 +48,10 @@ export default function MostLoved({
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
 
+  // "All" for anyone signed out is the list that came with the HTML — again
+  // after signing out, when Next kept this page alive holding a member's list
+  if (key === "-:all" && page.key !== key) setPage({ key, works: initial, hasMore: initial.length === PAGE });
+
   useEffect(() => {
     if (v.status === "unknown" || key === "-:all") return;
     let stale = false;

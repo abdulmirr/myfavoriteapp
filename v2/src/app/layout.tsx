@@ -26,23 +26,19 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3f4f6" },
-    { media: "(prefers-color-scheme: dark)", color: "#171717" },
-  ],
-};
+// dark only (2026-10-31): the page's own near-black, for the browser's bars
+export const viewport: Viewport = { themeColor: "#171717", colorScheme: "dark" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const sb = envUrl(process.env.NEXT_PUBLIC_SUPABASE_URL, "https://placeholder.supabase.co");
   const sbRef = sb.hostname.split(".")[0];
-  // Before first paint: the theme (saved choice, else the system's), and
-  // whether a session exists — html[data-auth] lets signed-in skeletons show
-  // instead of the visitor view, so neither flashes the other.
-  const prepaint = `try{var e=document.documentElement,t=localStorage.getItem("fav:theme");if(t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches)e.classList.add("dark");e.dataset.auth=localStorage.getItem("sb-${sbRef}-auth-token")?"in":"out"}catch(_){}`;
+  // Before first paint: whether a session exists — html[data-auth] lets
+  // signed-in skeletons show instead of the visitor view, so neither flashes
+  // the other. (The theme needs nothing: the site is dark, from the server.)
+  const prepaint = `try{document.documentElement.dataset.auth=localStorage.getItem("sb-${sbRef}-auth-token")?"in":"out"}catch(_){}`;
 
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${mono.variable} dark`} suppressHydrationWarning>
       <head>
         <InlineScript html={prepaint} />
         {/* every page talks to Supabase and paints covers from these CDNs —

@@ -651,6 +651,14 @@ Abdul: drop the star and the names ("just number and the profile pictures"); "Fr
 - [x] **Discover:** the visitor nudge ("Make a page of your favorites…") is gone; visitors go straight to Most loved.
 - [x] QA: `_e2e-landing` (+ one button, no email box, two lines down to 360px, the bar fitting at every width; the covers moving while the mouse moves, no lurch, a jump gliding, and the lurch checks fail on the old code), `_e2e-resources` (+ the visitor's bar, and a member through a stand-in session, no account); tsc, eslint, `next build`; both on the production bundle. The visitor checks in `_e2e-discover` and `_e2e-batch4` are updated to match but weren't rerun, since both create accounts.
 
+### 2026-10-31, fifteenth batch (dark only; one filter row; Discover after logging out)
+
+- [x] **Dark only.** The `dark` class comes from the server, so there's no light first frame, and the browser bars and installed app are near-black (#171717). The theme switches are gone: the menu's Light/Dark item, Settings' Theme row (Sounds now sits under "Preferences"), the system-theme listener, and the unused `use-system-theme` hook.
+- [x] **Resources: one filter row.** "Format ⌄" comes first: a menu of Any format · Essays · Talks · Videos · Tweets, each with what it holds in the chosen topic and a check on the current one. Once a format is picked, the button fills in and shows its name ("Talks"). The topic chips follow, without counts (hover shows them). On a phone the row slides sideways with Format in view; on tablets it wraps 6 + 5; from 1280px it's one line.
+- [x] **Landing:** "Favorite is a library for everything you love. / Get curated daily recommendations." The button is now the app's primary button (40px tall, 16px sides, 14px text) instead of 44px with 24px sides.
+- [x] **Discover after logging out, fixed.** With Cache Components, Next keeps a visited page alive in the background, state and all. A member who had Discover open, logged out (a client-side push to /), and came back found Most loved still holding their list under their key. A visitor's "All" never fetches (it assumes the HTML's list is already there), so nothing showed, indefinitely. Most loved now returns to the HTML's list whenever no one is signed in. Reproduced before the fix (0 tiles after 3s) and after (48 at once).
+- [x] QA: `_e2e-landing` (+ dark whatever the system prefers, the new lines, the 40px button, Discover from the landing, and Discover right after logging out, via a stand-in member with a profile) and `_e2e-resources` (+ the format menu: its items, counts and button label); tsc, eslint, `next build`; both on the production bundle. `_e2e-batch4` updated (no theme switch) but not rerun.
+
 ### Left for Abdul
 
 - Add `https://myfavoriteapp-v2.vercel.app/**` to Supabase → Authentication → URL Configuration → Redirect URLs. Without it, Google sign-in on the preview lands on the live site.

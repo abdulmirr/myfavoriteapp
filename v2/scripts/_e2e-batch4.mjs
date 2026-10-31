@@ -84,10 +84,7 @@ try {
   browser = await chromium.launch();
   const context = async (opts = {}) => {
     const c = await browser.newContext({ viewport: { width: 1280, height: 900 }, ...opts });
-    await c.addInitScript(([k, v]) => {
-      localStorage.setItem(k, v);
-      localStorage.removeItem("fav:theme");
-    }, [sbKey, session]);
+    await c.addInitScript(([k, v]) => localStorage.setItem(k, v), [sbKey, session]);
     return c;
   };
   const ctx = await context();
@@ -110,16 +107,9 @@ try {
   check("…links straight to them", (await menu.getByRole("menuitem", { name: /Check later/ }).getAttribute("href")) === `/${A.username}/lists/check-later`);
   check("menu has Settings, New list and Log out", (await menu.getByRole("menuitem", { name: "Settings" }).count()) === 1 && (await menu.getByRole("menuitem", { name: "New list" }).count()) === 1 && (await menu.getByRole("menuitem", { name: "Log out" }).count()) === 1);
   await page.screenshot({ path: join(SHOTS, "b4-menu.png") });
-  const darkBefore = await page.evaluate(() => document.documentElement.classList.contains("dark"));
-  await menu.getByRole("menuitem", { name: /Dark mode|Light mode/ }).click();
-  const darkAfter = await page.evaluate(() => document.documentElement.classList.contains("dark"));
-  check("the theme switch flips the page", darkBefore !== darkAfter);
-  await page.screenshot({ path: join(SHOTS, "b4-menu-dark.png") });
+  // the site is dark only (2026-10-31): no theme switch
+  check("no theme switch; the page is dark", (await menu.getByRole("menuitem", { name: /Dark mode|Light mode/ }).count()) === 0 && (await page.evaluate(() => document.documentElement.classList.contains("dark"))));
   await page.keyboard.press("Escape");
-  await page.evaluate(() => {
-    document.documentElement.classList.remove("dark");
-    localStorage.removeItem("fav:theme");
-  });
 
   /* ── the add dialog ─────────────────────────────────────────────────────── */
   await page.getByRole("button", { name: "Add a favorite" }).click();
