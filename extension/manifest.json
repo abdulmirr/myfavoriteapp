@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Favorite",
   "description": "Save the page you are on to any of your lists, or favorite it, in one click.",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Save to Favorite",

@@ -1,60 +1,75 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="preload" href="fonts/Inter-Latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
+  <!-- the page's own color, blurred behind everything -->
+  <div id="glow" class="glow" aria-hidden="true"></div>
+
   <header>
-    <img src="star.svg" alt="" class="mark" />
-    <span class="wordmark">favorite</span>
+    <a id="home" class="logo" target="_blank" aria-label="Open Favorite">
+      <img src="star.svg" alt="" />
+      <span>favorite</span>
+    </a>
+    <div class="tools">
+      <button id="sound" type="button" class="tool" hidden></button>
+      <a id="me" class="me" target="_blank" hidden></a>
+    </div>
   </header>
 
   <!-- not connected yet -->
-  <section id="connect" hidden>
-    <div class="card intro">
-      <p class="lead">Save anything you find, in one click.</p>
-      <p class="sub">Connect the extension to your Favorite account to start.</p>
-      <button id="connect-btn" class="primary wide">Connect</button>
-    </div>
+  <section id="connect" class="note" hidden>
+    <img src="star.svg" alt="" class="hero-star" />
+    <p class="lead">Save anything you find, in one click.</p>
+    <p class="sub">Connect your Favorite account to start.</p>
+    <button id="connect-btn" type="button" class="primary">Connect</button>
   </section>
 
   <!-- nothing savable on this tab -->
-  <section id="nopage" hidden>
-    <div class="card intro">
-      <p class="sub">Nothing to save on this page.</p>
-    </div>
+  <section id="nopage" class="note" hidden>
+    <img src="star.svg" alt="" class="hero-star" />
+    <p class="lead">Nothing to save here.</p>
+    <p class="sub">Open a page you love, then press the star.</p>
   </section>
 
-  <!-- the page, one-click favorite, and your lists -->
-  <section id="form" hidden>
-    <div class="card page">
-      <div class="thumb" id="thumb"></div>
-      <div class="meta">
-        <input id="title" type="text" spellcheck="false" aria-label="Title" />
-        <div class="site" id="site"></div>
+  <!-- the page, one-tap favorite, and your lists -->
+  <main id="form" hidden>
+    <div class="page">
+      <div id="stage" class="stage"></div>
+      <div class="about">
+        <div id="title" contenteditable="plaintext-only" role="textbox" aria-label="Title" spellcheck="false"></div>
+        <div class="site">
+          <img id="site-icon" alt="" hidden />
+          <span id="site"></span>
+        </div>
       </div>
     </div>
 
-    <div class="fav">
-      <button id="fav" class="primary wide">
-        <img src="star.svg" alt="" class="btn-mark" />
+    <div id="fav-bar" class="fav">
+      <span id="fav-fill" class="fill" aria-hidden="true"></span>
+      <button id="fav" type="button" aria-pressed="false">
+        <img id="fav-star" src="star.svg" alt="" />
         <span id="fav-label">Favorite</span>
       </button>
-      <button id="thought-toggle" type="button" class="link">Add a thought</button>
-      <textarea id="thought" rows="2" hidden placeholder="Why it&rsquo;s a favorite (optional)"></textarea>
+      <button id="thought-toggle" type="button" hidden>Add a thought</button>
+    </div>
+    <div id="thought-box" class="thought" hidden>
+      <textarea id="thought" rows="2" maxlength="1000" placeholder="What makes it one of yours?" aria-label="Your thought"></textarea>
     </div>
 
-    <div class="card lists">
-      <p class="label">Save to a list</p>
-      <ul id="lists" class="rows"></ul>
-      <form id="new" class="new">
-        <input id="new-title" type="text" placeholder="New list" maxlength="80" aria-label="New list name" />
-        <button type="submit" class="quiet">Create</button>
-      </form>
-    </div>
-    <p id="status" role="status"></p>
-  </section>
+    <label class="find">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.8-3.8" /></svg>
+      <input id="q" type="text" placeholder="Find or create a list" maxlength="80" autocomplete="off" spellcheck="false" aria-label="Find or create a list" />
+    </label>
+
+    <ul id="lists" class="rows"></ul>
+  </main>
+
+  <p id="status" class="sr" role="status"></p>
 
   <script src="config.js"></script>
   <script src="popup.js"></script>

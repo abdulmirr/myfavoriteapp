@@ -2,7 +2,7 @@
 
 Everything below maps 1:1 to fields in the developer console
 (https://chrome.google.com/webstore/devconsole). Upload
-`favorite-extension-v1.1.0.zip` from the repo root (v1.1.0 adds lists — upload it as a new version of the existing item), then fill these in.
+`favorite-extension-v1.2.1.zip` from the repo root (v1.2.1 is the redesigned popup — upload it as a new version of the existing item; its permissions haven't changed), then fill these in.
 
 ## Store listing tab
 
@@ -18,12 +18,13 @@ Favorite is where you keep what's worth your time — the films, books,
 albums, podcasts, and pages you find. This extension is the fastest way
 in: open it on any page and save it to a list, or make it a favorite.
 
-— Tick any of your lists (Check later, Watch this weekend, 10/10 albums…)
-  and the page is in it; untick to take it out
-— Start a new list right from the popup
-— One click (or ⌘⇧F / Ctrl+Shift+F) favorites the page you're on
-— Title, site, and artwork come along on their own
-— Everything appears instantly on your page at myfavoriteapp.com
+— Opens instantly on your lists, covers and all (⌘⇧F / Ctrl+Shift+F)
+— One click drops the page into a list (Check later, Watch this weekend,
+  10/10 albums…); one more takes it out
+— Type to find a list, or name a new one and press Enter
+— One click favorites the page, then add a thought if you like
+— Title, site, and artwork come along on their own, tidied up
+— Everything lands on your page at myfavoriteapp.com
 
 The extension does one thing and nothing else. It reads a page only when
 you click it, sends nothing until you act, and never sees your browsing
@@ -70,9 +71,9 @@ they click the extension or press its shortcut.
 - `scripting`:
 
 ```
-Read the page's own share metadata (og:title, og:image, og:site_name) from
-the tab being saved, so the saved item carries the right title and artwork.
-Runs only on user action, on the active tab only.
+Read the title and preview image of the tab being saved (its share metadata,
+or the largest image on the page if it has none), so the saved item carries
+the right title and artwork. Runs only on user action, on the active tab only.
 ```
 
 - `storage`:
