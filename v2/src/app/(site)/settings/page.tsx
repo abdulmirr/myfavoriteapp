@@ -419,7 +419,7 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-3">
             <Toggle
               label="Daily picks"
-              hint="Every morning: the day’s five favorites from people with taste, the same picks Home shows."
+              hint="Every morning: the five picks Home shows you, and why each one is for you."
               checked={dailyPicks}
               onChange={async (on) => {
                 setDailyPicks(on);

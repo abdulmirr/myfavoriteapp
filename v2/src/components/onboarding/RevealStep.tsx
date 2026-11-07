@@ -154,7 +154,7 @@ export default function RevealStep({ profile }: { profile: Profile }) {
       <div className="mt-10 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-800/70">
         <Toggle
           label="Today's picks, by email"
-          hint="Five favorites from people with taste, every morning. Turn it off any time."
+          hint="Your five picks from Home, every morning. Turn it off any time."
           checked={email}
           onChange={(on) => void setDaily(on)}
           disabled={emailBusy || state !== "done"}

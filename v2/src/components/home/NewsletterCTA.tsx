@@ -176,7 +176,9 @@ export default function NewsletterCTA({ compact = false }: { compact?: boolean }
         Today&rsquo;s picks, in your inbox.
       </h2>
       <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-gray-500 sm:text-base dark:text-neutral-400">
-        Five favorites from people with taste, and why they love them. Every morning.
+        {uid
+          ? "Your five picks and why each one is for you, every morning. No need to open the app."
+          : "Five favorites from people with taste, and why they love them. Every morning."}
       </p>
       <form
         onSubmit={(e) => {
